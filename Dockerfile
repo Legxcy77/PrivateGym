@@ -14,6 +14,7 @@ WORKDIR /app
 COPY --from=build /app/publish .
 
 ENV ASPNETCORE_ENVIRONMENT=Production
+ENV TZ=Asia/Bangkok
 EXPOSE 8080
 
 CMD ["sh", "-c", "ASPNETCORE_URLS=http://0.0.0.0:${PORT:-8080} dotnet PrivateGym.dll"]
