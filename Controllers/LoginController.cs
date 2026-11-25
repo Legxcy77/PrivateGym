@@ -92,19 +92,20 @@ public class LoginController : Controller
 
         string membershipPackage = subscription?.Package?.PackageName ?? "Starter Experience";
         string branchName = user.HomeBranch?.BranchName ?? "สาขาทองหล่อ";
-        if (user.RoleId == 1) 
+        string roleName = user.Role?.RoleName ?? "";
+        if (string.Equals(roleName, "Admin", StringComparison.OrdinalIgnoreCase)) 
         {
             return RedirectToAction("Index", "Admin");
         }
-        else if (user.RoleId == 2) 
+        else if (string.Equals(roleName, "Staff", StringComparison.OrdinalIgnoreCase)) 
         {
             return RedirectToAction("Index", "Staff", new { email = user.Email });
         }
-        else if (user.RoleId == 3) 
+        else if (string.Equals(roleName, "Trainer", StringComparison.OrdinalIgnoreCase)) 
         {
             return RedirectToAction("Index", "Trainer", new { email = user.Email });
         }
-        else if (user.RoleId == 5 || string.Equals(user.Role?.RoleName, "Accountant", StringComparison.OrdinalIgnoreCase))
+        else if (string.Equals(roleName, "Accountant", StringComparison.OrdinalIgnoreCase))
         {
             return RedirectToAction("Index", "Accountant", new { email = user.Email });
         }
