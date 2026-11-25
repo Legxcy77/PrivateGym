@@ -1,5 +1,6 @@
 using System.Globalization;
 using Microsoft.AspNetCore.Localization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PrivateGym.Models;
 
@@ -14,7 +15,10 @@ CultureInfo.DefaultThreadCurrentUICulture = defaultCulture;
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
 // Add services to the container.
-builder.Services.AddControllersWithViews();
+builder.Services.AddControllersWithViews(options =>
+{
+    options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute());
+});
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>
 {
@@ -44,6 +48,14 @@ app.UseSession();
 app.UseAuthorization();
 
 app.MapStaticAssets();
+
+app.MapGet("/health", async (Csi402dbContext db) =>
+{
+    bool canConnect = await db.Database.CanConnectAsync();
+    return canConnect
+        ? Results.Ok(new { status = "healthy", db = "connected" })
+        : Results.Json(new { status = "unhealthy", db = "disconnected" }, statusCode: 503);
+});
 
 app.MapControllerRoute(
     name: "default",

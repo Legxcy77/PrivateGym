@@ -12,6 +12,7 @@ using PrivateGym.ViewModels;
 namespace PrivateGym.Controllers;
 
 using PrivateGym.Filters;
+using PrivateGym.Services;
 
 [SessionAuthorize("Admin")]
 public class AdminController : Controller
@@ -954,7 +955,7 @@ public class AdminController : Controller
             FullName = string.IsNullOrWhiteSpace(fullName) ? trimmedEmail.Split('@')[0] : fullName.Trim(),
             Email = trimmedEmail,
             Phone = string.IsNullOrWhiteSpace(phone) ? "0800000000" : phone.Trim(),
-            PasswordHash = string.IsNullOrWhiteSpace(password) ? "123456" : password,
+            PasswordHash = PasswordHelper.HashPassword(new User(), string.IsNullOrWhiteSpace(password) ? "123456" : password),
             RoleId = _db.Roles.FirstOrDefault(r => r.RoleName == "Staff")?.RoleId ?? 3,
             HomeBranchId = branchId > 0 ? branchId : (_db.Branches.FirstOrDefault()?.BranchId ?? 1),
             Status = "Active",
@@ -1011,7 +1012,7 @@ public class AdminController : Controller
             FullName = string.IsNullOrWhiteSpace(fullName) ? trimmedEmail.Split('@')[0] : fullName.Trim(),
             Email = trimmedEmail,
             Phone = string.IsNullOrWhiteSpace(phone) ? "0800000000" : phone.Trim(),
-            PasswordHash = string.IsNullOrWhiteSpace(password) ? "123456" : password,
+            PasswordHash = PasswordHelper.HashPassword(new User(), string.IsNullOrWhiteSpace(password) ? "123456" : password),
             RoleId = _db.Roles.FirstOrDefault(r => r.RoleName == "Trainer")?.RoleId ?? 4,
             HomeBranchId = branchId > 0 ? branchId : (_db.Branches.FirstOrDefault()?.BranchId ?? 1),
             Status = "Active",
