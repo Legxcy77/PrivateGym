@@ -1,0 +1,545 @@
+/* =========================================================
+   PRIVATEGYM
+   Global Layout
+   ========================================================= */
+
+html {
+    font-size: 14px;
+    position: relative;
+    min-height: 100%;
+}
+
+@media (min-width: 768px) {
+    html {
+        font-size: 16px;
+    }
+}
+
+body {
+    margin: 0;
+    background-color: #111111;
+    color: #ffffff;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* =========================================================
+   MAIN
+   ========================================================= */
+
+.gym-main {
+    flex: 1;
+}
+
+/* =========================================================
+   NAVBAR
+   ========================================================= */
+
+.gym-navbar {
+    background-color: #111111;
+    border-bottom: 1px solid #2b2b2b;
+    padding: 14px 0;
+    position: relative;
+    z-index: 1000;
+}
+
+/* Logo */
+.gym-logo {
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+    transition: 0.2s ease;
+}
+
+.gym-logo:hover {
+    opacity: 0.85;
+}
+
+.gym-logo-img {
+    width: 140px;
+    height: auto;
+    object-fit: contain;
+}
+
+/* =========================================================
+   NAV MENU
+   ========================================================= */
+
+.gym-menu {
+    gap: 8px;
+}
+
+.gym-menu .nav-link {
+    color: #d7d7d7;
+    font-size: 15px;
+    font-weight: 500;
+    padding: 10px 16px !important;
+    position: relative;
+    transition: color 0.2s ease;
+}
+
+.gym-menu .nav-link:hover {
+    color: #ffffff;
+}
+
+/* Red underline */
+.gym-menu .nav-link::after {
+    content: "";
+    position: absolute;
+    left: 16px;
+    right: 16px;
+    bottom: 3px;
+    height: 2px;
+    background-color: #e53935;
+    transform: scaleX(0);
+    transition: transform 0.2s ease;
+}
+
+.gym-menu .nav-link:hover::after {
+    transform: scaleX(1);
+}
+
+/* =========================================================
+   DROPDOWN
+   ========================================================= */
+
+.gym-dropdown {
+    background-color: #1b1b1b;
+    border: 1px solid #333333;
+    border-radius: 8px;
+    padding: 8px;
+    margin-top: 8px;
+}
+
+.gym-dropdown .dropdown-item {
+    color: #dddddd;
+    border-radius: 6px;
+    padding: 9px 12px;
+    font-size: 14px;
+    transition: 0.2s ease;
+}
+
+.gym-dropdown .dropdown-item:hover {
+    background-color: #e53935;
+    color: #ffffff;
+}
+
+/* =========================================================
+   GUEST AUTH (LOGIN / REGISTER)
+   ========================================================= */
+
+.gym-auth {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.gym-login {
+    color: #dddddd;
+    text-decoration: none;
+    font-size: 15px;
+    font-weight: 500;
+    transition: 0.2s ease;
+}
+
+.gym-login:hover {
+    color: #ffffff;
+}
+
+.gym-register {
+    background-color: #e53935;
+    color: #ffffff;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 8px 18px;
+    border-radius: 7px;
+    transition: 0.2s ease;
+}
+
+.gym-register:hover {
+    background-color: #ff4b47;
+    color: #ffffff;
+    transform: translateY(-1px);
+}
+
+/* =========================================================
+   CUSTOMER NAVBAR (PROFILE & SETTINGS)
+   ========================================================= */
+
+.gym-user-area {
+    gap: 12px;
+}
+
+/* ปุ่มฟันเฟือง Settings */
+.gym-settings-btn {
+    width: 38px;
+    height: 38px;
+    background-color: #1c1c1c;
+    border: 1px solid #333333;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #cccccc;
+    text-decoration: none;
+    transition: 0.2s ease;
+}
+
+.gym-settings-btn:hover {
+    color: #ffffff;
+    border-color: #e53935;
+    background-color: #242424;
+}
+
+/* กล่องโปรไฟล์ผู้ใช้ */
+.gym-user-profile {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    background-color: #1c1c1c;
+    border: 1px solid #333333;
+    padding: 5px 12px 5px 6px;
+    border-radius: 20px;
+    text-decoration: none;
+    color: #e0e0e0;
+    font-size: 14px;
+    font-weight: 500;
+    transition: 0.2s ease;
+}
+
+.gym-user-profile:hover,
+.gym-user-profile:focus {
+    color: #ffffff;
+    border-color: #e53935;
+    background-color: #222222;
+}
+
+.user-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background-color: #e53935;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.user-name {
+    max-width: 120px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.gym-dropdown .text-danger:hover {
+    background-color: rgba(229, 57, 53, 0.15) !important;
+    color: #ff5252 !important;
+}
+
+/* =========================================================
+   MOBILE NAVBAR (<= 991px)
+   ========================================================= */
+
+.navbar-toggler {
+    border: 1px solid #444444;
+    padding: 6px 9px;
+    border-radius: 7px;
+}
+
+.navbar-toggler:focus {
+    box-shadow: none;
+}
+
+@media (max-width: 991px) {
+    .navbar-collapse {
+        background-color: #161616;
+        border-radius: 12px;
+        padding: 16px 20px;
+        margin-top: 14px;
+        border: 1px solid #2a2a2a;
+    }
+
+    .gym-menu {
+        margin-top: 0;
+        gap: 2px;
+    }
+
+    .gym-menu .nav-link {
+        padding: 11px 12px !important;
+        border-radius: 6px;
+    }
+
+    .gym-menu .nav-link:hover {
+        background-color: #222222;
+    }
+
+    .gym-menu .nav-link::after {
+        display: none !important;
+    }
+
+    /* กล่อง Auth ปกติบนมือถือ */
+    .gym-auth {
+        margin-top: 14px;
+        padding-top: 14px;
+        border-top: 1px solid #2b2b2b;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        align-items: center;
+    }
+
+    .gym-login {
+        text-align: center;
+        padding: 9px 0;
+        background-color: #222222;
+        border-radius: 7px;
+    }
+
+    .gym-register {
+        padding: 9px 0;
+    }
+
+    /* จัดปุ่ม Customer Profile & Settings ในมือถือ */
+    .gym-user-area {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+    }
+
+    .gym-settings-btn {
+        width: 100%;
+        height: 40px;
+        border-radius: 8px;
+        padding: 0 12px;
+    }
+
+    .gym-user-profile {
+        width: 100%;
+        height: 40px;
+        justify-content: center;
+        border-radius: 8px;
+    }
+
+    .gym-logo-img {
+        width: 130px;
+    }
+}
+
+/* =========================================================
+   FOOTER
+   ========================================================= */
+
+.gym-footer {
+    background-color: #0b0b0b;
+    border-top: 1px solid #222222;
+    padding: 45px 0 0;
+    color: #bdbdbd;
+}
+
+.footer-brand {
+    margin-bottom: 12px;
+}
+
+.footer-logo {
+    width: 135px;
+    height: auto;
+}
+
+.footer-description {
+    color: #949494;
+    font-size: 13.5px;
+    line-height: 1.65;
+    margin-bottom: 0;
+}
+
+.footer-title {
+    color: #ffffff;
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 14px;
+    position: relative;
+}
+
+.footer-title::after {
+    content: "";
+    display: block;
+    width: 26px;
+    height: 2px;
+    background-color: #e53935;
+    margin-top: 6px;
+}
+
+.footer-links,
+.footer-contact {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.footer-links li {
+    margin-bottom: 9px;
+}
+
+.footer-links a {
+    color: #949494;
+    text-decoration: none;
+    font-size: 13.5px;
+    transition: 0.2s ease;
+}
+
+.footer-links a:hover {
+    color: #e53935;
+    padding-left: 3px;
+}
+
+.footer-contact li {
+    color: #949494;
+    font-size: 13.5px;
+    line-height: 1.6;
+    margin-bottom: 9px;
+}
+
+/* =========================================================
+   NEWSLETTER INLINE (COMPACT)
+   ========================================================= */
+
+.newsletter-input-group {
+    display: flex;
+    align-items: center;
+    background-color: #171717;
+    border: 1px solid #2e2e2e;
+    border-radius: 8px;
+    padding: 3px;
+    max-width: 320px;
+    transition: border-color 0.2s ease;
+}
+
+.newsletter-input-group:focus-within {
+    border-color: #e53935;
+    box-shadow: 0 0 0 2px rgba(229, 57, 53, 0.2);
+}
+
+.newsletter-compact-input {
+    background: transparent !important;
+    border: none !important;
+    color: #ffffff !important;
+    font-size: 13.5px;
+    padding: 7px 12px !important;
+    box-shadow: none !important;
+}
+
+.newsletter-compact-input::placeholder {
+    color: #686868;
+}
+
+.newsletter-compact-btn {
+    background-color: #e53935;
+    border: none;
+    color: #ffffff;
+    border-radius: 6px;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    cursor: pointer;
+    transition: 0.2s ease;
+}
+
+.newsletter-compact-btn:hover {
+    background-color: #ff4b47;
+}
+
+/* =========================================================
+   FOOTER MAP (COMPACT STRIP)
+   ========================================================= */
+
+.footer-map-compact {
+    width: 100%;
+    height: 150px;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid #242424;
+    background-color: #161616;
+}
+
+.footer-map-compact iframe {
+    width: 100%;
+    height: 100%;
+    border: 0;
+    display: block;
+    filter: invert(90%) hue-rotate(180deg) contrast(90%);
+}
+
+/* =========================================================
+   FOOTER BOTTOM
+   ========================================================= */
+
+.gym-footer-bottom {
+    border-top: 1px solid #222222;
+    margin-top: 35px;
+    padding: 18px 0 22px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.gym-footer-bottom p {
+    color: #777777;
+    font-size: 13px;
+    margin: 0;
+}
+
+.footer-bottom-links {
+    display: flex;
+    gap: 18px;
+}
+
+.footer-bottom-links a {
+    color: #777777;
+    text-decoration: none;
+    font-size: 13px;
+    transition: 0.2s ease;
+}
+
+.footer-bottom-links a:hover {
+    color: #ffffff;
+}
+
+/* =========================================================
+   MOBILE RESPONSIVE (<= 767px)
+   ========================================================= */
+
+@media (max-width: 767px) {
+    .gym-footer {
+        padding-top: 32px;
+    }
+
+    .newsletter-input-group {
+        max-width: 100%;
+    }
+
+    .footer-map-compact {
+        height: 130px;
+    }
+
+    .gym-footer-bottom {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 10px;
+        margin-top: 25px;
+    }
+
+    .footer-bottom-links {
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 10px 14px;
+    }
+    
+}

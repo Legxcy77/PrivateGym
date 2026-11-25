@@ -1,0 +1,617 @@
+@model List<PrivateGym.Models.Booking>
+@using PrivateGym.Models
+@using PrivateGym.Controllers
+@{
+    Layout = "~/Views/Shared/Trainer/_TrainerLayout.cshtml";
+    ViewData["Title"] = "ตารางของฉัน (My Schedule)";
+
+    string trainerEmail = ViewBag.Email ?? "alex@privategym.club";
+    var monday = (DateOnly)(ViewBag.Monday ?? DateOnly.FromDateTime(DateTime.Today));
+    var sunday = (DateOnly)(ViewBag.Sunday ?? monday.AddDays(6));
+    string prevWeek = ViewBag.PrevWeek ?? monday.AddDays(-7).ToString("yyyy-MM-dd");
+    string nextWeek = ViewBag.NextWeek ?? monday.AddDays(7).ToString("yyyy-MM-dd");
+
+    var branchPods = ViewBag.BranchPods as List<Pod> ?? new List<Pod>();
+    var availability = ViewBag.Availability as TrainerController.TrainerAvailabilityConfig;
+    double weeklyOpenHours = ViewBag.WeeklyOpenHours != null ? Convert.ToDouble(ViewBag.WeeklyOpenHours) : 45;
+    double taughtHours = ViewBag.TaughtHours != null ? Convert.ToDouble(ViewBag.TaughtHours) : 0;
+    int capacityPct = ViewBag.CapacityPct ?? 0;
+
+    int doneCount = Model.Count(b => b.Status == "Completed");
+    int pendingCount = Model.Count(b => b.Status == "Confirmed");
+    var today = DateOnly.FromDateTime(DateTime.Today);
+    var nowTime = TimeOnly.FromDateTime(DateTime.Now);
+
+    string[] dayLabels = new[] { "จ.", "อ.", "พ.", "พฤ.", "ศ.", "ส.", "อา." };
+
+    var timeRows = new[]
+    {
+        new { Label = "07:30", Tag = "SLOT 01", MinStart = new TimeOnly(6, 0), MaxStart = new TimeOnly(8, 59) },
+        new { Label = "09:00", Tag = "SLOT 02", MinStart = new TimeOnly(9, 0), MaxStart = new TimeOnly(10, 29) },
+        new { Label = "10:30", Tag = "SLOT 03", MinStart = new TimeOnly(10, 30), MaxStart = new TimeOnly(11, 59) },
+        new { Label = "12:00", Tag = "MIDDAY",  MinStart = new TimeOnly(12, 0), MaxStart = new TimeOnly(13, 59) },
+        new { Label = "14:00", Tag = "SLOT 04", MinStart = new TimeOnly(14, 0), MaxStart = new TimeOnly(15, 29) },
+        new { Label = "15:30", Tag = "SLOT 05", MinStart = new TimeOnly(15, 30), MaxStart = new TimeOnly(17, 59) },
+        new { Label = "18:00", Tag = "PRIME A", MinStart = new TimeOnly(18, 0), MaxStart = new TimeOnly(19, 29) },
+        new { Label = "19:30", Tag = "PRIME B", MinStart = new TimeOnly(19, 30), MaxStart = new TimeOnly(20, 45) }
+    };
+}
+
+<style>
+    .sch-head {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+        margin-bottom: 18px;
+    }
+    .sch-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+        background: #09090b;
+        border: 1px solid #27272a;
+        border-radius: 12px;
+        padding: 10px 14px;
+        margin-bottom: 18px;
+    }
+    .sch-legend {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        font-size: 11.5px;
+        color: #a1a1aa;
+    }
+    .sch-dot {
+        display: inline-block;
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        margin-right: 5px;
+    }
+    .sch-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 295px;
+        gap: 18px;
+        align-items: start;
+    }
+
+    /* Calendar Time-Slot Matrix */
+    .sch-cal-wrap {
+        background: #09090b;
+        border: 1px solid #27272a;
+        border-radius: 12px;
+        overflow-x: auto;
+    }
+    .sch-cal-table {
+        width: 100%;
+        min-width: 820px;
+        border-collapse: collapse;
+        table-layout: fixed;
+    }
+    .sch-cal-table thead th {
+        padding: 12px 8px;
+        text-align: center;
+        border-bottom: 1px solid #27272a;
+        border-right: 1px solid #18181b;
+        background: #0c0c0f;
+        font-weight: 600;
+    }
+    .sch-cal-table thead th:first-child {
+        width: 76px;
+        font-size: 10.5px;
+        color: #71717a;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+    .sch-cal-table thead th:last-child {
+        border-right: none;
+    }
+    .sch-cal-table thead th.is-today {
+        background: rgba(229, 9, 20, 0.12);
+        border-bottom-color: rgba(229, 9, 20, 0.5);
+    }
+    .sch-cal-table tbody td {
+        height: 82px;
+        padding: 6px;
+        vertical-align: top;
+        border-bottom: 1px solid #141418;
+        border-right: 1px solid #141418;
+        position: relative;
+    }
+    .sch-cal-table tbody tr:last-child td {
+        border-bottom: none;
+    }
+    .sch-cal-table tbody td:last-child {
+        border-right: none;
+    }
+    .sch-cal-table tbody td.sch-time-cell {
+        background: #0a0a0d;
+        border-right: 1px solid #27272a;
+        padding: 8px 10px;
+        text-align: right;
+    }
+    .sch-time-main {
+        font-size: 11.5px;
+        font-weight: 600;
+        color: #a1a1aa;
+        line-height: 1.2;
+    }
+    .sch-time-tag {
+        font-size: 9.5px;
+        color: #52525b;
+        margin-top: 2px;
+        letter-spacing: 0.04em;
+    }
+    .sch-cal-table tbody td.is-today-col {
+        background: rgba(255, 255, 255, 0.015);
+    }
+    .sch-now-line {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 6px;
+        height: 1.5px;
+        background: rgba(229, 9, 20, 0.85);
+        z-index: 3;
+        pointer-events: none;
+        opacity: 1;
+        transition: opacity 1.8s ease, top 0.5s linear;
+    }
+    .sch-now-pill {
+        position: absolute;
+        right: 4px;
+        top: -15px;
+        background: #e50914;
+        color: #ffffff;
+        font-size: 9px;
+        font-weight: 700;
+        padding: 1px 5px;
+        border-radius: 4px;
+        white-space: nowrap;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+    }
+
+    /* Event Cards inside Time Cells */
+    .sch-ev {
+        background: #141418;
+        border: 1px solid #27272a;
+        border-left: 3px solid #3b82f6;
+        border-radius: 7px;
+        padding: 7px 8px;
+        margin-bottom: 5px;
+        font-size: 11.5px;
+        transition: border-color 0.15s;
+    }
+    .sch-ev:last-child {
+        margin-bottom: 0;
+    }
+    .sch-ev.is-done {
+        border-left-color: #10b981;
+        background: #101214;
+        opacity: 0.78;
+    }
+    .sch-ev.is-live {
+        border-color: rgba(229, 9, 20, 0.55);
+        border-left: 3px solid #e50914;
+        background: linear-gradient(180deg, rgba(229, 9, 20, 0.14) 0%, #141418 100%);
+    }
+    .sch-ev-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 4px;
+        margin-bottom: 3px;
+    }
+    .sch-ev-time {
+        font-size: 10.5px;
+        font-weight: 600;
+        color: #d4d4d8;
+        white-space: nowrap;
+    }
+    .sch-ev-badge {
+        font-size: 9.5px;
+        font-weight: 700;
+        padding: 1px 5px;
+        border-radius: 4px;
+        white-space: nowrap;
+    }
+    .sch-ev-badge.done {
+        background: rgba(16, 185, 129, 0.15);
+        color: #10b981;
+    }
+    .sch-ev-badge.live {
+        background: #e50914;
+        color: #ffffff;
+    }
+    .sch-ev-badge.wait {
+        background: rgba(59, 130, 246, 0.15);
+        color: #60a5fa;
+    }
+    .sch-ev-name {
+        font-size: 12px;
+        font-weight: 600;
+        color: #fafafa;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .sch-ev-pod {
+        font-size: 10.5px;
+        color: #a1a1aa;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        margin-top: 1px;
+    }
+    .sch-block-ev {
+        background: #18181b;
+        border: 1px dashed #3f3f46;
+        border-radius: 7px;
+        padding: 8px;
+        text-align: center;
+        color: #a1a1aa;
+        font-size: 11px;
+    }
+
+    /* Right Summary Column */
+    .sch-side-card {
+        background: #09090b;
+        border: 1px solid #27272a;
+        border-radius: 12px;
+        padding: 18px;
+    }
+    .sch-stat-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+        margin: 14px 0;
+    }
+    .sch-stat-box {
+        background: #111114;
+        border: 1px solid #27272a;
+        border-radius: 8px;
+        padding: 12px;
+    }
+
+    @@media (max-width: 1200px) {
+        .sch-layout {
+            grid-template-columns: 1fr;
+        }
+    }
+    @@media print {
+        .cd-sidebar, .cd-topbar, .cd-bottom-nav, .no-print {
+            display: none !important;
+        }
+    }
+</style>
+
+<main class="cd-content">
+    <div class="sch-head">
+        <div>
+            <div class="d-flex align-items-center gap-2">
+                <h1 class="cd-page-title mb-0">ตารางของฉัน (My Schedule)</h1>
+                <span class="st-badge st-badge-green">LIVE SYNC</span>
+            </div>
+            <p class="cd-page-subtext mb-0">ปฏิทินและตารางการสอนรายสัปดาห์ พร้อมสถานะห้องฝึก Private Pods จากฐานข้อมูลจริง</p>
+        </div>
+        <div class="d-flex gap-2 no-print">
+            <a asp-controller="Trainer" asp-action="Availability" asp-route-email="@trainerEmail" class="st-btn-primary">+ บันทึกเวลาไม่ว่าง / จัดเวลา</a>
+        </div>
+    </div>
+
+    <div class="sch-toolbar no-print">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <a asp-controller="Trainer" asp-action="Schedule" asp-route-email="@trainerEmail" asp-route-weekStart="@prevWeek" class="st-btn-outline">&lt;</a>
+            <a asp-controller="Trainer" asp-action="Schedule" asp-route-email="@trainerEmail" class="st-btn-outline">สัปดาห์นี้</a>
+            <a asp-controller="Trainer" asp-action="Schedule" asp-route-email="@trainerEmail" asp-route-weekStart="@nextWeek" class="st-btn-outline">&gt;</a>
+            <span style="font-size:14px; font-weight:600; color:#fafafa; margin-left:6px;">
+                สัปดาห์ที่ @monday.ToString("dd MMM") - @sunday.ToString("dd MMM yyyy")
+            </span>
+        </div>
+
+        <div class="sch-legend">
+            <span><i class="sch-dot" style="background:#10b981;"></i>เสร็จสิ้น</span>
+            <span><i class="sch-dot" style="background:#3b82f6;"></i>ยืนยันแล้ว</span>
+            <span><i class="sch-dot" style="background:#e50914;"></i>กำลังสอน</span>
+            <button type="button" onclick="window.print()" class="st-btn-outline" style="height:30px; padding:0 10px; font-size:11.5px;">พิมพ์ตารางสอน</button>
+        </div>
+    </div>
+
+    <div class="sch-layout">
+        <!-- Left: Time-Slot Calendar Grid -->
+        <div class="sch-cal-wrap">
+            <table class="sch-cal-table">
+                <thead>
+                    <tr>
+                        <th>เวลา / โซน</th>
+                        @for (int i = 0; i < 7; i++)
+                        {
+                            var date = monday.AddDays(i);
+                            bool isToday = date == today;
+                            <th class="@(isToday ? "is-today" : "")">
+                                <div style="font-size:12.5px; color:@(isToday ? "#ef4444" : "#fafafa");">@dayLabels[i] @date.Day</div>
+                                <div style="font-size:10px; color:#71717a; margin-top:1px;">@(isToday ? "TODAY" : date.ToString("MMM"))</div>
+                            </th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in timeRows)
+                    {
+                        bool isCurrentTimeRow = nowTime >= row.MinStart && nowTime <= row.MaxStart;
+                        <tr>
+                            <td class="sch-time-cell">
+                                <div class="sch-time-main">@row.Label</div>
+                                <div class="sch-time-tag">@row.Tag</div>
+                            </td>
+                            @for (int i = 0; i < 7; i++)
+                            {
+                                var date = monday.AddDays(i);
+                                bool isToday = date == today;
+                                var slotBookings = Model
+                                    .Where(b => b.BookingDate == date && b.StartTime >= row.MinStart && b.StartTime <= row.MaxStart)
+                                    .OrderBy(b => b.StartTime)
+                                    .ToList();
+
+                                var dayOverride = (row.Tag == "MIDDAY")
+                                    ? availability?.Overrides?.FirstOrDefault(o => o.Date == date.ToString("yyyy-MM-dd"))
+                                    : null;
+
+                                <td class="@(isToday ? "is-today-col" : "")"
+                                    data-today-cell="@(isToday ? "1" : "0")"
+                                    data-cell-date="@date.ToString("yyyy-MM-dd")"
+                                    data-min="@((row.MinStart.Hour * 60) + row.MinStart.Minute)"
+                                    data-max="@((row.MaxStart.Hour * 60) + row.MaxStart.Minute)">
+                                    @if (isToday && isCurrentTimeRow && nowTime >= new TimeOnly(7, 30) && nowTime <= new TimeOnly(20, 45))
+                                    {
+                                        <div class="sch-now-line" id="liveNowLine">
+                                            <span class="sch-now-pill" id="liveNowPill">@nowTime.ToString("HH:mm:ss") NOW</span>
+                                        </div>
+                                    }
+
+                                    @if (dayOverride != null)
+                                    {
+                                        <div class="sch-block-ev">
+                                            <div style="font-weight:600; color:#d4d4d8;">BLOCKED</div>
+                                            <div>@dayOverride.Reason</div>
+                                        </div>
+                                    }
+
+                                    @{
+                                        var b = slotBookings
+                                            .OrderByDescending(x => x.Status == "Completed" ? 2 : 1)
+                                            .ThenByDescending(x => x.BookingId)
+                                            .FirstOrDefault();
+                                    }
+                                    @if (b != null)
+                                    {
+                                        bool hasCi = b.CheckIns != null && b.CheckIns.Any();
+                                        bool isDone = b.Status == "Completed";
+                                        bool isDuringSlot = isToday && b.StartTime <= nowTime && b.EndTime > nowTime;
+                                        bool isPastSlot = date < today || (date == today && b.EndTime <= nowTime);
+
+                                        bool isInRoom = !isDone && ((hasCi && !isPastSlot) || (isDuringSlot && hasCi));
+                                        bool isWaitingCheckIn = !isDone && isDuringSlot && !hasCi;
+                                        bool isNoShow = !isDone && isPastSlot && !hasCi;
+                                        bool isCompletedByTime = isDone || (!isDone && isPastSlot && hasCi);
+
+                                        string cardCls = isCompletedByTime ? "is-done" : (isInRoom ? "is-live" : "");
+                                        string badgeCls = isCompletedByTime ? "done"
+                                                        : isInRoom ? "live"
+                                                        : (isWaitingCheckIn || isNoShow) ? "amber"
+                                                        : "wait";
+                                        string badgeText = isCompletedByTime ? "เสร็จสิ้น"
+                                                         : isInRoom ? "กำลังสอน"
+                                                         : isWaitingCheckIn ? "รอเช็กอิน"
+                                                         : isNoShow ? "ไม่มาตามนัด"
+                                                         : "ยืนยัน";
+
+                                        <div class="sch-ev @cardCls"
+                                             data-ev-card="1"
+                                             data-date="@date.ToString("yyyy-MM-dd")"
+                                             data-start-min="@((b.StartTime.Hour * 60) + b.StartTime.Minute)"
+                                             data-end-min="@((b.EndTime.Hour * 60) + b.EndTime.Minute)"
+                                             data-db-status="@b.Status"
+                                             data-checked-in="@(hasCi ? "1" : "0")"
+                                             title="@(b.User?.FullName) (@b.StartTime.ToString("HH:mm")-@b.EndTime.ToString("HH:mm"))">
+                                            <div class="sch-ev-top">
+                                                <span class="sch-ev-time">@b.StartTime.ToString("HH:mm")-@b.EndTime.ToString("HH:mm")</span>
+                                                @if (badgeCls == "amber")
+                                                {
+                                                    <span class="sch-ev-badge" data-ev-badge="1" style="background: rgba(245, 158, 11, 0.16); color: #f59e0b;">@badgeText</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="sch-ev-badge @badgeCls" data-ev-badge="1">@badgeText</span>
+                                                }
+                                            </div>
+                                            <div class="sch-ev-name">@(b.User?.FullName ?? "สมาชิก")</div>
+                                            <div class="sch-ev-pod">@(b.Pod?.PodName ?? "Pod")</div>
+                                        </div>
+                                    }
+                                </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Right: Summary & Branch Pods -->
+        <div class="d-flex flex-column gap-3">
+            <div class="sch-side-card">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h2 style="font-size:14px; font-weight:600; color:#fafafa; margin:0;">สรุปภาพรวมสัปดาห์นี้</h2>
+                    <span class="st-badge st-badge-red">@Model.Count เซสชัน</span>
+                </div>
+
+                <div class="sch-stat-grid">
+                    <div class="sch-stat-box">
+                        <div style="font-size:11px; color:#71717a;">สอนแล้ว</div>
+                        <div style="font-size:22px; font-weight:700; color:#fafafa;">@doneCount</div>
+                        <div style="font-size:11px; color:#10b981;">Completed</div>
+                    </div>
+                    <div class="sch-stat-box">
+                        <div style="font-size:11px; color:#71717a;">รอสอน</div>
+                        <div style="font-size:22px; font-weight:700; color:#ef4444;">@pendingCount</div>
+                        <div style="font-size:11px; color:#a1a1aa;">Confirmed</div>
+                    </div>
+                    <div class="sch-stat-box">
+                        <div style="font-size:11px; color:#71717a;">ชั่วโมงสอนรวม</div>
+                        <div style="font-size:20px; font-weight:700; color:#fafafa;">@taughtHours.ToString("0.#") ชม.</div>
+                    </div>
+                    <div class="sch-stat-box">
+                        <div style="font-size:11px; color:#71717a;">เวลาเปิดสอน</div>
+                        <div style="font-size:20px; font-weight:700; color:#60a5fa;">@weeklyOpenHours ชม.</div>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="d-flex justify-content-between" style="font-size:11.5px; color:#a1a1aa; margin-bottom:6px;">
+                        <span>CAPACITY UTILIZATION</span>
+                        <span style="color:#fafafa; font-weight:600;">@capacityPct%</span>
+                    </div>
+                    <div style="height:6px; background:#18181b; border-radius:999px; overflow:hidden;">
+                        <div style="width:@(capacityPct)%; height:100%; background:#e50914;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sch-side-card">
+                <h2 style="font-size:13px; font-weight:600; color:#fafafa; margin-bottom:12px;">ห้องฝึกส่วนบุคคลประจำสาขา (Private Pods)</h2>
+                <div class="d-flex flex-column gap-2">
+                    @foreach (var pod in branchPods)
+                    {
+                        <div class="d-flex justify-content-between align-items-center" style="font-size:12.5px; padding:8px 10px; background:#111114; border:1px solid #27272a; border-radius:8px;">
+                            <span style="color:#e4e4e7; font-weight:500;">@pod.PodName</span>
+                            <span class="st-badge @(pod.Status == "Available" ? "st-badge-green" : "st-badge-amber")">@pod.Status</span>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <div class="sch-side-card" style="background:#0c0c0f;">
+                <div style="font-size:12px; font-weight:600; color:#ef4444; margin-bottom:4px;">ข้อบังคับ Private Pod</div>
+                <div style="font-size:12px; color:#a1a1aa; line-height:1.5;">
+                    กรุณาเคลียร์อุปกรณ์ Barbell Plate และทำความสะอาด Bench ล่วงหน้า 5 นาทีก่อนหมดเวลาเซสชัน เพื่อความพร้อมสำหรับผู้ใช้รอบถัดไป
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+@section Scripts {
+<script>
+    (function () {
+        function updateLiveScheduleLine() {
+            const now = new Date();
+            const hh = String(now.getHours()).padStart(2, '0');
+            const mm = String(now.getMinutes()).padStart(2, '0');
+            const ss = String(now.getSeconds()).padStart(2, '0');
+            const totalMin = now.getHours() * 60 + now.getMinutes() + (now.getSeconds() / 60);
+
+            const cells = document.querySelectorAll('td[data-today-cell="1"]');
+            if (!cells.length) return;
+
+            const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+            const isClubOpen = totalMin >= 450 && totalMin <= 1245; // 07:30 - 20:45
+
+            let line = document.getElementById('liveNowLine');
+            if (!isClubOpen) {
+                if (line) {
+                    line.style.opacity = '0';
+                }
+            } else {
+                if (!line) {
+                    line = document.createElement('div');
+                    line.className = 'sch-now-line';
+                    line.id = 'liveNowLine';
+                    line.style.opacity = '0';
+                    const pill = document.createElement('span');
+                    pill.className = 'sch-now-pill';
+                    pill.id = 'liveNowPill';
+                    line.appendChild(pill);
+                }
+
+                const pill = document.getElementById('liveNowPill') || line.querySelector('.sch-now-pill');
+                if (pill) {
+                    pill.textContent = `${hh}:${mm}:${ss} NOW`;
+                }
+
+                let placed = false;
+                for (const cell of cells) {
+                    if (cell.dataset.cellDate !== todayStr) continue;
+                    const min = parseFloat(cell.dataset.min || '0');
+                    const max = parseFloat(cell.dataset.max || '1440');
+                    if (totalMin >= min && totalMin <= max + 0.999) {
+                        const span = Math.max(1, max - min);
+                        const pct = Math.min(96, Math.max(4, ((totalMin - min) / span) * 100));
+                        line.style.display = 'block';
+                        line.style.top = `${pct}%`;
+                        if (line.parentElement !== cell) {
+                            cell.prepend(line);
+                        }
+                        requestAnimationFrame(() => { line.style.opacity = '1'; });
+                        placed = true;
+                        break;
+                    }
+                }
+                if (!placed) line.style.opacity = '0';
+            }
+
+            // Auto-update 1-card-per-slot statuses in real time
+            const nowMinInt = now.getHours() * 60 + now.getMinutes();
+            document.querySelectorAll('[data-ev-card="1"]').forEach(card => {
+                const dbStatus = card.dataset.dbStatus || 'Confirmed';
+                if (dbStatus === 'Completed') return;
+
+                const evDate = card.dataset.date || '';
+                const startMin = parseInt(card.dataset.startMin || '0', 10);
+                const endMin = parseInt(card.dataset.endMin || '0', 10);
+                const hasCi = card.dataset.checkedIn === '1';
+                const badge = card.querySelector('[data-ev-badge="1"]');
+                if (!badge) return;
+
+                const isPast = evDate < todayStr || (evDate === todayStr && nowMinInt >= endMin);
+                const isDuring = evDate === todayStr && nowMinInt >= startMin && nowMinInt < endMin;
+
+                card.classList.remove('is-done', 'is-live');
+                badge.classList.remove('done', 'live', 'wait');
+                badge.removeAttribute('style');
+
+                if (isPast && hasCi) {
+                    card.classList.add('is-done');
+                    badge.classList.add('done');
+                    badge.textContent = 'เสร็จสิ้น';
+                } else if (isPast && !hasCi) {
+                    badge.style.background = 'rgba(245, 158, 11, 0.16)';
+                    badge.style.color = '#f59e0b';
+                    badge.textContent = 'ไม่มาตามนัด';
+                } else if (isDuring && hasCi) {
+                    card.classList.add('is-live');
+                    badge.classList.add('live');
+                    badge.textContent = 'กำลังสอน';
+                } else if (isDuring && !hasCi) {
+                    badge.style.background = 'rgba(245, 158, 11, 0.16)';
+                    badge.style.color = '#f59e0b';
+                    badge.textContent = 'รอเช็กอิน';
+                } else if (hasCi) {
+                    card.classList.add('is-live');
+                    badge.classList.add('live');
+                    badge.textContent = 'กำลังสอน';
+                } else {
+                    badge.classList.add('wait');
+                    badge.textContent = 'ยืนยัน';
+                }
+            });
+        }
+
+        updateLiveScheduleLine();
+        setInterval(updateLiveScheduleLine, 1000);
+    })();
+</script>
+}

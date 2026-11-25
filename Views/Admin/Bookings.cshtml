@@ -1,0 +1,349 @@
+@model List<PrivateGym.Models.Booking>
+@using PrivateGym.Models
+@{
+    ViewData["Title"] = "จัดการและตรวจสอบรายการจองทั้งหมด (Bookings Management)";
+    Layout = "~/Views/Shared/Admin/_AdminLayout.cshtml";
+
+    var list = Model ?? new List<Booking>();
+    var pods = ViewBag.Pods as List<Pod> ?? new List<Pod>();
+    var activeCheckIns = ViewBag.ActiveCheckIns as List<CheckIn> ?? new List<CheckIn>();
+    string status = ViewBag.FilterStatus as string ?? "all";
+    string search = ViewBag.Search as string ?? "";
+
+    int totalCount = ViewBag.TotalCount ?? list.Count;
+    int confirmedCount = ViewBag.ConfirmedCount ?? 0;
+    int completedCount = ViewBag.CompletedCount ?? 0;
+    int cancelledCount = ViewBag.CancelledCount ?? 0;
+
+    var firstBooking = list.FirstOrDefault();
+}
+
+<style>
+    .bk-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 340px;
+        gap: 18px;
+        align-items: start;
+    }
+    .bk-row {
+        cursor: pointer;
+        transition: background-color 0.15s ease;
+    }
+    .bk-row.is-selected td {
+        background: rgba(229, 9, 20, 0.08) !important;
+    }
+    .bk-inspector {
+        background: #09090b;
+        border: 1px solid #27272a;
+        border-radius: 12px;
+        padding: 18px;
+        position: sticky;
+        top: 76px;
+    }
+    .bk-kv {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        font-size: 12.5px;
+        padding: 8px 0;
+        border-bottom: 1px solid #18181b;
+    }
+    .bk-kv:last-child { border-bottom: none; }
+    .bk-pod-strip {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+        gap: 10px;
+        margin-top: 18px;
+    }
+    .bk-pod-tile {
+        background: #09090b;
+        border: 1px solid #27272a;
+        border-radius: 10px;
+        padding: 12px 14px;
+    }
+    @@media (max-width: 1180px) {
+        .bk-layout { grid-template-columns: 1fr; }
+        .bk-inspector { position: static; }
+    }
+</style>
+
+<div class="adm-page">
+    <div class="adm-page-head">
+        <div>
+            <h1 class="adm-page-title">จัดการและตรวจสอบรายการจองทั้งหมด (Bookings Management)</h1>
+            <p class="adm-page-sub">คลิกที่รายการจองเพื่อเปิด Active Inspection Desk ด้านขวา ตรวจสอบ QR Pass และจัดการคิวแบบเรียลไทม์</p>
+        </div>
+        <a asp-controller="Admin" asp-action="Schedule" class="st-btn-outline">เปิดตารางเวลา (Schedule)</a>
+    </div>
+
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success" style="background: rgba(16, 185, 129, 0.14); border: 1px solid rgba(16, 185, 129, 0.35); color: #fafafa; border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; font-size: 13px;">
+            @TempData["SuccessMessage"]
+        </div>
+    }
+
+    <div class="adm-kpi-4">
+        <div class="adm-stat-card">
+            <div class="adm-stat-lbl">TOTAL BOOKINGS</div>
+            <div class="adm-stat-val">@totalCount <span style="font-size:13px; color:#71717a; font-weight:400;">สล็อต</span></div>
+            <div class="adm-stat-sub">รายการจองทั้งหมดในระบบ</div>
+        </div>
+        <div class="adm-stat-card">
+            <div class="adm-stat-lbl">CONFIRMED / ACTIVE</div>
+            <div class="adm-stat-val" style="color:#60a5fa;">@confirmedCount <span style="font-size:13px; color:#71717a; font-weight:400;">รายการ</span></div>
+            <div class="adm-stat-sub">ยืนยันแล้ว / รอเข้าใช้งาน</div>
+        </div>
+        <div class="adm-stat-card">
+            <div class="adm-stat-lbl">COMPLETED SESSIONS</div>
+            <div class="adm-stat-val" style="color:#10b981;">@completedCount <span style="font-size:13px; color:#71717a; font-weight:400;">รายการ</span></div>
+            <div class="adm-stat-sub">เข้าใช้งานเสร็จสมบูรณ์</div>
+        </div>
+        <div class="adm-stat-card">
+            <div class="adm-stat-lbl">CANCELLED</div>
+            <div class="adm-stat-val" style="color:#ef4444;">@cancelledCount <span style="font-size:13px; color:#71717a; font-weight:400;">รายการ</span></div>
+            <div class="adm-stat-sub">ยกเลิกและคืนโควต้าแล้ว</div>
+        </div>
+    </div>
+
+    <div class="st-filter-bar">
+        <div class="st-chips">
+            <a asp-controller="Admin" asp-action="Bookings" asp-route-status="all" asp-route-search="@search"
+               class="st-chip @(status == "all" ? "active" : "")">ทั้งหมด (@totalCount)</a>
+            <a asp-controller="Admin" asp-action="Bookings" asp-route-status="Confirmed" asp-route-search="@search"
+               class="st-chip @(status == "Confirmed" ? "active" : "")">ยืนยันแล้ว (@confirmedCount)</a>
+            <a asp-controller="Admin" asp-action="Bookings" asp-route-status="Completed" asp-route-search="@search"
+               class="st-chip @(status == "Completed" ? "active" : "")">เสร็จสิ้น (@completedCount)</a>
+            <a asp-controller="Admin" asp-action="Bookings" asp-route-status="Cancelled" asp-route-search="@search"
+               class="st-chip @(status == "Cancelled" ? "active" : "")">ยกเลิก (@cancelledCount)</a>
+        </div>
+
+        <form asp-controller="Admin" asp-action="Bookings" method="get" class="d-flex gap-2">
+            <input type="hidden" name="status" value="@status" />
+            <input type="text" name="search" value="@search" class="st-input" style="min-width:240px;" placeholder="ค้นหาชื่อสมาชิก, ห้อง Pod, #PG-..." />
+            <button type="submit" class="st-btn-primary">ค้นหา</button>
+        </form>
+    </div>
+
+    <div class="bk-layout">
+        <div>
+            <div class="st-table-card">
+                @if (!list.Any())
+                {
+                    <div style="padding:44px; text-align:center; color:#71717a; font-size:13.5px;">ไม่พบข้อมูลการจองในหมวดหมู่นี้</div>
+                }
+                else
+                {
+                    <table class="st-shadcn-table">
+                        <thead>
+                            <tr>
+                                <th>รหัส &amp; เวลา</th>
+                                <th>สมาชิก (MEMBER)</th>
+                                <th>บริการ &amp; พื้นที่ POD</th>
+                                <th>โค้ชผู้ฝึกสอน</th>
+                                <th>สถานะ</th>
+                                <th style="text-align:right;">การจัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @for (int i = 0; i < list.Count; i++)
+                            {
+                                var b = list[i];
+                                bool hasCi = b.CheckIns != null && b.CheckIns.Any();
+                                string code = $"#PG-{b.BookingId:D5}";
+                                string memberName = b.User?.FullName ?? "-";
+                                string memberContact = b.User?.Phone ?? b.User?.Email ?? "-";
+                                string podName = b.Pod?.PodName ?? "-";
+                                string branchName = b.Pod?.Branch?.BranchName ?? "-";
+                                string trainerName = b.Trainer?.User?.FullName ?? "Private Pod Solo";
+                                string statusText = b.Status == "Completed" ? "เสร็จสิ้น (Completed)"
+                                    : b.Status == "Cancelled" ? "ยกเลิก (Cancelled)"
+                                    : hasCi ? "กำลังใช้งาน (In-Session)"
+                                    : "ยืนยันแล้ว (Confirmed)";
+                                string token = $"PG-PASS-{b.BookingId:D5}";
+
+                                <tr class="bk-row @(i == 0 ? "is-selected" : "")"
+                                    onclick="selectBookingRow(this)"
+                                    data-id="@b.BookingId"
+                                    data-code="@code"
+                                    data-member="@memberName"
+                                    data-contact="@memberContact"
+                                    data-pod="@podName"
+                                    data-branch="@branchName"
+                                    data-trainer="@trainerName"
+                                    data-date="@b.BookingDate.ToString("dd/MM/yyyy")"
+                                    data-time="@b.StartTime.ToString("HH:mm") - @b.EndTime.ToString("HH:mm") น."
+                                    data-status="@statusText"
+                                    data-rawstatus="@b.Status"
+                                    data-token="@token">
+                                    <td>
+                                        <div style="font-weight:600; color:#fafafa;">@b.BookingDate.ToString("dd/MM/yyyy")</div>
+                                        <div style="font-size:12px; color:#a1a1aa;">@b.StartTime.ToString("HH:mm") - @b.EndTime.ToString("HH:mm") น.</div>
+                                        <div style="font-size:11px; color:#71717a; font-family:monospace;">@code</div>
+                                    </td>
+                                    <td>
+                                        <div style="font-weight:600; color:#fafafa;">@memberName</div>
+                                        <div style="font-size:12px; color:#a1a1aa;">@memberContact</div>
+                                    </td>
+                                    <td>
+                                        <div style="font-weight:500; color:#e4e4e7;">@podName</div>
+                                        <div style="font-size:12px; color:#71717a;">@branchName</div>
+                                    </td>
+                                    <td>
+                                        <span style="color:@(b.Trainer?.User != null ? "#fafafa" : "#71717a"); font-weight:@(b.Trainer?.User != null ? "500" : "400");">@trainerName</span>
+                                    </td>
+                                    <td>
+                                        @if (b.Status == "Completed")
+                                        {
+                                            <span class="st-badge st-badge-green">เสร็จสิ้น</span>
+                                        }
+                                        else if (b.Status == "Cancelled")
+                                        {
+                                            <span class="st-badge st-badge-red">ยกเลิก</span>
+                                        }
+                                        else if (hasCi)
+                                        {
+                                            <span class="st-badge st-badge-green">กำลังใช้งาน</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="st-badge st-badge-blue">ยืนยันแล้ว</span>
+                                        }
+                                    </td>
+                                    <td style="text-align:right; white-space:nowrap;" onclick="event.stopPropagation()">
+                                        @if (b.Status == "Confirmed")
+                                        {
+                                            <form asp-controller="Admin" asp-action="CompleteBookingAdmin" method="post" style="display:inline;"
+                                                  data-confirm-title="ยืนยันจบเซสชัน"
+                                                  data-confirm="ยืนยันจบเซสชันและเช็กเอาต์สำหรับ @memberName (@code) หรือไม่?">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="bookingId" value="@b.BookingId" />
+                                                <button type="submit" class="st-btn-outline" style="height:30px; padding:0 10px; font-size:12px; color:#10b981;">จบเซสชัน</button>
+                                            </form>
+                                            <form asp-controller="Admin" asp-action="CancelBookingAdmin" method="post" style="display:inline;"
+                                                  data-confirm-title="ยืนยันยกเลิกและคืนโควต้า"
+                                                  data-confirm="ยืนยันยกเลิกการจอง @code ของ @memberName และคืนโควต้ากลับให้สมาชิกหรือไม่?">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="bookingId" value="@b.BookingId" />
+                                                <button type="submit" class="st-btn-outline" style="height:30px; padding:0 10px; font-size:12px; color:#ef4444;">ยกเลิก</button>
+                                            </form>
+                                        }
+                                        else
+                                        {
+                                            <span style="font-size:12px; color:#71717a;">ดำเนินการแล้ว</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+        </div>
+
+        <!-- Right: Active Inspection Desk -->
+        <aside class="bk-inspector" id="bkInspector">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <span style="font-size:11px; font-weight:700; color:#71717a; letter-spacing:0.06em;">ACTIVE INSPECTION DESK</span>
+                <span class="st-badge st-badge-blue" id="inspStatus">@(firstBooking != null ? firstBooking.Status : "-")</span>
+            </div>
+            <div style="font-size:20px; font-weight:700; color:#fafafa; font-family:monospace;" id="inspCode">
+                @(firstBooking != null ? $"#PG-{firstBooking.BookingId:D5}" : "-")
+            </div>
+
+            <div class="mt-3 p-3" style="background:#111114; border:1px solid #27272a; border-radius:10px;">
+                <div style="font-size:14px; font-weight:600; color:#fafafa;" id="inspMember">@(firstBooking?.User?.FullName ?? "เลือกรายการจอง")</div>
+                <div style="font-size:12px; color:#a1a1aa; margin-top:2px;" id="inspContact">@(firstBooking?.User?.Phone ?? firstBooking?.User?.Email ?? "-")</div>
+            </div>
+
+            <div class="mt-3 p-3" style="background:#111114; border:1px solid #27272a; border-radius:10px;">
+                <div style="font-size:10.5px; color:#71717a; text-transform:uppercase; letter-spacing:0.05em;">Optical Gate Pass Token</div>
+                <div style="font-size:13px; font-weight:700; color:#10b981; font-family:monospace; margin-top:4px;" id="inspToken">
+                    @(firstBooking != null ? $"PG-PASS-{firstBooking.BookingId:D5}" : "-")
+                </div>
+            </div>
+
+            <div class="mt-3">
+                <div class="bk-kv"><span style="color:#71717a;">ห้องซ้อม</span><strong style="color:#fafafa;" id="inspPod">@(firstBooking?.Pod?.PodName ?? "-")</strong></div>
+                <div class="bk-kv"><span style="color:#71717a;">สาขา</span><strong style="color:#e4e4e7;" id="inspBranch">@(firstBooking?.Pod?.Branch?.BranchName ?? "-")</strong></div>
+                <div class="bk-kv"><span style="color:#71717a;">เทรนเนอร์</span><strong style="color:#e4e4e7;" id="inspTrainer">@(firstBooking?.Trainer?.User?.FullName ?? "Private Pod Solo")</strong></div>
+                <div class="bk-kv"><span style="color:#71717a;">วันที่</span><strong style="color:#e4e4e7;" id="inspDate">@(firstBooking != null ? firstBooking.BookingDate.ToString("dd/MM/yyyy") : "-")</strong></div>
+                <div class="bk-kv"><span style="color:#71717a;">เวลา</span><strong style="color:#e4e4e7;" id="inspTime">@(firstBooking != null ? $"{firstBooking.StartTime:HH:mm} - {firstBooking.EndTime:HH:mm} น." : "-")</strong></div>
+            </div>
+
+            @if (firstBooking != null)
+            {
+                <div class="d-flex gap-2 mt-3" id="inspActions" style="@(firstBooking.Status == "Confirmed" ? "" : "display:none !important;")">
+                    <form asp-controller="Admin" asp-action="CompleteBookingAdmin" method="post" class="flex-fill"
+                          data-confirm-title="ยืนยันจบเซสชัน"
+                          data-confirm="ยืนยันจบเซสชันสำหรับรายการจองที่เลือกใช่หรือไม่?">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="bookingId" id="inspCompleteId" value="@firstBooking.BookingId" />
+                        <button type="submit" class="st-btn-primary w-100" style="background:#10b981;">จบเซสชัน</button>
+                    </form>
+                    <form asp-controller="Admin" asp-action="CancelBookingAdmin" method="post" class="flex-fill"
+                          data-confirm-title="ยืนยันยกเลิกและคืนโควต้า"
+                          data-confirm="ยืนยันยกเลิกการจองที่เลือกและคืนโควต้ากลับให้สมาชิกหรือไม่?">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="bookingId" id="inspCancelId" value="@firstBooking.BookingId" />
+                        <button type="submit" class="st-btn-outline w-100" style="color:#ef4444;">ยกเลิก &amp; คืนโควต้า</button>
+                    </form>
+                </div>
+            }
+        </aside>
+    </div>
+
+    <!-- Bottom: Real-time Pod Occupancy Strip -->
+    <div class="mt-4">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+            <h2 style="font-size:14px; font-weight:600; color:#fafafa; margin:0;">สถานะห้องซ้อมจริงในระบบ (Live Pod Occupancy)</h2>
+            <span style="font-size:12px; color:#10b981;">ALL PODS SYNCED (@pods.Count ห้อง)</span>
+        </div>
+        <div class="bk-pod-strip">
+            @foreach (var pod in pods.Take(8))
+            {
+                var liveCi = activeCheckIns.FirstOrDefault(c => c.Booking?.PodId == pod.PodId);
+                bool isMaint = pod.Status != "Available";
+                bool isBusy = liveCi != null;
+                <div class="bk-pod-tile">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span style="font-size:12.5px; font-weight:600; color:#fafafa;">@pod.PodName</span>
+                        <span style="width:8px; height:8px; border-radius:50%; background:@(isMaint ? "#f59e0b" : isBusy ? "#ef4444" : "#10b981");"></span>
+                    </div>
+                    <div style="font-size:11px; color:#71717a; margin-top:2px;">@(pod.Branch?.BranchName ?? "-")</div>
+                    <div style="font-size:11.5px; color:@(isBusy ? "#fca5a5" : isMaint ? "#fcd34d" : "#a1a1aa"); margin-top:6px;">
+                        @(isBusy ? $"กำลังใช้งาน: {liveCi!.Booking?.User?.FullName}" : isMaint ? "ปิดปรับปรุง" : "ว่างพร้อมใช้งาน")
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<script>
+    function selectBookingRow(row) {
+        document.querySelectorAll('.bk-row').forEach(r => r.classList.remove('is-selected'));
+        row.classList.add('is-selected');
+
+        document.getElementById('inspCode').textContent = row.dataset.code || '-';
+        document.getElementById('inspMember').textContent = row.dataset.member || '-';
+        document.getElementById('inspContact').textContent = row.dataset.contact || '-';
+        document.getElementById('inspToken').textContent = row.dataset.token || '-';
+        document.getElementById('inspPod').textContent = row.dataset.pod || '-';
+        document.getElementById('inspBranch').textContent = row.dataset.branch || '-';
+        document.getElementById('inspTrainer').textContent = row.dataset.trainer || '-';
+        document.getElementById('inspDate').textContent = row.dataset.date || '-';
+        document.getElementById('inspTime').textContent = row.dataset.time || '-';
+        document.getElementById('inspStatus').textContent = row.dataset.status || '-';
+
+        var c1 = document.getElementById('inspCompleteId');
+        var c2 = document.getElementById('inspCancelId');
+        if (c1) c1.value = row.dataset.id;
+        if (c2) c2.value = row.dataset.id;
+
+        var actions = document.getElementById('inspActions');
+        if (actions) {
+            actions.style.display = row.dataset.rawstatus === 'Confirmed' ? 'flex' : 'none';
+        }
+    }
+</script>

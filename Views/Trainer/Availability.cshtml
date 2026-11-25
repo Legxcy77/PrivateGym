@@ -1,0 +1,530 @@
+@model PrivateGym.Controllers.TrainerController.TrainerAvailabilityConfig
+@using PrivateGym.Controllers
+@{
+    Layout = "~/Views/Shared/Trainer/_TrainerLayout.cshtml";
+    ViewData["Title"] = "จัดการเวลาว่าง & สล็อตการสอน (Availability)";
+    string trainerEmail = ViewBag.Email ?? "alex@privategym.club";
+    double totalWeeklyHours = Math.Round(Model.WeeklyDays.Where(d => d.IsActive).Sum(d => d.HoursPerDay), 1);
+    int totalWeeklySlots = Model.WeeklyDays.Where(d => d.IsActive).Sum(d => d.EnabledSlots.Count);
+    int activeDaysCount = Model.WeeklyDays.Count(d => d.IsActive);
+}
+
+<style>
+    .av-panel {
+        background: #09090b;
+        border: 1px solid #27272a;
+        border-radius: 12px;
+        overflow: hidden;
+        margin-bottom: 20px;
+    }
+    .av-panel-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 15px 20px;
+        border-bottom: 1px solid #27272a;
+        background: #0c0c0f;
+    }
+
+    /* Pill Toggle Switch */
+    .av-switch {
+        position: relative;
+        display: inline-block;
+        width: 40px;
+        height: 22px;
+        flex-shrink: 0;
+    }
+    .av-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+    .av-slider {
+        position: absolute;
+        cursor: pointer;
+        inset: 0;
+        background-color: #27272a;
+        border-radius: 999px;
+        transition: 0.2s;
+    }
+    .av-slider:before {
+        position: absolute;
+        content: "";
+        height: 16px;
+        width: 16px;
+        left: 3px;
+        bottom: 3px;
+        background-color: #fafafa;
+        border-radius: 50%;
+        transition: 0.2s;
+    }
+    .av-switch input:checked + .av-slider {
+        background-color: #e50914;
+    }
+    .av-switch input:checked + .av-slider:before {
+        transform: translateX(18px);
+    }
+
+    /* Weekly Row */
+    .av-day-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 14px 20px;
+        border-bottom: 1px solid #18181b;
+        flex-wrap: wrap;
+    }
+    .av-day-row:last-child {
+        border-bottom: none;
+    }
+    .av-day-row.is-off {
+        opacity: 0.52;
+        background: #070709;
+    }
+    .av-day-left {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        min-width: 165px;
+    }
+    .av-slots-wrap {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    /* Interactive 6 Club Slot Chips */
+    .av-slot-toggle {
+        position: relative;
+        display: inline-flex;
+        cursor: pointer;
+        user-select: none;
+    }
+    .av-slot-toggle input {
+        position: absolute;
+        opacity: 0;
+        pointer-events: none;
+    }
+    .av-slot-pill {
+        padding: 6px 12px;
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 500;
+        background: #141418;
+        border: 1px solid #27272a;
+        color: #71717a;
+        transition: all 0.15s ease;
+        white-space: nowrap;
+    }
+    .av-slot-toggle input:checked + .av-slot-pill {
+        background: rgba(229, 9, 20, 0.14);
+        border-color: rgba(229, 9, 20, 0.55);
+        color: #fafafa;
+        font-weight: 600;
+    }
+    .av-slot-toggle:hover .av-slot-pill {
+        border-color: #52525b;
+    }
+    .av-day-cap {
+        min-width: 140px;
+        text-align: right;
+        font-size: 12px;
+        color: #71717a;
+    }
+
+    /* Middle 2-Column Split: Capacity Chart + Booking Rules */
+    .av-mid-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.55fr) minmax(280px, 1fr);
+        gap: 18px;
+        margin-bottom: 20px;
+    }
+    .av-bar-chart {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 10px;
+        align-items: end;
+        height: 120px;
+        padding-top: 12px;
+    }
+    .av-bar-col {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        height: 100%;
+        justify-content: flex-end;
+    }
+    .av-bar-block {
+        width: 100%;
+        border-radius: 5px 5px 2px 2px;
+        background: #e50914;
+        min-height: 3px;
+    }
+    .av-bar-block.off {
+        background: #27272a;
+        height: 3px !important;
+    }
+    .av-rule-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 12px 14px;
+        background: #111114;
+        border: 1px solid #27272a;
+        border-radius: 9px;
+    }
+
+    /* Date Badge in Overrides */
+    .av-date-box {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        background: #18181b;
+        border: 1px solid #27272a;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 13px;
+        font-weight: 700;
+        color: #fafafa;
+        flex-shrink: 0;
+    }
+
+    /* Bottom Save Bar */
+    .av-save-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        flex-wrap: wrap;
+        padding: 14px 20px;
+        background: #0c0c0f;
+        border: 1px solid #27272a;
+        border-radius: 12px;
+    }
+
+    @@media (max-width: 960px) {
+        .av-mid-grid {
+            grid-template-columns: 1fr;
+        }
+        .av-day-cap {
+            text-align: left;
+        }
+    }
+</style>
+
+<main class="cd-content">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-end flex-wrap gap-3 mb-4">
+        <div>
+            <h1 class="cd-page-title">จัดการเวลาว่าง &amp; สล็อตการสอน (Availability)</h1>
+            <p class="cd-page-subtext">เปิด-ปิดรับจองจาก 6 รอบเวลาจริงของคลับ (08:00 - 20:45 น.) และตั้งค่าวันหยุดพิเศษ — เชื่อมตรงกับหน้าจองของสมาชิก</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a asp-controller="Trainer" asp-action="Schedule" asp-route-email="@trainerEmail" class="st-btn-outline">ดูตารางสอนของฉัน</a>
+        </div>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success" style="background: rgba(16, 185, 129, 0.14); border: 1px solid rgba(16, 185, 129, 0.35); color: #fafafa; border-radius: 10px; padding: 12px 16px; margin-bottom: 18px; font-size: 13px;">
+            @TempData["Success"]
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger" style="background: rgba(239, 68, 68, 0.14); border: 1px solid rgba(239, 68, 68, 0.35); color: #fafafa; border-radius: 10px; padding: 12px 16px; margin-bottom: 18px; font-size: 13px;">
+            @TempData["Error"]
+        </div>
+    }
+
+    <!-- Policy Strip -->
+    <div class="av-panel" style="padding: 11px 18px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
+        <div class="d-flex align-items-center gap-3 flex-wrap" style="font-size:12.5px; color:#d4d4d8;">
+            <span class="st-badge st-badge-green">SYNCED TO BOOKING</span>
+            <span>สล็อตคลับ: <strong style="color:#fafafa;">08:00 - 20:45 น. (6 รอบ/วัน)</strong></span>
+            <span style="color:#3f3f46;">|</span>
+            <span>เวลาต่อเซสชัน: <strong style="color:#fafafa;">75 นาที</strong></span>
+            <span style="color:#3f3f46;">|</span>
+            <span>พักระหว่างรอบ: <strong style="color:#fafafa;">15 นาที</strong></span>
+        </div>
+        <div style="font-size:11.5px; color:#71717a;">เวลามาตรฐานประเทศไทย (ICT / UTC+7)</div>
+    </div>
+
+    <!-- Weekly Recurring Schedule Form -->
+    <form asp-controller="Trainer" asp-action="SaveWeeklyAvailability" method="post" id="weeklyAvailForm">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="email" value="@trainerEmail" />
+
+        <div class="av-panel">
+            <div class="av-panel-head">
+                <div class="d-flex align-items-center gap-2">
+                    <h2 style="font-size:14px; font-weight:600; color:#fafafa; margin:0;">ตารางประจำสัปดาห์ (WEEKLY RECURRING SLOTS)</h2>
+                    <span class="st-badge" style="background:#18181b; border-color:#27272a; color:#a1a1aa;">@activeDaysCount DAYS ACTIVE</span>
+                </div>
+                <div style="font-size:11.5px; color:#71717a;">คลิกที่รอบเวลาเพื่อเปิด/ปิดรับจองในวันนั้นๆ</div>
+            </div>
+
+            <div>
+                @for (int i = 0; i < Model.WeeklyDays.Count; i++)
+                {
+                    var day = Model.WeeklyDays[i];
+                    <div class="av-day-row @(day.IsActive ? "" : "is-off")" data-day-row="@i">
+                        <div class="av-day-left">
+                            <label class="av-switch">
+                                <input type="checkbox" name="activeDays" value="@i" @(day.IsActive ? "checked" : "") onchange="toggleDayRow(this, @i)" />
+                                <span class="av-slider"></span>
+                            </label>
+                            <div>
+                                <div style="font-size:13.5px; font-weight:600; color:#fafafa;">@day.DayName</div>
+                                <div class="av-day-status" style="font-size:11px; color:@(day.IsActive ? "#10b981" : "#71717a");">
+                                    @(day.IsActive ? $"ACTIVE ({day.EnabledSlots.Count} รอบ)" : "CLOSED")
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="av-slots-wrap">
+                            @foreach (var slotStart in TrainerController.ClubSlotStarts)
+                            {
+                                string label = TrainerController.ClubSlotLabels[slotStart];
+                                bool isChecked = day.EnabledSlots.Contains(slotStart);
+                                <label class="av-slot-toggle">
+                                    <input type="checkbox" name="selectedSlots" value="@($"{i}|{slotStart}")" @(isChecked ? "checked" : "") onchange="recalcDayCap(@i)" />
+                                    <span class="av-slot-pill">@label</span>
+                                </label>
+                            }
+                        </div>
+
+                        <div class="av-day-cap" data-day-cap="@i">
+                            @(day.IsActive
+                                ? Html.Raw($"<strong style=\"color:#e4e4e7;\">{day.EnabledSlots.Count} สล็อต</strong> ({day.HoursPerDay:0.#} ชม.)")
+                                : Html.Raw("<span>วันหยุด</span>"))
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Middle Split: Weekly Capacity Chart + Booking Rules -->
+        <div class="av-mid-grid">
+            <div class="av-panel mb-0" style="padding: 18px 20px;">
+                <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                    <div>
+                        <h2 style="font-size:14px; font-weight:600; color:#fafafa; margin:0;">ภาพรวมการกระจายชั่วโมงการสอนประจำสัปดาห์</h2>
+                        <div style="font-size:12px; color:#71717a; margin-top:2px;">เปิดรับทั้งหมด @totalWeeklySlots สล็อต (@totalWeeklyHours.ToString("0.#") ชม. / สัปดาห์)</div>
+                    </div>
+                    <span style="font-size:11.5px; font-weight:700; color:#ef4444;">CAPACITY: @totalWeeklyHours.ToString("0.#") HRS</span>
+                </div>
+
+                <div class="av-bar-chart">
+                    @foreach (var d in Model.WeeklyDays)
+                    {
+                        int pct = d.HoursPerDay > 0 ? Math.Min(100, (int)Math.Round(d.HoursPerDay * 100.0 / 7.5)) : 4;
+                        <div class="av-bar-col">
+                            <div class="av-bar-block @(d.IsActive ? "" : "off")" style="height:@(pct)%;"></div>
+                            <div style="font-size:11px; color:#a1a1aa;">@d.ShortName (@d.HoursPerDay.ToString("0.#")h)</div>
+                        </div>
+                    }
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mt-3 pt-2" style="border-top:1px solid #18181b; font-size:11px; color:#71717a;">
+                    <span><span style="display:inline-block; width:8px; height:8px; background:#e50914; border-radius:2px; margin-right:5px;"></span>ช่วงเวลาที่เปิดสอน</span>
+                    <span><span style="display:inline-block; width:8px; height:8px; background:#27272a; border-radius:2px; margin-right:5px;"></span>วันหยุดพักประจำสัปดาห์</span>
+                </div>
+            </div>
+
+            <div class="av-panel mb-0" style="padding: 18px 20px;">
+                <h2 style="font-size:14px; font-weight:600; color:#fafafa; margin:0 0 2px 0;">เงื่อนไขการเชื่อมต่อระบบจอง (Booking Sync)</h2>
+                <div style="font-size:12px; color:#71717a; margin-bottom:14px;">มีผลบังคับใช้กับหน้าจองบริการของสมาชิกทันที</div>
+
+                <div class="d-flex flex-column gap-2">
+                    <div class="av-rule-row">
+                        <div>
+                            <div style="font-size:13px; font-weight:600; color:#fafafa;">ซิงค์สล็อตว่างกับหน้าจองสมาชิก</div>
+                            <div style="font-size:11.5px; color:#71717a;">วัน/สล็อตที่ปิดจะจองโค้ชไม่ได้อัตโนมัติ</div>
+                        </div>
+                        <span class="st-badge st-badge-green">ACTIVE</span>
+                    </div>
+
+                    <div class="av-rule-row">
+                        <div>
+                            <div style="font-size:13px; font-weight:600; color:#fafafa;">ป้องกันการสอนซ้อนเวลาเดียวกัน</div>
+                            <div style="font-size:11.5px; color:#71717a;">บล็อกข้ามห้อง Pod อัตโนมัติ</div>
+                        </div>
+                        <span class="st-badge st-badge-green">LOCKED</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+
+    <!-- Specific Date Overrides -->
+    <div class="av-panel">
+        <div class="av-panel-head">
+            <div class="d-flex align-items-center gap-2">
+                <h2 style="font-size:14px; font-weight:600; color:#fafafa; margin:0;">ตั้งค่าวันหยุดพิเศษหรือบล็อกสล็อตเฉพาะวัน (SPECIFIC DATE OVERRIDES)</h2>
+                <span class="st-badge st-badge-amber">@Model.Overrides.Count ACTIVE BLOCKS</span>
+            </div>
+            <button type="button" class="st-btn-outline" onclick="document.getElementById('overrideFormBox').classList.toggle('d-none')">
+                + เพิ่มวันหยุด / บล็อกสล็อต
+            </button>
+        </div>
+
+        <div id="overrideFormBox" class="d-none" style="padding: 16px 20px; border-bottom: 1px solid #18181b; background:#0c0c0f;">
+            <form asp-controller="Trainer" asp-action="AddDateOverride" method="post" class="row g-2 align-items-end">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="email" value="@trainerEmail" />
+                <div class="col-md-2">
+                    <label style="font-size:11.5px; color:#a1a1aa;">วันที่</label>
+                    <input type="date" name="blockDate" class="st-input w-100" required />
+                </div>
+                <div class="col-md-3">
+                    <label style="font-size:11.5px; color:#a1a1aa;">ประเภทการล็อก</label>
+                    <select name="blockType" class="st-input w-100" onchange="toggleOverrideSlot(this)">
+                        <option value="ทั้งวัน (Full Day)">ทั้งวัน (Full Day)</option>
+                        <option value="เฉพาะช่วงเวลา (Time Window)">เฉพาะสล็อตเวลา (Slot)</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label style="font-size:11.5px; color:#a1a1aa;">สล็อตเวลา</label>
+                    <select name="timeWindow" id="overrideSlotSelect" class="st-input w-100">
+                        <option value="ทุกสล็อต (08:00 - 20:45 น.)">ทุกสล็อตทั้งวัน</option>
+                        @foreach (var slotStart in TrainerController.ClubSlotStarts)
+                        {
+                            string label = TrainerController.ClubSlotLabels[slotStart];
+                            <option value="@label น.">@label น.</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label style="font-size:11.5px; color:#a1a1aa;">เหตุผล / หมายเหตุ</label>
+                    <input type="text" name="reason" class="st-input w-100" placeholder="เช่น อบรมสัมมนา / ธุระส่วนตัว" required />
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="st-btn-primary w-100">บันทึกวันหยุด</button>
+                </div>
+            </form>
+        </div>
+
+        @if (!Model.Overrides.Any())
+        {
+            <div style="padding: 28px; text-align:center; color:#71717a; font-size:13px;">
+                ยังไม่มีวันหยุดพิเศษหรือสล็อตที่บล็อกไว้ กด "+ เพิ่มวันหยุด / บล็อกสล็อต" ด้านบนขวาเมื่อต้องการล็อกวัน
+            </div>
+        }
+        else
+        {
+            <table class="st-shadcn-table">
+                <thead>
+                    <tr>
+                        <th>วันที่ (DATE)</th>
+                        <th>ประเภทการล็อก (BLOCK TYPE)</th>
+                        <th>สล็อตเวลา (SLOT)</th>
+                        <th>เหตุผล / หมายเหตุ (REASON)</th>
+                        <th>สถานะตาราง (IMPACT)</th>
+                        <th style="text-align:right;">การจัดการ</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var ov in Model.Overrides)
+                    {
+                        bool isFull = ov.BlockType.Contains("ทั้งวัน");
+                        string dayNum = DateOnly.TryParse(ov.Date, out var parsedD) ? parsedD.Day.ToString() : ov.Date;
+                        string dateLabel = DateOnly.TryParse(ov.Date, out var parsedD2) ? parsedD2.ToString("dd MMM yyyy") : ov.Date;
+
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="av-date-box">@dayNum</span>
+                                    <span style="font-weight:600; color:#fafafa;">@dateLabel</span>
+                                </div>
+                            </td>
+                            <td>
+                                <span style="color:@(isFull ? "#ef4444" : "#f59e0b"); font-weight:500;">@ov.BlockType</span>
+                            </td>
+                            <td style="color:@(isFull ? "#a1a1aa" : "#ef4444"); font-weight:500;">@ov.TimeWindow</td>
+                            <td style="color:#e4e4e7;">@ov.Reason</td>
+                            <td style="color:#f59e0b;">@(isFull ? "งดรับจองตลอดวัน" : "งดรับจองเฉพาะรอบนี้")</td>
+                            <td style="text-align:right;">
+                                <form asp-controller="Trainer" asp-action="DeleteDateOverride" method="post" style="display:inline;">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="email" value="@trainerEmail" />
+                                    <input type="hidden" name="overrideId" value="@ov.Id" />
+                                    <button type="submit" class="st-btn-outline" style="height:30px; padding:0 10px; color:#ef4444;">ลบ</button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+
+    <!-- Bottom Save Bar -->
+    <div class="av-save-bar">
+        <div>
+            <div style="font-size:13px; font-weight:600; color:#fafafa;">บันทึกการปรับเปลี่ยนกำหนดการเวลาว่าง</div>
+            <div style="font-size:12px; color:#71717a;">การบันทึกจะมีผลกับหน้าจองบริการของสมาชิกและตารางสอนทันที</div>
+        </div>
+        <div class="d-flex gap-2">
+            <a asp-controller="Trainer" asp-action="Availability" asp-route-email="@trainerEmail" class="st-btn-outline">ยกเลิกการเปลี่ยนแปลง</a>
+            <button type="submit" form="weeklyAvailForm" class="st-btn-primary">บันทึกการตั้งค่าเวลาว่าง (Save Availability)</button>
+        </div>
+    </div>
+</main>
+
+@section Scripts {
+<script>
+    function toggleDayRow(checkbox, idx) {
+        const row = document.querySelector(`[data-day-row="${idx}"]`);
+        if (!row) return;
+        if (checkbox.checked) {
+            row.classList.remove('is-off');
+        } else {
+            row.classList.add('is-off');
+        }
+        recalcDayCap(idx);
+    }
+
+    function recalcDayCap(idx) {
+        const row = document.querySelector(`[data-day-row="${idx}"]`);
+        if (!row) return;
+        const dayActive = row.querySelector('input[name="activeDays"]')?.checked;
+        const checkedCount = row.querySelectorAll('input[name="selectedSlots"]:checked').length;
+        const statusEl = row.querySelector('.av-day-status');
+        const capEl = row.querySelector(`[data-day-cap="${idx}"]`);
+
+        if (statusEl) {
+            if (dayActive) {
+                statusEl.textContent = `ACTIVE (${checkedCount} รอบ)`;
+                statusEl.style.color = '#10b981';
+            } else {
+                statusEl.textContent = 'CLOSED';
+                statusEl.style.color = '#71717a';
+            }
+        }
+        if (capEl) {
+            const hrs = (checkedCount * 1.25).toFixed(1).replace('.0', '');
+            capEl.innerHTML = dayActive
+                ? `<strong style="color:#e4e4e7;">${checkedCount} สล็อต</strong> (${hrs} ชม.)`
+                : '<span>วันหยุด</span>';
+        }
+    }
+
+    function toggleOverrideSlot(sel) {
+        const slotSel = document.getElementById('overrideSlotSelect');
+        if (!slotSel) return;
+        if (sel.value.includes('ทั้งวัน')) {
+            slotSel.selectedIndex = 0;
+        } else if (slotSel.selectedIndex === 0) {
+            slotSel.selectedIndex = 1;
+        }
+    }
+</script>
+}

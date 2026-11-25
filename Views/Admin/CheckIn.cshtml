@@ -1,0 +1,192 @@
+@model List<PrivateGym.Models.CheckIn>
+@using PrivateGym.Models
+@{
+    ViewData["Title"] = "มอนิเตอร์การเช็กอินและประวัติการเข้าใช้ (Check-in Monitor)";
+    Layout = "~/Views/Shared/Admin/_AdminLayout.cshtml";
+
+    var list = Model ?? new List<CheckIn>();
+    var pendingBookings = ViewBag.PendingBookings as List<Booking> ?? new List<Booking>();
+    string search = ViewBag.Search ?? "";
+    int totalCheckIns = ViewBag.TotalCheckIns ?? list.Count;
+    int todayCheckIns = ViewBag.TodayCheckIns ?? 0;
+    int activeInRoom = ViewBag.ActiveInRoom ?? 0;
+}
+
+<style>
+    .ci-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 340px;
+        gap: 18px;
+        align-items: start;
+    }
+    .ci-desk {
+        background: #09090b;
+        border: 1px solid #27272a;
+        border-radius: 12px;
+        padding: 18px;
+        position: sticky;
+        top: 76px;
+    }
+    @@media (max-width: 1180px) {
+        .ci-layout { grid-template-columns: 1fr; }
+        .ci-desk { position: static; }
+    }
+</style>
+
+<div class="adm-page">
+    <div class="adm-page-head">
+        <div>
+            <h1 class="adm-page-title">มอนิเตอร์การเช็กอินและประตู Turnstile (Check-in Stream)</h1>
+            <p class="adm-page-sub">ตรวจสอบประวัติการสแกน QR พร้อมระบบเช็กอิน/เช็กเอาต์ด้วยตนเองหน้าเคาน์เตอร์แอดมิน (Manual Desk)</p>
+        </div>
+        <a asp-controller="Admin" asp-action="Bookings" class="st-btn-outline">ไปหน้าจัดการการจอง</a>
+    </div>
+
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success" style="background: rgba(16, 185, 129, 0.14); border: 1px solid rgba(16, 185, 129, 0.35); color: #fafafa; border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; font-size: 13px;">
+            @TempData["SuccessMessage"]
+        </div>
+    }
+
+    <div class="adm-kpi-4">
+        <div class="adm-stat-card">
+            <div class="adm-stat-lbl">CHECK-IN วันนี้ทั้งหมด</div>
+            <div class="adm-stat-val">@todayCheckIns <span style="font-size:13px; color:#71717a; font-weight:400;">ครั้ง</span></div>
+            <div class="adm-stat-sub">เข้าใช้งานประจำวันนี้</div>
+        </div>
+        <div class="adm-stat-card">
+            <div class="adm-stat-lbl">กำลังอยู่ในห้องซ้อมขณะนี้</div>
+            <div class="adm-stat-val" style="color:#ef4444;">@activeInRoom <span style="font-size:13px; color:#71717a; font-weight:400;">ห้อง</span></div>
+            <div class="adm-stat-sub">ยังไม่ได้กดเช็กเอาต์</div>
+        </div>
+        <div class="adm-stat-card">
+            <div class="adm-stat-lbl">ประวัติเช็กอินสะสมทั้งหมด</div>
+            <div class="adm-stat-val" style="color:#10b981;">@totalCheckIns <span style="font-size:13px; color:#71717a; font-weight:400;">รายการ</span></div>
+            <div class="adm-stat-sub">บันทึกในตาราง CheckIns</div>
+        </div>
+        <div class="adm-stat-card">
+            <div class="adm-stat-lbl">สถานะระบบเช็กอิน</div>
+            <div class="adm-stat-val" style="color:#10b981; font-size:18px;">ONLINE SYNCED</div>
+            <div class="adm-stat-sub">เชื่อมกับหน้า Staff &amp; Customer</div>
+        </div>
+    </div>
+
+    <div class="st-filter-bar">
+        <div style="font-size:14px; font-weight:600; color:#fafafa;">ฟีดการเช็กอินล่าสุด (@list.Count รายการ)</div>
+        <form asp-controller="Admin" asp-action="CheckIn" method="get" class="d-flex gap-2">
+            <input type="text" name="search" value="@search" class="st-input" style="min-width:240px;" placeholder="ค้นหาชื่อสมาชิก, ห้อง Pod, #CI-..." />
+            <button type="submit" class="st-btn-primary">ค้นหา</button>
+        </form>
+    </div>
+
+    <div class="ci-layout">
+        <div class="st-table-card">
+            @if (!list.Any())
+            {
+                <div style="padding:44px; text-align:center; color:#71717a; font-size:13.5px;">ยังไม่มีประวัติการเช็กอินในระบบ</div>
+            }
+            else
+            {
+                <table class="st-shadcn-table">
+                    <thead>
+                        <tr>
+                            <th>รหัส Check-in</th>
+                            <th>สมาชิก</th>
+                            <th>ห้องซ้อม Pod &amp; สาขา</th>
+                            <th>เวลาเช็กอิน</th>
+                            <th>เวลาเช็กเอาต์</th>
+                            <th>ช่องทาง</th>
+                            <th>สถานะ</th>
+                            <th style="text-align:right;">จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var c in list)
+                        {
+                            bool isOut = c.CheckOutTime.HasValue;
+                            <tr>
+                                <td style="font-family:monospace; color:#a1a1aa;">#CI-@c.CheckInId.ToString("D5")</td>
+                                <td>
+                                    <div style="font-weight:600; color:#fafafa;">@(c.User?.FullName ?? "-")</div>
+                                    <div style="font-size:11.5px; color:#71717a;">@(c.User?.Phone ?? "-")</div>
+                                </td>
+                                <td>
+                                    <div style="font-weight:500; color:#e4e4e7;">@(c.Booking?.Pod?.PodName ?? "-")</div>
+                                    <div style="font-size:11.5px; color:#71717a;">@(c.Booking?.Pod?.Branch?.BranchName ?? "-")</div>
+                                </td>
+                                <td style="color:#10b981; font-weight:500;">@(c.CheckInTime.HasValue ? c.CheckInTime.Value.ToString("dd/MM/yyyy HH:mm") : "-")</td>
+                                <td style="color:#a1a1aa;">@(isOut ? c.CheckOutTime!.Value.ToString("dd/MM/yyyy HH:mm") : "กำลังใช้งานในห้อง")</td>
+                                <td><span class="st-badge st-badge-blue">@(c.AccessMethod ?? "QR_Code")</span></td>
+                                <td>
+                                    @if (isOut)
+                                    {
+                                        <span class="st-badge st-badge-green">เช็กเอาต์แล้ว</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="st-badge st-badge-amber">กำลังซ้อม</span>
+                                    }
+                                </td>
+                                <td style="text-align:right;">
+                                    @if (!isOut)
+                                    {
+                                        <form asp-controller="Admin" asp-action="ManualCheckOut" method="post" style="display:inline;"
+                                              data-confirm-title="ยืนยันเช็กเอาต์"
+                                              data-confirm="ยืนยันเช็กเอาต์ออกจากห้องซ้อมให้ @(c.User?.FullName ?? "-") หรือไม่?">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="checkInId" value="@c.CheckInId" />
+                                            <button type="submit" class="st-btn-outline" style="height:28px; padding:0 10px; font-size:11.5px; color:#10b981;">เช็กเอาต์</button>
+                                        </form>
+                                    }
+                                    else
+                                    {
+                                        <span style="font-size:11.5px; color:#71717a;">เสร็จสิ้น</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+
+        <!-- Right: Manual Check-in Desk -->
+        <aside class="ci-desk">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <span style="font-size:13px; font-weight:600; color:#fafafa;">เช็กอินด้วยตนเอง (Manual Desk)</span>
+                <span class="st-badge st-badge-green">LIVE</span>
+            </div>
+            <p style="font-size:12px; color:#71717a; margin-bottom:14px;">
+                เลือกคิวจองที่ยืนยันแล้วเพื่อบันทึกเช็กอินเข้าใช้งานประตู Turnstile ให้สมาชิกทันที
+            </p>
+
+            @if (!pendingBookings.Any())
+            {
+                <div style="padding:20px; text-align:center; background:#111114; border:1px solid #27272a; border-radius:8px; color:#71717a; font-size:12.5px;">
+                    ไม่มีคิวจองที่รอเช็กอินในขณะนี้
+                </div>
+            }
+            else
+            {
+                <form asp-controller="Admin" asp-action="ManualCheckIn" method="post" class="d-flex flex-column gap-3"
+                      data-confirm-title="ยืนยันเช็กอินเข้าใช้งาน"
+                      data-confirm="ยืนยันเช็กอินและเปิดประตู Turnstile ให้สมาชิกตามคิวจองที่เลือกหรือไม่?">
+                    @Html.AntiForgeryToken()
+                    <div>
+                        <label style="font-size:11.5px; color:#a1a1aa; display:block; margin-bottom:6px;">เลือกรายการจองที่รอเข้าใช้งาน (@pendingBookings.Count คิว)</label>
+                        <select name="bookingId" class="st-input w-100" required>
+                            @foreach (var pb in pendingBookings)
+                            {
+                                <option value="@pb.BookingId">
+                                    #PG-@pb.BookingId.ToString("D5") • @(pb.User?.FullName ?? "-") (@(pb.Pod?.PodName ?? "-")) @pb.BookingDate.ToString("dd/MM") @pb.StartTime.ToString("HH:mm")
+                                </option>
+                            }
+                        </select>
+                    </div>
+                    <button type="submit" class="st-btn-primary w-100">ยืนยันตัวตนและเปิดประตู (Check-in)</button>
+                </form>
+            }
+        </aside>
+    </div>
+</div>

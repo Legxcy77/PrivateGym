@@ -1,0 +1,1995 @@
+@model List<PrivateGym.Models.MemberSubscription>
+
+@{
+    ViewData["Title"] = "แพ็กเกจและสิทธิ์การใช้งาน (My Package & Quotas)";
+    Layout = "~/Views/Shared/Customer/_CustomerLayout.cshtml";
+
+    var todayDate = DateOnly.FromDateTime(DateTime.Today);
+    var activeSub = Model?.FirstOrDefault(s => s.Status == "Active" && s.StartDate <= todayDate) ?? Model?.FirstOrDefault();
+    var scheduledSub = ViewBag.ScheduledSub as PrivateGym.Models.MemberSubscription ?? Model?.FirstOrDefault(s => s.Status == "Active" && s.StartDate > todayDate);
+    var payments = ViewBag.Payments as List<PrivateGym.Models.Payment> ?? new List<PrivateGym.Models.Payment>();
+    var allPackages = ViewBag.AllPackages as List<PrivateGym.Models.Package> ?? new List<PrivateGym.Models.Package>();
+    string preferredMethod = ViewBag.PreferredPaymentMethod as string ?? "PromptPay";
+    bool isNextCyclePaid = ViewBag.IsNextCyclePaid != null ? (bool)ViewBag.IsNextCyclePaid : false;
+
+    string FormatMethodThai(string? m)
+    {
+        if (m == "CreditCard") return "ตัดบัตรเครดิต/เดบิตอัตโนมัติ";
+        if (m == "BankTransfer") return "โอนผ่านบัญชีธนาคาร";
+        return "สแกน QR PromptPay";
+    }
+
+    bool isVip = activeSub?.Package?.IsVip ?? false;
+    string pkgName = activeSub?.Package?.PackageName ?? "Performance Pro";
+    string pkgDesc = activeSub?.Package?.Description ?? "เข้าใช้ห้องซ้อมส่วนตัวขั้นสูง พร้อมชั่วโมงโค้ชฝึกสอนตัวต่อตัว และตรวจวัดมวลกล้ามเนื้อและไขมันไม่จำกัดสาขา";
+    decimal pkgPrice = activeSub?.Package?.Price ?? 8900m;
+    int pkgDuration = activeSub?.Package?.DurationDays ?? 30;
+    DateOnly currentEndDate = activeSub?.EndDate ?? DateOnly.FromDateTime(DateTime.Today.AddDays(30));
+    DateOnly nextCycleStartDate = currentEndDate.AddDays(1);
+
+    int remPods = activeSub?.RemainingPods ?? 0;
+    int maxPods = activeSub?.Package?.PodQuota ?? 8;
+    if (remPods > maxPods && maxPods > 0) maxPods = remPods;
+    int usedPods = Math.Max(0, maxPods - remPods);
+    int podPct = isVip ? 100 : (maxPods > 0 ? Math.Min(100, (remPods * 100) / maxPods) : 0);
+
+    int remPt = activeSub?.RemainingPt ?? 0;
+    int maxPt = activeSub?.Package?.PtQuota ?? 4;
+    if (remPt > maxPt && maxPt > 0) maxPt = remPt;
+    int usedPt = Math.Max(0, maxPt - remPt);
+    int ptPct = isVip ? 100 : (maxPt > 0 ? Math.Min(100, (remPt * 100) / maxPt) : 0);
+
+    int remInBody = activeSub?.RemainingInBody ?? 0;
+    int maxInBody = activeSub?.Package?.InBodyQuota ?? 1;
+    if (remInBody > maxInBody && maxInBody > 0) maxInBody = remInBody;
+    int inBodyPct = isVip ? 100 : (maxInBody > 0 ? Math.Min(100, (remInBody * 100) / maxInBody) : 0);
+
+    int daysLeft = 24;
+    if (activeSub != null)
+    {
+        daysLeft = activeSub.EndDate.DayNumber - DateOnly.FromDateTime(DateTime.Today).DayNumber;
+        if (daysLeft < 0) daysLeft = 0;
+    }
+
+    string[] thaiShortMonths = { "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค." };
+    string FormatThaiDate(DateOnly d) => $"{d.Day} {thaiShortMonths[d.Month - 1]} {d.Year}";
+    string FormatThaiDateTime(DateTime? dt)
+    {
+        if (!dt.HasValue) return "-";
+        var d = dt.Value;
+        return $"{d.Day} {thaiShortMonths[d.Month - 1]} {d.Year}";
+    }
+
+    string GetPaymentDescription(PrivateGym.Models.Payment p)
+    {
+        if (p.Status == "Pending")
+        {
+            return $"ใบแจ้งหนี้รอบบิลถัดไป: {p.Package?.PackageName ?? "แพ็กเกจใหม่"} (เริ่ม {FormatThaiDate(nextCycleStartDate)})";
+        }
+        if (p.SlipReference != null && p.SlipReference.StartsWith("INV-NEXT"))
+        {
+            return $"ชำระล่วงหน้าแพ็กเกจรอบถัดไป: {p.Package?.PackageName ?? pkgName}";
+        }
+        if (p.SlipReference != null && p.SlipReference.Contains("-UPG"))
+        {
+            return $"อัปเกรดแพ็กเกจทันที: {p.Package?.PackageName ?? pkgName} (ทบโควต้าเดิม)";
+        }
+        if (p.Amount == 750) return "ซื้อสิทธิ์เพิ่ม ห้องซ้อมส่วนตัว (+1 ครั้ง)";
+        if (p.Amount == 1200) return "ซื้อสิทธิ์เพิ่ม โค้ชส่วนตัว (+1 ครั้ง)";
+        if (p.Amount == 300) return "ซื้อสิทธิ์เพิ่ม วัดมวลร่างกาย (+1 ครั้ง)";
+        if (p.Amount == 350) return "ซื้อบัตรผู้ติดตามเข้าคลับ (+1 วัน)";
+        return $"แพ็กเกจสมาชิก {p.Package?.PackageName ?? pkgName} (รายเดือน)";
+    }
+}
+
+<style>
+    /* ================= DARFWEBSITE MY PACKAGES & QUOTAS STYLES ================= */
+    .mp-page-wrap {
+        width: 100%;
+        padding-bottom: 40px;
+    }
+
+    .mp-top-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+
+    .mp-title-group {
+        display: flex;
+        align-items: baseline;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .mp-main-title {
+        font-size: 28px;
+        font-weight: 800;
+        color: #ffffff;
+        margin: 0;
+        letter-spacing: -0.3px;
+    }
+
+    .mp-sub-title {
+        font-size: 14px;
+        color: #71717a;
+        font-weight: 500;
+    }
+
+    .mp-header-btns {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .mp-btn-outline {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: #141418;
+        border: 1px solid #272730;
+        color: #d4d4d8;
+        font-size: 13px;
+        font-weight: 600;
+        padding: 9px 16px;
+        border-radius: 8px;
+        text-decoration: none;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .mp-btn-outline:hover {
+        background: #1e1e24;
+        color: #ffffff;
+    }
+
+    .mp-btn-red {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: #e50914;
+        border: 1px solid #e50914;
+        color: #ffffff;
+        font-size: 13px;
+        font-weight: 700;
+        padding: 9px 18px;
+        border-radius: 8px;
+        text-decoration: none;
+        cursor: pointer;
+        transition: all 0.2s;
+        box-shadow: 0 4px 16px rgba(229, 9, 20, 0.3);
+    }
+
+    .mp-btn-red:hover {
+        background: #c80812;
+        color: #ffffff;
+    }
+
+    /* Section Title Row */
+    .mp-sec-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 14px;
+    }
+
+    .mp-sec-title {
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+        font-size: 17px;
+        font-weight: 700;
+        color: #ffffff;
+    }
+
+    .mp-sec-title .en {
+        font-size: 12.5px;
+        color: #71717a;
+        font-weight: 500;
+    }
+
+    .mp-status-badge-active {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: #141418;
+        border: 1px solid #26262f;
+        color: #d4d4d8;
+        font-size: 11.5px;
+        font-weight: 600;
+        padding: 5px 12px;
+        border-radius: 6px;
+    }
+
+    /* 1. Desktop Active Plan Main Container */
+    .mp-plan-container {
+        background: #111114;
+        border: 1px solid #222229;
+        border-radius: 14px;
+        padding: 26px;
+        margin-bottom: 34px;
+    }
+
+    .mp-plan-left {
+        padding-right: 16px;
+    }
+
+    .mp-tier-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+
+    .mp-tier-code {
+        font-size: 11px;
+        font-weight: 800;
+        color: #e50914;
+        letter-spacing: 0.6px;
+        font-family: monospace;
+    }
+
+    .mp-cycle-badge {
+        background: #1b1b21;
+        border: 1px solid #2b2b35;
+        color: #a1a1aa;
+        font-size: 11px;
+        padding: 3px 9px;
+        border-radius: 5px;
+    }
+
+    .mp-plan-name {
+        font-size: 28px;
+        font-weight: 800;
+        color: #ffffff;
+        margin-bottom: 10px;
+    }
+
+    .mp-plan-desc {
+        font-size: 13px;
+        color: #a1a1aa;
+        line-height: 1.55;
+        margin-bottom: 20px;
+    }
+
+    .mp-price-box {
+        background: #16161a;
+        border: 1px solid #25252d;
+        border-radius: 10px;
+        padding: 16px 18px;
+        margin-bottom: 18px;
+    }
+
+    .mp-price-val {
+        font-size: 28px;
+        font-weight: 800;
+        color: #ffffff;
+    }
+
+    .mp-price-unit {
+        font-size: 12.5px;
+        color: #71717a;
+        margin-left: 6px;
+    }
+
+    .mp-autorenew-line {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        color: #a1a1aa;
+        margin-top: 6px;
+    }
+
+    .mp-plan-actions {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .mp-btn-dark {
+        background: #19191f;
+        border: 1px solid #2c2c36;
+        color: #e4e4e7;
+        font-size: 12.5px;
+        font-weight: 600;
+        padding: 8px 14px;
+        border-radius: 7px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .mp-btn-dark:hover {
+        background: #24242d;
+        color: #ffffff;
+    }
+
+    .mp-btn-text-dim {
+        background: none;
+        border: none;
+        color: #71717a;
+        font-size: 12px;
+        padding: 6px 8px;
+        cursor: pointer;
+    }
+
+    .mp-btn-text-dim:hover {
+        color: #ef4444;
+    }
+
+    /* Right 2x2 Quota Grid inside Active Plan */
+    .mp-quota-panel {
+        background: #151519;
+        border: 1px solid #23232b;
+        border-radius: 12px;
+        padding: 20px 22px;
+    }
+
+    .mp-quota-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+        font-size: 13px;
+        color: #a1a1aa;
+        font-weight: 600;
+    }
+
+    .mp-quota-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 14px;
+        margin-bottom: 14px;
+    }
+
+    .mp-q-card {
+        background: #101013;
+        border: 1px solid #22222a;
+        border-radius: 10px;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+
+    .mp-q-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 8px;
+        margin-bottom: 12px;
+    }
+
+    .mp-q-title {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        font-size: 13px;
+        font-weight: 700;
+        color: #ffffff;
+    }
+
+    .mp-q-used {
+        font-size: 11.5px;
+        color: #71717a;
+        white-space: nowrap;
+    }
+
+    .mp-q-mid {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        margin-bottom: 8px;
+    }
+
+    .mp-q-big-num {
+        font-size: 22px;
+        font-weight: 800;
+        color: #ffffff;
+    }
+
+    .mp-q-big-num.red {
+        color: #e50914;
+    }
+
+    .mp-q-unit {
+        font-size: 12px;
+        color: #71717a;
+        font-weight: 500;
+        margin-left: 4px;
+    }
+
+    .mp-q-max {
+        font-size: 11.5px;
+        color: #71717a;
+    }
+
+    .mp-q-bar {
+        height: 5px;
+        background: #23232b;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    .mp-q-fill {
+        height: 100%;
+        border-radius: 4px;
+    }
+
+    .mp-quota-foot {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+        font-size: 11.5px;
+        color: #71717a;
+        padding-top: 6px;
+    }
+
+    /* 2. Top-up Quota Add-ons (4 Cards Grid) */
+    .mp-addon-card {
+        background: #121215;
+        border: 1px solid #222229;
+        border-radius: 12px;
+        padding: 22px;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        transition: border-color 0.2s;
+    }
+
+    .mp-addon-card:hover {
+        border-color: #343440;
+    }
+
+    .mp-addon-icon {
+        width: 40px;
+        height: 40px;
+        background: #1a1a20;
+        border: 1px solid #292933;
+        border-radius: 9px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #ffffff;
+        margin-bottom: 18px;
+    }
+
+    .mp-addon-code {
+        font-family: monospace;
+        font-size: 10.5px;
+        color: #71717a;
+        letter-spacing: 0.5px;
+        margin-bottom: 4px;
+    }
+
+    .mp-addon-title {
+        font-size: 17px;
+        font-weight: 800;
+        color: #ffffff;
+        margin-bottom: 8px;
+    }
+
+    .mp-addon-desc {
+        font-size: 12.5px;
+        color: #a1a1aa;
+        line-height: 1.5;
+        margin-bottom: 20px;
+    }
+
+    .mp-addon-bottom {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        padding-top: 14px;
+        border-top: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .mp-addon-price-lbl {
+        font-size: 11px;
+        color: #71717a;
+        display: block;
+    }
+
+    .mp-addon-price-val {
+        font-size: 20px;
+        font-weight: 800;
+        color: #ffffff;
+    }
+
+    /* 3. Billing Table & Tax Footer */
+    .mp-billing-box {
+        background: #111114;
+        border: 1px solid #222229;
+        border-radius: 12px;
+        overflow: hidden;
+        margin-bottom: 20px;
+    }
+
+    .mp-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .mp-table th {
+        padding: 14px 20px;
+        font-size: 11.5px;
+        font-weight: 600;
+        color: #71717a;
+        border-bottom: 1px solid #1f1f26;
+        text-align: left;
+    }
+
+    .mp-table td {
+        padding: 16px 20px;
+        font-size: 13px;
+        color: #e4e4e7;
+        border-bottom: 1px solid #1a1a20;
+        vertical-align: middle;
+    }
+
+    .mp-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .mp-pdf-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: none;
+        border: none;
+        color: #a1a1aa;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        padding: 4px 8px;
+        border-radius: 5px;
+    }
+
+    .mp-pdf-btn:hover {
+        color: #ffffff;
+        background: rgba(255, 255, 255, 0.05);
+    }
+
+    .mp-tax-banner {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 14px;
+        background: #121215;
+        border: 1px solid #222229;
+        border-radius: 12px;
+        padding: 18px 22px;
+    }
+
+    /* ================= MOBILE LAYOUT (แบบที่ 1: HERO WALLET CARD + BOTTOM SHEET TOP-UP + COMPACT RECEIPTS) ================= */
+    .mp-mobile-view {
+        display: none;
+    }
+
+    .mp-sheet-backdrop {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.8);
+        backdrop-filter: blur(6px);
+        z-index: 10040;
+        align-items: flex-end;
+        justify-content: center;
+    }
+
+    .mp-sheet-backdrop.show {
+        display: flex;
+    }
+
+    .mp-sheet-modal {
+        width: 100%;
+        max-width: 480px;
+        max-height: 88vh;
+        overflow-y: auto;
+        background: #121216;
+        border-top: 1px solid #2e2e3a;
+        border-radius: 22px 22px 0 0;
+        padding: 14px 20px 30px 20px;
+        box-shadow: 0 -16px 48px rgba(0, 0, 0, 0.85);
+        animation: mpSlideUp 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @@keyframes mpSlideUp {
+        from { transform: translateY(100%); opacity: 0.5; }
+        to { transform: translateY(0); opacity: 1; }
+    }
+
+    .mp-sheet-handle {
+        width: 42px;
+        height: 4px;
+        background: #343440;
+        border-radius: 4px;
+        margin: 0 auto 14px auto;
+    }
+
+    @@media (max-width: 991.98px) {
+        .mp-desktop-view {
+            display: none !important;
+        }
+
+        .mp-mobile-view {
+            display: block;
+        }
+
+        /* Hero Membership Wallet Card บนมือถือ */
+        .mp-wallet-card {
+            background: linear-gradient(155deg, rgba(229, 9, 20, 0.08) 0%, #121216 42%);
+            border: 1px solid rgba(229, 9, 20, 0.35);
+            border-top: 3px solid #e50914;
+            border-radius: 16px;
+            padding: 18px;
+            margin-bottom: 20px;
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+        }
+
+        .mp-w-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .mp-w-tier {
+            font-family: monospace;
+            font-size: 11px;
+            font-weight: 800;
+            color: #e50914;
+            letter-spacing: 0.5px;
+        }
+
+        .mp-w-status {
+            background: rgba(34, 197, 94, 0.14);
+            border: 1px solid rgba(34, 197, 94, 0.35);
+            color: #4ade80;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 3px 10px;
+            border-radius: 20px;
+        }
+
+        .mp-w-title {
+            font-size: 22px;
+            font-weight: 800;
+            color: #ffffff;
+            margin-bottom: 2px;
+        }
+
+        .mp-w-price {
+            font-size: 13px;
+            color: #a1a1aa;
+            margin-bottom: 14px;
+        }
+
+        .mp-w-price strong {
+            color: #ffffff;
+            font-size: 15px;
+        }
+
+        /* 3-Column Integrated Quota Grid ในบัตรใบเดียว */
+        .mp-w-quota-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .mp-w-qbox {
+            background: #0d0d10;
+            border: 1px solid #25252e;
+            border-radius: 10px;
+            padding: 10px 10px;
+            text-align: center;
+        }
+
+        .mp-w-qbox .qlbl {
+            font-size: 11px;
+            color: #a1a1aa;
+            font-weight: 600;
+            display: block;
+            margin-bottom: 4px;
+            white-space: nowrap;
+        }
+
+        .mp-w-qbox .qval {
+            font-size: 18px;
+            font-weight: 800;
+            color: #ffffff;
+            display: block;
+            margin-bottom: 6px;
+            line-height: 1.1;
+        }
+
+        .mp-w-qbox .qbar {
+            height: 4px;
+            background: #23232b;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .mp-w-btn-row {
+            display: grid;
+            grid-template-columns: 1.3fr 1fr;
+            gap: 8px;
+        }
+
+        .mp-w-btn-topup {
+            background: #e50914;
+            color: #ffffff;
+            border: none;
+            border-radius: 9px;
+            padding: 11px 12px;
+            font-size: 13px;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            cursor: pointer;
+            box-shadow: 0 4px 14px rgba(229, 9, 20, 0.3);
+        }
+
+        .mp-w-btn-renew {
+            background: #1b1b22;
+            color: #e4e4e7;
+            border: 1px solid #2f2f3c;
+            border-radius: 9px;
+            padding: 11px 10px;
+            font-size: 12.5px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        /* Compact Receipt List สำหรับมือถือ */
+        .mp-m-receipt-card {
+            background: #121215;
+            border: 1px solid #222229;
+            border-radius: 12px;
+            padding: 14px 16px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .mp-m-rc-left {
+            min-width: 0;
+            flex: 1;
+        }
+
+        .mp-m-rc-title {
+            font-size: 13.5px;
+            font-weight: 700;
+            color: #ffffff;
+            margin-bottom: 3px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .mp-m-rc-sub {
+            font-size: 11.5px;
+            color: #71717a;
+        }
+
+        .mp-m-rc-right {
+            text-align: right;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .mp-m-rc-amt {
+            font-size: 14px;
+            font-weight: 800;
+            color: #ffffff;
+            display: block;
+        }
+
+        .mp-m-pdf-badge {
+            background: #1c1c24;
+            border: 1px solid #30303c;
+            color: #d4d4d8;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 5px 9px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        /* แถวเลือกซื้อโควต้าเสริมใน Bottom Sheet */
+        .mp-sheet-addon-row {
+            background: #18181f;
+            border: 1px solid #282834;
+            border-radius: 11px;
+            padding: 13px 14px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+        }
+    }
+</style>
+
+<main class="cd-content">
+    <div class="mp-page-wrap">
+        <!-- =========================================================================
+             1. MOBILE VIEW (< 992px): แบบที่ 1 (Hero Wallet Card + Bottom Sheet Top-up + Slim Receipts)
+             ========================================================================= -->
+        <div class="mp-mobile-view">
+            <!-- Mobile Header Title (โลโก้อยู่ทางซ้าย ชื่อหน้าอยู่ตรงกลาง) -->
+            <div class="pg-m-topbar">
+                <a asp-controller="Customer" asp-action="Index" asp-route-email="@ViewBag.Email" class="pg-m-topbar-logo-left">
+                    <img src="~/images/logo.png" alt="PrivateGym" />
+                </a>
+                <span class="pg-m-topbar-center">แพ็กเกจของฉัน</span>
+                <div class="pg-m-topbar-right"></div>
+            </div>
+
+            <!-- Hero Membership Wallet Card (รวมแพ็กเกจ + โควต้า 3 ช่องในใบเดียว ไม่ต้องไถจอยาว) -->
+            <div class="mp-wallet-card">
+                <div class="mp-w-top">
+                    <span class="mp-w-tier">แพ็กเกจสมาชิกปัจจุบัน</span>
+                    <span class="mp-w-status">ใช้งานอยู่ &bull; เหลือ @daysLeft วัน</span>
+                </div>
+
+                <div class="mp-w-title">@pkgName</div>
+                <div class="mp-w-price">
+                    <strong>฿@pkgPrice.ToString("N0")</strong> / รอบ @pkgDuration วัน
+                    @if (activeSub != null)
+                    {
+                        <span> (ใช้ได้ถึง @FormatThaiDate(activeSub.EndDate))</span>
+                    }
+                    <div style="font-size: 11.5px; color: #a1a1aa; margin-top: 4px;">
+                        ช่องทางชำระหลัก: <strong style="color: #fff; font-size: 11.5px;">@FormatMethodThai(preferredMethod)</strong>
+                    </div>
+                </div>
+
+                @if (TempData["Error"] != null)
+                {
+                    <div style="background: rgba(239, 68, 68, 0.14); border: 1px solid rgba(239, 68, 68, 0.45); color: #fecaca; border-radius: 10px; padding: 10px 12px; margin-bottom: 14px; font-size: 12px; line-height: 1.45;">
+                        @TempData["Error"]
+                    </div>
+                }
+
+                @if (scheduledSub != null)
+                {
+                    var boxBg = isNextCyclePaid ? "rgba(34, 197, 94, 0.12)" : "rgba(245, 158, 11, 0.12)";
+                    var boxBorder = isNextCyclePaid ? "rgba(34, 197, 94, 0.45)" : "rgba(245, 158, 11, 0.4)";
+                    var titleColor = isNextCyclePaid ? "#4ade80" : "#fbbf24";
+
+                    <div style="background: @boxBg; border: 1px solid @boxBorder; border-radius: 10px; padding: 10px 12px; margin-bottom: 14px;">
+                        <div style="font-size: 12px; font-weight: 700; color: @titleColor; margin-bottom: 3px;">
+                            @(isNextCyclePaid ? "ชำระล่วงหน้าสำหรับรอบบิลถัดไปเรียบร้อยแล้ว" : "ตั้งเวลาเปลี่ยนแพ็กเกจรอบบิลถัดไปไว้แล้ว")
+                        </div>
+                        <div style="font-size: 11.5px; color: #e4e4e7; line-height: 1.45; margin-bottom: @(isNextCyclePaid ? "0" : "8px");">
+                            คุณยังใช้สิทธิ์ <strong>@pkgName</strong> ได้จนถึงวันที่ <strong>@FormatThaiDate(currentEndDate)</strong> จากนั้นระบบจะเปลี่ยนเป็น <strong>@(scheduledSub.Package?.PackageName)</strong> ตั้งแต่วันที่ <strong>@FormatThaiDate(scheduledSub.StartDate)</strong>
+                        </div>
+                        @if (!isNextCyclePaid)
+                        {
+                            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                                <button type="button" onclick="openCheckoutModal('next_cycle_pay', '', 'ชำระล่วงหน้าแพ็กเกจ @(scheduledSub.Package?.PackageName) (รอบเริ่ม @FormatThaiDate(scheduledSub.StartDate))', @(scheduledSub.Package?.Price ?? 0), '')" style="background: #fbbf24; color: #09090b; border: none; border-radius: 6px; padding: 6px 11px; font-size: 11.5px; font-weight: 700; cursor: pointer;">
+                                    ชำระล่วงหน้าตอนนี้ (฿@((scheduledSub.Package?.Price ?? 0).ToString("N0")))
+                                </button>
+                                <form asp-controller="Customer" asp-action="CancelScheduledPlan" method="post" class="js-anti-spam-form" style="margin: 0;">
+                                    <input type="hidden" name="email" value="@ViewBag.Email" />
+                                    <button type="submit" style="background: #1c1c24; color: #d4d4d8; border: 1px solid #323240; border-radius: 6px; padding: 6px 10px; font-size: 11px; font-weight: 600; cursor: pointer;">
+                                        ยกเลิกคำขอเปลี่ยนแผน
+                                    </button>
+                                </form>
+                            </div>
+                        }
+                    </div>
+                }
+                else if (TempData["Success"] != null)
+                {
+                    <div style="background: rgba(34, 197, 94, 0.12); border: 1px solid rgba(34, 197, 94, 0.45); color: #dcfce7; border-radius: 10px; padding: 10px 12px; margin-bottom: 14px; font-size: 12px; line-height: 1.45;">
+                        @TempData["Success"]
+                    </div>
+                }
+
+                <!-- 3-Column Quota Grid (ใช้คำไทยเข้าใจง่ายทันที) -->
+                <div class="mp-w-quota-row">
+                    <div class="mp-w-qbox">
+                        <span class="qlbl">ห้องซ้อม Pod</span>
+                        <span class="qval" style="color: #e50914;">@(isVip ? "ไม่จำกัด" : $"{remPods}/{maxPods}")</span>
+                        <div class="qbar">
+                            <div style="height: 100%; width: @podPct%; background: #e50914;"></div>
+                        </div>
+                    </div>
+                    <div class="mp-w-qbox">
+                        <span class="qlbl">โค้ชส่วนตัว</span>
+                        <span class="qval">@(isVip ? "ไม่จำกัด" : $"{remPt}/{maxPt}")</span>
+                        <div class="qbar">
+                            <div style="height: 100%; width: @ptPct%; background: #e50914;"></div>
+                        </div>
+                    </div>
+                    <div class="mp-w-qbox">
+                        <span class="qlbl">วัดมวลร่างกาย</span>
+                        <span class="qval" style="color: #4ade80;">@(isVip ? "ไม่จำกัด" : $"{remInBody}/{maxInBody}")</span>
+                        <div class="qbar">
+                            <div style="height: 100%; width: @inBodyPct%; background: #22c55e;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2 ปุ่มหลักใต้บัตร: ซื้อสิทธิ์เพิ่มรายครั้ง (เปิด Bottom Sheet) & ต่ออายุ/เปลี่ยนแพ็กเกจ -->
+                <div class="mp-w-btn-row">
+                    <button type="button" class="mp-w-btn-topup" onclick="openMobileTopupSheet()">
+                        <span>+ ซื้อสิทธิ์เพิ่มรายครั้ง</span>
+                    </button>
+                    <button type="button" class="mp-w-btn-renew" onclick="openChangePlanModal()">
+                        <span>เปลี่ยนแผน / ชำระเงิน</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- ประวัติการชำระเงินล่าสุดแบบแถวบาง (แทนตาราง 6 คอลัมน์) -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <span style="font-size: 14px; font-weight: 700; color: #ffffff;">ประวัติการชำระเงินและใบเสร็จ</span>
+                <span style="font-size: 11.5px; color: #71717a;">@payments.Count รายการ</span>
+            </div>
+
+            @if (!payments.Any())
+            {
+                <div style="background: #121215; border: 1px dashed #2c2c35; border-radius: 12px; padding: 28px 16px; text-align: center; color: #71717a; font-size: 13px; margin-bottom: 16px;">
+                    ยังไม่มีประวัติใบเสร็จรับเงินในระบบ
+                </div>
+            }
+            else
+            {
+                @foreach (var p in payments.Take(6))
+                {
+                    string invRef = p.SlipReference ?? $"INV-{p.PaymentId:D5}";
+                    string itemDesc = GetPaymentDescription(p);
+                    string pDateStr = FormatThaiDateTime(p.PaymentDate);
+                    bool isPendingPay = p.Status == "Pending";
+
+                    <div class="mp-m-receipt-card" style="@(isPendingPay ? "border-color: rgba(245, 158, 11, 0.45); background: rgba(245, 158, 11, 0.06);" : "")">
+                        <div class="mp-m-rc-left">
+                            <div class="mp-m-rc-title">@itemDesc</div>
+                            <div class="mp-m-rc-sub">
+                                @pDateStr &bull; @FormatMethodThai(p.PaymentMethod) &bull;
+                                @if (isPendingPay)
+                                {
+                                    <span style="color: #fbbf24; font-weight: 600;">รอชำระรอบบิลถัดไป</span>
+                                }
+                                else
+                                {
+                                    <span style="color: #4ade80; font-weight: 600;">ชำระสำเร็จ</span>
+                                }
+                            </div>
+                        </div>
+                        <div class="mp-m-rc-right">
+                            <span class="mp-m-rc-amt">฿@p.Amount.ToString("N0")</span>
+                            @if (isPendingPay)
+                            {
+                                <button type="button" class="mp-m-pdf-badge" style="background: #fbbf24; color: #09090b; border-color: #fbbf24;" onclick="openCheckoutModal('next_cycle_pay', '', '@itemDesc', @p.Amount, '')">
+                                    ชำระเงิน
+                                </button>
+                            }
+                            else
+                            {
+                                <button type="button" class="mp-m-pdf-badge" onclick="openReceiptModal('@invRef', '@pDateStr', '@itemDesc', '฿@p.Amount.ToString("N2")', '@FormatMethodThai(p.PaymentMethod)')">
+                                    ใบเสร็จ PDF
+                                </button>
+                            }
+                        </div>
+                    </div>
+                }
+            }
+
+            <!-- แถบขอใบกำกับภาษีนิติบุคคลแบบย่อบนมือถือ -->
+            <div style="background: #121215; border: 1px solid #222229; border-radius: 12px; padding: 14px 16px; display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 14px;">
+                <div style="font-size: 12px; color: #a1a1aa;">
+                    <strong style="color: #fff; display: block;">ต้องการใบกำกับภาษีนิติบุคคล?</strong>
+                    <span>ตั้งค่าเลขผู้เสียภาษีหรือติดต่อ Concierge</span>
+                </div>
+                <a asp-controller="Customer" asp-action="EditProfile" asp-route-email="@ViewBag.Email" style="background: #1b1b22; border: 1px solid #2e2e3a; color: #fff; font-size: 11.5px; font-weight: 600; padding: 7px 12px; border-radius: 7px; text-decoration: none; white-space: nowrap;">
+                    ตั้งค่าภาษี &rarr;
+                </a>
+            </div>
+        </div>
+
+        <!-- =========================================================================
+             2. DESKTOP VIEW (>= 992px): ภาษาไทยเข้าใจง่าย ไม่ใช้ตัวย่อซับซ้อน
+             ========================================================================= -->
+        <div class="mp-desktop-view">
+            <!-- Top Title & Action Buttons -->
+            <div class="mp-top-header">
+                <div class="mp-title-group">
+                    <h1 class="mp-main-title">แพ็กเกจและสิทธิ์การใช้งาน</h1>
+                </div>
+
+                <div class="mp-header-btns">
+                    <a asp-controller="Customer" asp-action="MyPackages" asp-route-email="@ViewBag.Email" class="mp-btn-outline">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                            <polyline points="23 4 23 10 17 10"></polyline>
+                            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                        </svg>
+                        <span>รีเฟรชข้อมูลสิทธิ์</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Section 1: แพ็กเกจหลักปัจจุบัน -->
+            <div class="mp-sec-head">
+                <div class="mp-sec-title">
+                    <span style="color: #e50914;">●</span>
+                    <span>แพ็กเกจหลักปัจจุบันของคุณ</span>
+                </div>
+                <span class="mp-status-badge-active">
+                    <span style="color: #22c55e;">●</span>
+                    <span>สถานะ: กำลังใช้งาน</span>
+                </span>
+            </div>
+
+            <div class="mp-plan-container">
+                <div class="row g-4 align-items-center">
+                    <!-- Left Column: Plan Details & Price Box -->
+                    <div class="col-lg-5 mp-plan-left">
+                        <div class="mp-tier-row">
+                            <span class="mp-tier-code">ระดับแพ็กเกจสมาชิก</span>
+                            <span class="mp-cycle-badge">รอบบิลรายเดือน (@pkgDuration วัน)</span>
+                        </div>
+
+                        <h2 class="mp-plan-name">@pkgName</h2>
+                        <p class="mp-plan-desc">@pkgDesc</p>
+
+                        <div class="mp-price-box">
+                            <div>
+                                <span class="mp-price-val">฿@pkgPrice.ToString("N0")</span>
+                                <span class="mp-price-unit">/ เดือน (รวมภาษีมูลค่าเพิ่ม)</span>
+                            </div>
+                            <div class="mp-autorenew-line">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+                                    <line x1="1" y1="10" x2="23" y2="10"></line>
+                                </svg>
+                                <span>ใช้สิทธิ์แพ็กเกจนี้ได้ถึง: @(activeSub != null ? FormatThaiDate(activeSub.EndDate) : "-") &bull; ช่องทางหลัก: <strong style="color: #fff;">@FormatMethodThai(preferredMethod)</strong></span>
+                            </div>
+                        </div>
+
+                        @if (TempData["Error"] != null)
+                        {
+                            <div style="background: rgba(239, 68, 68, 0.14); border: 1px solid rgba(239, 68, 68, 0.45); color: #fecaca; border-radius: 10px; padding: 12px 14px; margin-bottom: 16px; font-size: 12.5px; line-height: 1.5;">
+                                @TempData["Error"]
+                            </div>
+                        }
+
+                        @if (scheduledSub != null)
+                        {
+                            var dBoxBg = isNextCyclePaid ? "rgba(34, 197, 94, 0.12)" : "rgba(245, 158, 11, 0.12)";
+                            var dBoxBorder = isNextCyclePaid ? "rgba(34, 197, 94, 0.45)" : "rgba(245, 158, 11, 0.45)";
+                            var dTitleColor = isNextCyclePaid ? "#4ade80" : "#fbbf24";
+
+                            <div style="background: @dBoxBg; border: 1px solid @dBoxBorder; border-radius: 10px; padding: 12px 14px; margin-bottom: 16px;">
+                                <div style="font-size: 13px; font-weight: 800; color: @dTitleColor; margin-bottom: 4px;">
+                                    @(isNextCyclePaid ? "ชำระล่วงหน้าสำหรับแพ็กเกจรอบบิลถัดไปเรียบร้อยแล้ว" : "ตั้งเวลาเปลี่ยนแพ็กเกจสำหรับรอบบิลถัดไปไว้แล้ว")
+                                </div>
+                                <div style="font-size: 12px; color: #e4e4e7; line-height: 1.5; margin-bottom: @(isNextCyclePaid ? "0" : "10px");">
+                                    คุณยังถือสิทธิ์ <strong>@pkgName</strong> ไปจนสิ้นสุดรอบปัจจุบันวันที่ <strong>@FormatThaiDate(currentEndDate)</strong> จากนั้นระบบจะเปลี่ยนเป็นแพ็กเกจ <strong>@(scheduledSub.Package?.PackageName)</strong> (฿@((scheduledSub.Package?.Price ?? 0).ToString("N0"))) ตั้งแต่วันที่ <strong>@FormatThaiDate(scheduledSub.StartDate)</strong>
+                                </div>
+                                @if (!isNextCyclePaid)
+                                {
+                                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                        <button type="button" onclick="openCheckoutModal('next_cycle_pay', '', 'ชำระล่วงหน้าแพ็กเกจ @(scheduledSub.Package?.PackageName) (รอบเริ่ม @FormatThaiDate(scheduledSub.StartDate))', @(scheduledSub.Package?.Price ?? 0), '')" style="background: #fbbf24; color: #09090b; border: none; border-radius: 7px; padding: 7px 12px; font-size: 12px; font-weight: 700; cursor: pointer;">
+                                            ชำระล่วงหน้ารอบถัดไปตอนนี้ (฿@((scheduledSub.Package?.Price ?? 0).ToString("N0")))
+                                        </button>
+                                        <form asp-controller="Customer" asp-action="CancelScheduledPlan" method="post" class="js-anti-spam-form" style="margin: 0;">
+                                            <input type="hidden" name="email" value="@ViewBag.Email" />
+                                            <button type="submit" style="background: #1a1a22; color: #d4d4d8; border: 1px solid #30303e; border-radius: 7px; padding: 7px 12px; font-size: 12px; font-weight: 600; cursor: pointer;">
+                                                ยกเลิกคำขอเปลี่ยนแผนล่วงหน้า
+                                            </button>
+                                        </form>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else if (TempData["Success"] != null)
+                        {
+                            <div style="background: rgba(34, 197, 94, 0.12); border: 1px solid rgba(34, 197, 94, 0.45); color: #dcfce7; border-radius: 10px; padding: 12px 14px; margin-bottom: 16px; font-size: 12.5px; line-height: 1.5;">
+                                @TempData["Success"]
+                            </div>
+                        }
+
+                        <div class="mp-plan-actions">
+                            <button type="button" class="mp-btn-dark" onclick="openChangePlanModal()">เปลี่ยนแพ็กเกจ / ช่องทางชำระเงิน</button>
+                            <button type="button" class="mp-btn-dark" onclick="openCheckoutModal('topup', 'renew', 'ต่ออายุแพ็กเกจปัจจุบัน (@pkgName) ล่วงหน้า +30 วัน', @pkgPrice, 'next_cycle')">
+                                ต่ออายุแพ็กเกจเดิมล่วงหน้า (+30 วัน)
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: 2x2 Quota Grid -->
+                    <div class="col-lg-7">
+                        <div class="mp-quota-panel">
+                            <div class="mp-quota-head">
+                                <span>โควต้าสิทธิ์การใช้งานคงเหลือในรอบปัจจุบัน</span>
+                                <span style="color: #e50914; font-weight: 700;">เหลือเวลาใช้งาน @daysLeft วัน</span>
+                            </div>
+
+                            <div class="mp-quota-grid">
+                                <!-- Box 1: ห้องซ้อมส่วนตัว (Private Pod) -->
+                                <div class="mp-q-card">
+                                    <div class="mp-q-top">
+                                        <div class="mp-q-title">
+                                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#a1a1aa" stroke-width="2">
+                                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                                <line x1="9" y1="3" x2="9" y2="21"></line>
+                                            </svg>
+                                            <span>ห้องซ้อมส่วนตัว Pod (75 นาที)</span>
+                                        </div>
+                                        <span class="mp-q-used">@(isVip ? "ไม่จำกัด" : $"ใช้ไป {usedPods}/{maxPods}")</span>
+                                    </div>
+                                    <div class="mp-q-mid">
+                                        <div>
+                                            <span class="mp-q-big-num red">@(isVip ? "ไม่จำกัด" : remPods.ToString())</span>
+                                            @if (!isVip)
+                                            {
+                                                <span class="mp-q-unit">ครั้งที่เหลือ</span>
+                                            }
+                                        </div>
+                                        <span class="mp-q-max">โควต้าเต็ม: @(isVip ? "ไม่จำกัด" : $"{maxPods} ครั้ง")</span>
+                                    </div>
+                                    <div class="mp-q-bar">
+                                        <div class="mp-q-fill" style="width: @podPct%; background: #e50914;"></div>
+                                    </div>
+                                </div>
+
+                                <!-- Box 2: โค้ชฝึกสอนส่วนตัว (Personal Trainer) -->
+                                <div class="mp-q-card">
+                                    <div class="mp-q-top">
+                                        <div class="mp-q-title">
+                                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#a1a1aa" stroke-width="2">
+                                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                                <circle cx="9" cy="7" r="4"></circle>
+                                            </svg>
+                                            <span>โค้ชฝึกสอนส่วนตัว 1:1 (60 นาที)</span>
+                                        </div>
+                                        <span class="mp-q-used">@(isVip ? "ไม่จำกัด" : $"ใช้ไป {usedPt}/{maxPt}")</span>
+                                    </div>
+                                    <div class="mp-q-mid">
+                                        <div>
+                                            <span class="mp-q-big-num">@(isVip ? "ไม่จำกัด" : remPt.ToString())</span>
+                                            @if (!isVip)
+                                            {
+                                                <span class="mp-q-unit">ครั้งที่เหลือ</span>
+                                            }
+                                        </div>
+                                        <span class="mp-q-max">โควต้าเต็ม: @(isVip ? "ไม่จำกัด" : $"{maxPt} ครั้ง")</span>
+                                    </div>
+                                    <div class="mp-q-bar">
+                                        <div class="mp-q-fill" style="width: @ptPct%; background: #e50914;"></div>
+                                    </div>
+                                </div>
+
+                                <!-- Box 3: ตรวจวัดมวลร่างกาย (InBody) -->
+                                <div class="mp-q-card">
+                                    <div class="mp-q-top">
+                                        <div class="mp-q-title">
+                                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#a1a1aa" stroke-width="2">
+                                                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                                            </svg>
+                                            <span>ตรวจวัดมวลกล้ามเนื้อและไขมัน</span>
+                                        </div>
+                                        <span style="font-size: 11.5px; color: #22c55e; font-weight: 600;">พร้อมใช้งาน</span>
+                                    </div>
+                                    <div class="mp-q-mid">
+                                        <div>
+                                            <span class="mp-q-big-num">@(isVip ? "ไม่จำกัด" : remInBody.ToString())</span>
+                                            @if (!isVip)
+                                            {
+                                                <span class="mp-q-unit">จาก @maxInBody ครั้ง</span>
+                                            }
+                                        </div>
+                                        <span class="mp-q-max">สิทธิ์รายเดือน</span>
+                                    </div>
+                                    <div class="mp-q-bar">
+                                        <div class="mp-q-fill" style="width: @inBodyPct%; background: #22c55e;"></div>
+                                    </div>
+                                </div>
+
+                                <!-- Box 4: บัตรผู้ติดตาม -->
+                                <div class="mp-q-card">
+                                    <div class="mp-q-top">
+                                        <div class="mp-q-title">
+                                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#a1a1aa" stroke-width="2">
+                                                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                                <circle cx="8.5" cy="7" r="4"></circle>
+                                                <line x1="20" y1="8" x2="20" y2="14"></line>
+                                                <line x1="23" y1="11" x2="17" y2="11"></line>
+                                            </svg>
+                                            <span>บัตรผู้ติดตามเข้าคลับ</span>
+                                        </div>
+                                        <span class="mp-q-used">ราคาสมาชิก</span>
+                                    </div>
+                                    <div style="margin-bottom: 8px;">
+                                        <div style="font-size: 13px; font-weight: 700; color: #ffffff;">สิทธิ์พาผู้ติดตาม 1 ท่าน</div>
+                                        <div style="font-size: 11px; color: #71717a;">เข้าใช้พื้นที่รับรองและสิ่งอำนวยความสะดวกร่วมกับสมาชิก</div>
+                                    </div>
+                                    <div class="mp-q-bar">
+                                        <div class="mp-q-fill" style="width: 100%; background: #71717a;"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mp-quota-foot">
+                                <span style="display: inline-flex; align-items: center; gap: 6px;">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <line x1="12" y1="16" x2="12" y2="12"></line>
+                                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                                    </svg>
+                                    <span>โควต้าที่ไม่ถูกใช้งานจะสิ้นสุดลงพร้อมรอบบิลปัจจุบัน ไม่สามารถยกยอดสะสมข้ามเดือนได้</span>
+                                </span>
+                                <span style="font-family: monospace;">รหัสสมาชิก: SUB-@(activeSub?.SubscriptionId.ToString("D5") ?? "00001")</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 2: ซื้อโควต้าเสริมรายครั้ง -->
+            <div class="mp-sec-head">
+                <div class="mp-sec-title">
+                    <span>ซื้อสิทธิ์ใช้งานเพิ่มรายครั้ง</span>
+                </div>
+                <span style="font-size: 12px; color: #71717a;">เพิ่มโควต้าเข้าบัญชีและออกใบเสร็จรับเงินทันทีหลังทำรายการ</span>
+            </div>
+
+            <div class="row g-3" style="margin-bottom: 36px;">
+                <!-- Add-on 1: ห้องซ้อมส่วนตัว -->
+                <div class="col-lg-3 col-md-6">
+                    <div class="mp-addon-card">
+                        <div>
+                            <div class="mp-addon-icon">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                    <line x1="9" y1="3" x2="9" y2="21"></line>
+                                </svg>
+                            </div>
+                            <div class="mp-addon-code">โควต้าห้องซ้อม • 75 นาที</div>
+                            <h4 class="mp-addon-title">ห้องซ้อมส่วนตัว Pod (+1 ครั้ง)</h4>
+                            <p class="mp-addon-desc">เพิ่มสิทธิ์จองห้องซ้อมส่วนตัว 1 ครั้ง (75 นาที) เลือกได้ทุกห้องและจองล่วงหน้าได้ 7 วัน</p>
+                        </div>
+                        <div class="mp-addon-bottom">
+                            <div>
+                                <span class="mp-addon-price-lbl">ราคาต่อครั้ง</span>
+                                <span class="mp-addon-price-val">฿750</span>
+                            </div>
+                            <button type="button" class="mp-btn-dark" onclick="openCheckoutModal('topup', 'pod_1', 'ซื้อสิทธิ์เพิ่ม ห้องซ้อมส่วนตัว Pod (+1 ครั้ง • 75 นาที)', 750, 'next_cycle')">
+                                ซื้อสิทธิ์เพิ่ม
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Add-on 2: โค้ชส่วนตัว -->
+                <div class="col-lg-3 col-md-6">
+                    <div class="mp-addon-card">
+                        <div>
+                            <div class="mp-addon-icon">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M18 8h1a4 4 0 0 1 0 8h-1"></path>
+                                    <path d="M6 8H5a4 4 0 0 0 0 8h1"></path>
+                                    <line x1="6" y1="12" x2="18" y2="12"></line>
+                                </svg>
+                            </div>
+                            <div class="mp-addon-code">โควต้าเทรนเนอร์ • 60 นาที</div>
+                            <h4 class="mp-addon-title">โค้ชฝึกสอนส่วนตัว 1:1 (+1 ครั้ง)</h4>
+                            <p class="mp-addon-desc">เพิ่มสิทธิ์ฝึกซ้อมตัวต่อตัวกับโค้ชผู้เชี่ยวชาญ 1 ครั้ง พร้อมบันทึกพัฒนาการหลังซ้อม</p>
+                        </div>
+                        <div class="mp-addon-bottom">
+                            <div>
+                                <span class="mp-addon-price-lbl">ราคาต่อครั้ง</span>
+                                <span class="mp-addon-price-val">฿1,200</span>
+                            </div>
+                            <button type="button" class="mp-btn-dark" onclick="openCheckoutModal('topup', 'pt_1', 'ซื้อสิทธิ์เพิ่ม โค้ชฝึกสอนส่วนตัว 1:1 (+1 ครั้ง • 60 นาที)', 1200, 'next_cycle')">
+                                ซื้อสิทธิ์เพิ่ม
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Add-on 3: วัดมวลร่างกาย -->
+                <div class="col-lg-3 col-md-6">
+                    <div class="mp-addon-card">
+                        <div>
+                            <div class="mp-addon-icon">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="18" y1="20" x2="18" y2="10"></line>
+                                    <line x1="12" y1="20" x2="12" y2="4"></line>
+                                    <line x1="6" y1="20" x2="6" y2="14"></line>
+                                </svg>
+                            </div>
+                            <div class="mp-addon-code">ตรวจวิเคราะห์ร่างกาย</div>
+                            <h4 class="mp-addon-title">วัดมวลกล้ามเนื้อและไขมัน (+1 ครั้ง)</h4>
+                            <p class="mp-addon-desc">ตรวจวัดองค์ประกอบร่างกาย เปอร์เซ็นต์ไขมัน และสมดุลกล้ามเนื้อแบบละเอียดด้วยเครื่องสแกน</p>
+                        </div>
+                        <div class="mp-addon-bottom">
+                            <div>
+                                <span class="mp-addon-price-lbl">ราคาต่อครั้ง</span>
+                                <span class="mp-addon-price-val">฿300</span>
+                            </div>
+                            <button type="button" class="mp-btn-dark" onclick="openCheckoutModal('topup', 'inbody_1', 'ซื้อสิทธิ์เพิ่ม วัดมวลกล้ามเนื้อและไขมัน (+1 ครั้ง)', 300, 'next_cycle')">
+                                ซื้อสิทธิ์เพิ่ม
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Add-on 4: บัตรผู้ติดตาม -->
+                <div class="col-lg-3 col-md-6">
+                    <div class="mp-addon-card">
+                        <div>
+                            <div class="mp-addon-icon">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="3" y="4" width="18" height="16" rx="2"></rect>
+                                    <circle cx="9" cy="10" r="2"></circle>
+                                    <line x1="15" y1="8" x2="17" y2="8"></line>
+                                    <line x1="15" y1="12" x2="17" y2="12"></line>
+                                    <line x1="7" y1="16" x2="17" y2="16"></line>
+                                </svg>
+                            </div>
+                            <div class="mp-addon-code">บัตรผู้ติดตามรายวัน</div>
+                            <h4 class="mp-addon-title">บัตรผู้ติดตามเข้าคลับ (+1 วัน)</h4>
+                            <p class="mp-addon-desc">สิทธิ์พาเพื่อนหรือผู้ติดตามเข้าใช้พื้นที่รับรองและอุปกรณ์ส่วนกลางร่วมกับสมาชิก 1 วัน</p>
+                        </div>
+                        <div class="mp-addon-bottom">
+                            <div>
+                                <span class="mp-addon-price-lbl">ราคาต่อวัน</span>
+                                <span class="mp-addon-price-val">฿350</span>
+                            </div>
+                            <button type="button" class="mp-btn-dark" onclick="openCheckoutModal('topup', 'guest_1', 'ซื้อบัตรผู้ติดตามเข้าคลับรายวัน (+1 วัน)', 350, 'next_cycle')">
+                                ซื้อสิทธิ์เพิ่ม
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 3: ประวัติการชำระเงินและต่ออายุ -->
+            <div class="mp-sec-head">
+                <div class="mp-sec-title">
+                    <span>ประวัติการชำระเงินและใบเสร็จรับเงิน</span>
+                </div>
+                <span style="font-size: 12px; color: #71717a;">เลขประจำตัวผู้เสียภาษี: 0105562098421 (บริษัท ไพรเวทยิม จำกัด)</span>
+            </div>
+
+            <div class="mp-billing-box">
+                @if (!payments.Any())
+                {
+                    <div style="padding: 36px; text-align: center; color: #71717a; font-size: 13.5px;">
+                        ยังไม่มีประวัติใบเสร็จรับเงินในระบบ
+                    </div>
+                }
+                else
+                {
+                    <table class="mp-table">
+                        <thead>
+                            <tr>
+                                <th>วันที่ทำรายการ</th>
+                                <th>รายการชำระ</th>
+                                <th>ช่องทางชำระเงิน</th>
+                                <th>เลขอ้างอิงเอกสาร</th>
+                                <th>ยอดรวมสุทธิ</th>
+                                <th>สถานะ</th>
+                                <th style="text-align: right;">การดำเนินการ / ใบเสร็จ</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var p in payments)
+                            {
+                                string invRef = p.SlipReference ?? $"INV-{p.PaymentId:D5}";
+                                string itemDesc = GetPaymentDescription(p);
+                                string pDateStr = FormatThaiDateTime(p.PaymentDate);
+                                string pTimeStr = p.PaymentDate?.ToString("HH:mm") ?? "";
+                                bool isPendingPay = p.Status == "Pending";
+
+                                <tr style="@(isPendingPay ? "background: rgba(245, 158, 11, 0.05);" : "")">
+                                    <td>
+                                        <strong style="color: #ffffff;">@pDateStr</strong>
+                                        <span style="color: #71717a; font-size: 12px; margin-left: 6px;">@pTimeStr</span>
+                                    </td>
+                                    <td>
+                                        <span style="color: @(isPendingPay ? "#fbbf24" : (p.Amount >= 3000 ? "#e50914" : "#a1a1aa")); margin-right: 6px;">●</span>
+                                        <span style="color: #ffffff; font-weight: 600;">@itemDesc</span>
+                                    </td>
+                                    <td style="font-size: 12.5px; color: #d4d4d8;">@FormatMethodThai(p.PaymentMethod)</td>
+                                    <td style="font-family: monospace; color: #a1a1aa;">@invRef</td>
+                                    <td style="font-weight: 800; color: #ffffff;">฿@p.Amount.ToString("N0")</td>
+                                    <td>
+                                        @if (isPendingPay)
+                                        {
+                                            <span style="color: #fbbf24; font-size: 12.5px; font-weight: 600;">● รอชำระรอบบิลถัดไป</span>
+                                        }
+                                        else
+                                        {
+                                            <span style="color: #22c55e; font-size: 12.5px; font-weight: 600;">● ชำระสำเร็จ</span>
+                                        }
+                                    </td>
+                                    <td style="text-align: right;">
+                                        @if (isPendingPay)
+                                        {
+                                            <div style="display: inline-flex; gap: 6px;">
+                                                <button type="button" class="mp-pdf-btn" style="background: #fbbf24; color: #09090b; border-color: #fbbf24; font-weight: 700;" onclick="openCheckoutModal('next_cycle_pay', '', '@itemDesc', @p.Amount, '')">
+                                                    <span>ชำระล่วงหน้าตอนนี้</span>
+                                                </button>
+                                                <form asp-controller="Customer" asp-action="CancelScheduledPlan" method="post" class="js-anti-spam-form" style="margin: 0;">
+                                                    <input type="hidden" name="email" value="@ViewBag.Email" />
+                                                    <button type="submit" class="mp-pdf-btn" style="color: #a1a1aa;">
+                                                        <span>ยกเลิก</span>
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <button type="button" class="mp-pdf-btn" onclick="openReceiptModal('@invRef', '@pDateStr @pTimeStr', '@itemDesc', '฿@p.Amount.ToString("N2")', '@FormatMethodThai(p.PaymentMethod)')">
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                                    <polyline points="14 2 14 8 20 8"></polyline>
+                                                </svg>
+                                                <span>ดาวน์โหลดใบเสร็จ PDF</span>
+                                            </button>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; background: #0e0e11; border-top: 1px solid #1c1c22; font-size: 12px; color: #71717a;">
+                        <span>แสดง @payments.Count รายการจากประวัติธุรกรรมและการตั้งเวลาเปลี่ยนแพ็กเกจทั้งหมด</span>
+                        <span>ออกใบเสร็จอิเล็กทรอนิกส์อัตโนมัติเฉพาะรายการที่ชำระสำเร็จแล้วเท่านั้น</span>
+                    </div>
+                }
+            </div>
+
+            <!-- Corporate Tax Invoice Footer Banner (ตามรูป Darfwebsite) -->
+            <div class="mp-tax-banner">
+                <div style="display: flex; align-items: center; gap: 14px;">
+                    <div style="width: 38px; height: 38px; border-radius: 8px; background: #1a1a20; border: 1px solid #2a2a34; display: flex; align-items: center; justify-content: center; color: #a1a1aa;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <div style="font-size: 13.5px; font-weight: 700; color: #ffffff;">ต้องการขอใบกำกับภาษีเต็มรูปแบบในนามนิติบุคคล?</div>
+                        <div style="font-size: 12px; color: #71717a;">สามารถเพิ่มเลขประจำตัวผู้เสียภาษีและที่อยู่จดทะเบียนได้ที่เมนูตั้งค่าบัญชี หรือติดต่อ Concierge</div>
+                    </div>
+                </div>
+                <a asp-controller="Customer" asp-action="Support" asp-route-email="@ViewBag.Email" class="mp-btn-dark" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+                    <span>ติดต่อ Concierge Desk</span>
+                    <span>&rarr;</span>
+                </a>
+            </div>
+        </div>
+    </div>
+</main>
+
+<!-- ================= MOBILE TOP-UP QUOTA BOTTOM SHEET MODAL (แบบที่ 1: กดปุ่ม "+ ซื้อสิทธิ์เพิ่มรายครั้ง" แล้วเด้งขึ้นมา) ================= -->
+<div class="mp-sheet-backdrop" id="mobileTopupSheetBackdrop" onclick="if(event.target === this) closeMobileTopupSheet()">
+    <div class="mp-sheet-modal">
+        <div class="mp-sheet-handle"></div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <h4 style="font-size: 17px; font-weight: 800; color: #ffffff; margin: 0;">ซื้อสิทธิ์ใช้งานเพิ่มรายครั้ง</h4>
+            <button type="button" onclick="closeMobileTopupSheet()" style="background: #1f1f27; border: 1px solid #32323e; color: #fff; width: 30px; height: 30px; border-radius: 50%; font-size: 16px; line-height: 1; cursor: pointer;">
+                &times;
+            </button>
+        </div>
+        <p style="font-size: 12px; color: #a1a1aa; margin-bottom: 16px;">เลือกสิทธิ์ที่ต้องการ ระบบจะพาไปยังหน้าต่างชำระเงินและออกใบเสร็จทันที</p>
+
+        <!-- Row 1: ห้องซ้อมส่วนตัว -->
+        <div class="mp-sheet-addon-row">
+            <div>
+                <div style="font-size: 14px; font-weight: 700; color: #ffffff;">ห้องซ้อมส่วนตัว Pod (+1 ครั้ง)</div>
+                <div style="font-size: 11.5px; color: #a1a1aa;">ระยะเวลา 75 นาที &bull; จองได้ทุกห้อง</div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <strong style="font-size: 15px; color: #ffffff;">฿750</strong>
+                <button type="button" class="mp-btn-red" style="padding: 7px 12px; font-size: 12px;" onclick="closeMobileTopupSheet(); openCheckoutModal('topup', 'pod_1', 'ซื้อสิทธิ์เพิ่ม ห้องซ้อมส่วนตัว Pod (+1 ครั้ง • 75 นาที)', 750, 'next_cycle')">
+                    ซื้อเพิ่ม
+                </button>
+            </div>
+        </div>
+
+        <!-- Row 2: โค้ชส่วนตัว -->
+        <div class="mp-sheet-addon-row">
+            <div>
+                <div style="font-size: 14px; font-weight: 700; color: #ffffff;">โค้ชฝึกสอนส่วนตัว 1:1 (+1 ครั้ง)</div>
+                <div style="font-size: 11.5px; color: #a1a1aa;">ระยะเวลา 60 นาที &bull; โค้ชดูแลตัวต่อตัว</div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <strong style="font-size: 15px; color: #ffffff;">฿1,200</strong>
+                <button type="button" class="mp-btn-red" style="padding: 7px 12px; font-size: 12px;" onclick="closeMobileTopupSheet(); openCheckoutModal('topup', 'pt_1', 'ซื้อสิทธิ์เพิ่ม โค้ชฝึกสอนส่วนตัว 1:1 (+1 ครั้ง • 60 นาที)', 1200, 'next_cycle')">
+                    ซื้อเพิ่ม
+                </button>
+            </div>
+        </div>
+
+        <!-- Row 3: วัดมวลร่างกาย -->
+        <div class="mp-sheet-addon-row">
+            <div>
+                <div style="font-size: 14px; font-weight: 700; color: #ffffff;">วัดมวลกล้ามเนื้อและไขมัน (+1 ครั้ง)</div>
+                <div style="font-size: 11.5px; color: #a1a1aa;">ตรวจวัดองค์ประกอบร่างกายแบบละเอียด</div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <strong style="font-size: 15px; color: #ffffff;">฿300</strong>
+                <button type="button" class="mp-btn-red" style="padding: 7px 12px; font-size: 12px;" onclick="closeMobileTopupSheet(); openCheckoutModal('topup', 'inbody_1', 'ซื้อสิทธิ์เพิ่ม วัดมวลกล้ามเนื้อและไขมัน (+1 ครั้ง)', 300, 'next_cycle')">
+                    ซื้อเพิ่ม
+                </button>
+            </div>
+        </div>
+
+        <!-- Row 4: บัตรผู้ติดตาม -->
+        <div class="mp-sheet-addon-row" style="margin-bottom: 0;">
+            <div>
+                <div style="font-size: 14px; font-weight: 700; color: #ffffff;">บัตรผู้ติดตามเข้าคลับ (+1 วัน)</div>
+                <div style="font-size: 11.5px; color: #a1a1aa;">สิทธิ์พาเพื่อนเข้าใช้เลานจ์ส่วนกลาง</div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <strong style="font-size: 15px; color: #ffffff;">฿350</strong>
+                <button type="button" class="mp-btn-red" style="padding: 7px 12px; font-size: 12px;" onclick="closeMobileTopupSheet(); openCheckoutModal('topup', 'guest_1', 'ซื้อบัตรผู้ติดตามเข้าคลับรายวัน (+1 วัน)', 350, 'next_cycle')">
+                    ซื้อเพิ่ม
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ================= MODAL เปลี่ยนแพ็กเกจ / ต่ออายุ / ช่องทางชำระเงิน (ใช้ร่วมกันทั้ง Desktop และ Mobile) ================= -->
+<div class="mp-sheet-backdrop" id="changePlanModalBackdrop" onclick="if(event.target === this) closeChangePlanModal()" style="align-items: center; padding: 14px;">
+    <div style="background: #141418; border: 1px solid #2b2b36; border-radius: 16px; width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto; padding: 22px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <h4 style="font-size: 17px; font-weight: 800; color: #ffffff; margin: 0;">เปลี่ยนแพ็กเกจและตั้งค่าการชำระเงิน</h4>
+            <button type="button" onclick="closeChangePlanModal()" style="background: none; border: none; color: #a1a1aa; font-size: 22px; line-height: 1; cursor: pointer;">&times;</button>
+        </div>
+
+        <!-- กล่องอธิบายกติการอบบิล (ชัดเจนว่าถือแพ็กเกจเดิมจนสิ้นเดือน) -->
+        <div style="background: #1a1a22; border: 1px solid #2d2d3a; border-radius: 10px; padding: 11px 13px; margin-bottom: 14px; font-size: 12px; color: #d4d4d8; line-height: 1.5;">
+            <strong style="color: #fff; display: block; margin-bottom: 2px;">เงื่อนไขการเปลี่ยนแพ็กเกจ:</strong>
+            แพ็กเกจปัจจุบันของคุณ (<strong>@pkgName</strong>) จะใช้งานได้จนถึงวันที่ <strong>@FormatThaiDate(currentEndDate)</strong> โดยแพ็กเกจใหม่จะเริ่มมีผลในรอบบิลถัดไปตั้งแต่วันที่ <strong>@FormatThaiDate(nextCycleStartDate)</strong> เป็นต้นไป
+        </div>
+
+        <!-- ส่วนที่ 1: เลือกหรือเปลี่ยนช่องทางการชำระเงินหลัก (ดึงค่าเดิมจากตอน Register) -->
+        <form asp-controller="Customer" asp-action="UpdatePaymentMethod" method="post" class="js-anti-spam-form" style="background: #101014; border: 1px solid #24242f; border-radius: 11px; padding: 12px 14px; margin-bottom: 16px;">
+            <input type="hidden" name="email" value="@ViewBag.Email" />
+            <div style="font-size: 12px; font-weight: 700; color: #ffffff; margin-bottom: 8px;">
+                ช่องทางการชำระเงินหลักสำหรับรอบบิลถัดไป
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr; gap: 6px; margin-bottom: 10px;">
+                <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: #e4e4e7; cursor: pointer;">
+                    <input type="radio" name="paymentMethod" value="CreditCard" @(preferredMethod == "CreditCard" ? "checked" : "") onchange="syncPaymentMethodInputs(this.value)" />
+                    <span>ผูกบัตรเครดิต / เดบิต (ตัดชำระอัตโนมัติเมื่อถึงวันครบรอบเดือน)</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: #e4e4e7; cursor: pointer;">
+                    <input type="radio" name="paymentMethod" value="PromptPay" @(preferredMethod == "PromptPay" ? "checked" : "") onchange="syncPaymentMethodInputs(this.value)" />
+                    <span>สแกนจ่าย QR PromptPay (แจ้งเตือนให้สแกนเมื่อถึงรอบบิล หรือจ่ายล่วงหน้า)</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: #e4e4e7; cursor: pointer;">
+                    <input type="radio" name="paymentMethod" value="BankTransfer" @(preferredMethod == "BankTransfer" ? "checked" : "") onchange="syncPaymentMethodInputs(this.value)" />
+                    <span>โอนเงินผ่านแอปธนาคาร</span>
+                </label>
+            </div>
+            <div style="display: flex; justify-content: flex-end; align-items: center; gap: 8px; padding-top: 8px; border-top: 1px solid #1f1f29;">
+                <button type="submit" style="background: #23232e; color: #fff; border: 1px solid #383848; border-radius: 6px; padding: 6px 12px; font-size: 11.5px; font-weight: 600; cursor: pointer;">
+                    บันทึกช่องทางชำระเงินหลัก
+                </button>
+            </div>
+        </form>
+
+        <!-- ส่วนที่ 2: รายการแพ็กเกจทั้งหมด (ป้องกันการกดเปลี่ยนแพ็กเกจไปมาซ้ำซ้อน) -->
+        @if (allPackages.Any())
+        {
+            @if (scheduledSub != null)
+            {
+                <div style="background: rgba(245, 158, 11, 0.14); border: 1px solid rgba(245, 158, 11, 0.45); border-radius: 9px; padding: 10px 12px; margin-bottom: 10px; font-size: 11.5px; color: #fbbf24;">
+                    คุณมีรายการตั้งเวลาเปลี่ยนเป็นแพ็กเกจ <strong>@(scheduledSub.Package?.PackageName)</strong> สำหรับรอบบิลถัดไปอยู่แล้ว ระบบจึงล็อกปุ่มเปลี่ยนแผนอื่นไว้ หากต้องการเปลี่ยนใจ กรุณากดยกเลิกคำขอเดิมก่อนครับ
+                </div>
+            }
+            <div style="font-size: 12px; font-weight: 700; color: #a1a1aa; margin-bottom: 8px;">เลือกแพ็กเกจของคุณ:</div>
+            @foreach (var pkg in allPackages)
+            {
+                bool isCurrentPkg = activeSub != null && activeSub.PackageId == pkg.PackageId;
+                bool isScheduledPkg = scheduledSub != null && scheduledSub.PackageId == pkg.PackageId;
+                bool isHigherTier = pkg.Price > pkgPrice;
+
+                <div style="background: @(isCurrentPkg ? "rgba(229, 9, 20, 0.08)" : "#191920"); border: 1px solid @(isCurrentPkg ? "rgba(229, 9, 20, 0.45)" : (isScheduledPkg ? "rgba(245, 158, 11, 0.55)" : "#292934")); border-radius: 11px; padding: 12px 14px; margin-bottom: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 8px;">
+                        <div>
+                            <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                                <span style="font-size: 14.5px; font-weight: 800; color: #ffffff;">@pkg.PackageName</span>
+                                @if (isCurrentPkg)
+                                {
+                                    <span style="background: rgba(229, 9, 20, 0.2); color: #f87171; font-size: 10.5px; font-weight: 700; padding: 2px 7px; border-radius: 4px;">ใช้งานอยู่ปัจจุบัน</span>
+                                }
+                                @if (isScheduledPkg)
+                                {
+                                    <span style="background: rgba(245, 158, 11, 0.2); color: #fbbf24; font-size: 10.5px; font-weight: 700; padding: 2px 7px; border-radius: 4px;">ตั้งเวลาเปลี่ยนรอบหน้าแล้ว</span>
+                                }
+                            </div>
+                            <div style="font-size: 11.5px; color: #a1a1aa; margin-top: 2px;">
+                                @(pkg.IsVip == true ? "สิทธิ์เข้าห้องซ้อมและโค้ชส่วนตัวไม่จำกัดครั้ง" : $"ห้องซ้อม {pkg.PodQuota} ครั้ง • โค้ชส่วนตัว {pkg.PtQuota} ครั้ง • วัดมวลร่างกาย {pkg.InBodyQuota} ครั้ง")
+                            </div>
+                        </div>
+                        <div style="text-align: right; flex-shrink: 0;">
+                            <strong style="font-size: 15px; color: #ffffff;">฿@pkg.Price.ToString("N0")</strong>
+                            <span style="font-size: 11px; color: #71717a; display: block;">/ 30 วัน</span>
+                        </div>
+                    </div>
+
+                    @if (isCurrentPkg)
+                    {
+                        @if (scheduledSub != null)
+                        {
+                            <button type="button" disabled class="mp-btn-dark w-100" style="justify-content: center; padding: 8px 12px; font-size: 11.5px; opacity: 0.5; cursor: not-allowed;">
+                                แพ็กเกจปัจจุบัน (ใช้งานได้ถึง @FormatThaiDate(currentEndDate))
+                            </button>
+                        }
+                        else
+                        {
+                            <button type="button" class="mp-btn-dark w-100" style="justify-content: center; padding: 8px 12px; font-size: 12px;" onclick="closeChangePlanModal(); openCheckoutModal('topup', 'renew', 'ต่ออายุแพ็กเกจปัจจุบัน (@pkg.PackageName) ล่วงหน้า +30 วัน', @pkg.Price, 'next_cycle')">
+                                ต่ออายุแพ็กเกจเดิมล่วงหน้า (+30 วัน)
+                            </button>
+                        }
+                    }
+                    else if (isScheduledPkg)
+                    {
+                        @if (!isNextCyclePaid)
+                        {
+                            <div style="display: flex; gap: 6px;">
+                                <button type="button" class="mp-btn-red w-100" style="justify-content: center; padding: 8px 10px; font-size: 11.5px; flex: 1;" onclick="closeChangePlanModal(); openCheckoutModal('next_cycle_pay', '', 'ชำระล่วงหน้าแพ็กเกจ @pkg.PackageName (รอบเริ่ม @FormatThaiDate(scheduledSub!.StartDate))', @pkg.Price, '')">
+                                    ชำระล่วงหน้าสำหรับรอบถัดไป
+                                </button>
+                                <form asp-controller="Customer" asp-action="CancelScheduledPlan" method="post" class="js-anti-spam-form" style="margin: 0;">
+                                    <input type="hidden" name="email" value="@ViewBag.Email" />
+                                    <button type="submit" class="mp-btn-dark" style="padding: 8px 10px; font-size: 11.5px;">
+                                        ยกเลิกคำขอ
+                                    </button>
+                                </form>
+                            </div>
+                        }
+                        else
+                        {
+                            <button type="button" disabled class="mp-btn-dark w-100" style="justify-content: center; padding: 8px 12px; font-size: 11.5px; color: #4ade80; border-color: rgba(34,197,94,0.4);">
+                                ชำระเงินล่วงหน้าแล้ว (เริ่มมีผล @FormatThaiDate(scheduledSub!.StartDate))
+                            </button>
+                        }
+                    }
+                    else if (scheduledSub != null)
+                    {
+                        <!-- ล็อกปุ่มแพ็กเกจอื่นเมื่อมีรายการตั้งเวลาเปลี่ยนแผนค้างอยู่ ป้องกันการกดสลับไปมา -->
+                        <button type="button" disabled class="mp-btn-dark w-100" style="justify-content: center; padding: 8px 12px; font-size: 11.5px; opacity: 0.45; cursor: not-allowed;">
+                            ล็อกการเลือก (กรุณายกเลิกคำขอเปลี่ยนแผนเดิมก่อน)
+                        </button>
+                    }
+                    else
+                    {
+                        <div style="display: flex; flex-direction: column; gap: 6px;">
+                            <!-- ปุ่มหลัก: ตั้งเวลาเปลี่ยนในรอบบิลถัดไป (ถือแพ็กเกจเดิมจนสิ้นเดือน) -->
+                            <form asp-controller="Customer" asp-action="TopUpQuota" method="post" class="js-anti-spam-form" style="margin: 0;">
+                                <input type="hidden" name="email" value="@ViewBag.Email" />
+                                <input type="hidden" name="addonType" value="switch_pkg_@pkg.PackageId" />
+                                <input type="hidden" name="changeMode" value="next_cycle" />
+                                <input type="hidden" name="paymentMethod" class="js-synced-pay-method" value="@preferredMethod" />
+                                <button type="submit" class="mp-btn-red w-100" style="justify-content: center; padding: 8px 12px; font-size: 12px;">
+                                    ตั้งค่าเปลี่ยนเป็น @pkg.PackageName ในรอบบิลถัดไป (เริ่ม @FormatThaiDate(nextCycleStartDate))
+                                </button>
+                            </form>
+
+                            @if (isHigherTier)
+                            {
+                                <!-- ปุ่มทางเลือกเสริมเฉพาะกรณีอัปเกรดเป็นแพ็กเกจที่สูงขึ้น: เปิดหน้าต่างชำระเงินทันทีพร้อมทบโควต้า -->
+                                <button type="button" class="mp-btn-dark w-100" style="justify-content: center; padding: 7px 12px; font-size: 11.5px; color: #d4d4d8;" onclick="closeChangePlanModal(); openCheckoutModal('topup', 'switch_pkg_@pkg.PackageId', 'อัปเกรดทันทีเป็น @pkg.PackageName (ทบโควต้าคงเหลือเดิม)', @pkg.Price, 'immediate_upgrade')">
+                                    หรืออัปเกรดทันทีวันนี้ (ชำระเงินและทบโควต้าคงเหลือเดิมให้ทันที)
+                                </button>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+        }
+    </div>
+</div>
+
+<!-- ================= MODAL หน้าต่างชำระเงินจริง (PAYMENT CHECKOUT MODAL: สแกน QR / โอนธนาคาร / ตัดบัตรเครดิต) ================= -->
+<div class="mp-sheet-backdrop" id="checkoutModalBackdrop" onclick="if(event.target === this) closeCheckoutModal()" style="align-items: center; padding: 14px;">
+    <div style="background: #141418; border: 1px solid #2d2d3a; border-radius: 16px; width: 100%; max-width: 460px; max-height: 92vh; overflow-y: auto; padding: 22px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <h4 style="font-size: 17px; font-weight: 800; color: #ffffff; margin: 0;">ยืนยันการชำระเงิน</h4>
+            <button type="button" onclick="closeCheckoutModal()" style="background: none; border: none; color: #a1a1aa; font-size: 22px; line-height: 1; cursor: pointer;">&times;</button>
+        </div>
+        <p style="font-size: 12px; color: #a1a1aa; margin-bottom: 14px;">ตรวจสอบรายการและดำเนินการชำระเงินเพื่อออกใบเสร็จรับเงิน</p>
+
+        <!-- สรุปรายการและยอดชำระ -->
+        <div style="background: #0d0d10; border: 1px solid #252530; border-radius: 10px; padding: 12px 14px; margin-bottom: 14px;">
+            <div style="font-size: 11.5px; color: #71717a; margin-bottom: 2px;">รายการที่เลือก</div>
+            <div style="font-size: 14px; font-weight: 700; color: #ffffff;" id="chkItemTitle">-</div>
+            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 8px; padding-top: 8px; border-top: 1px solid #1f1f28;">
+                <span style="font-size: 12px; color: #a1a1aa;">ยอดชำระสุทธิ (รวมภาษีมูลค่าเพิ่ม 7%)</span>
+                <strong style="font-size: 19px; color: #e50914;" id="chkAmountDisplay">฿0</strong>
+            </div>
+        </div>
+
+        <form id="checkoutPaymentForm" asp-controller="Customer" asp-action="TopUpQuota" method="post" class="js-anti-spam-form" style="margin: 0;">
+            <input type="hidden" name="email" value="@ViewBag.Email" />
+            <input type="hidden" name="addonType" id="chkAddonType" value="" />
+            <input type="hidden" name="changeMode" id="chkChangeMode" value="next_cycle" />
+
+            <!-- เลือกช่องทางชำระเงิน -->
+            <div style="font-size: 12px; font-weight: 700; color: #ffffff; margin-bottom: 8px;">เลือกช่องทางการชำระเงิน:</div>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px;">
+                <label id="chkTabPromptPay" style="background: #1a1a22; border: 1px solid #323240; border-radius: 8px; padding: 9px 6px; text-align: center; font-size: 11.5px; font-weight: 700; color: #fff; cursor: pointer;">
+                    <input type="radio" name="paymentMethod" value="PromptPay" style="display: none;" onchange="switchCheckoutMethod('PromptPay')" @(preferredMethod == "PromptPay" ? "checked" : "") />
+                    <span>QR PromptPay</span>
+                </label>
+                <label id="chkTabCreditCard" style="background: #1a1a22; border: 1px solid #323240; border-radius: 8px; padding: 9px 6px; text-align: center; font-size: 11.5px; font-weight: 700; color: #fff; cursor: pointer;">
+                    <input type="radio" name="paymentMethod" value="CreditCard" style="display: none;" onchange="switchCheckoutMethod('CreditCard')" @(preferredMethod == "CreditCard" ? "checked" : "") />
+                    <span>บัตรเครดิต/เดบิต</span>
+                </label>
+                <label id="chkTabBankTransfer" style="background: #1a1a22; border: 1px solid #323240; border-radius: 8px; padding: 9px 6px; text-align: center; font-size: 11.5px; font-weight: 700; color: #fff; cursor: pointer;">
+                    <input type="radio" name="paymentMethod" value="BankTransfer" style="display: none;" onchange="switchCheckoutMethod('BankTransfer')" @(preferredMethod == "BankTransfer" ? "checked" : "") />
+                    <span>โอนบัญชีธนาคาร</span>
+                </label>
+            </div>
+
+            <!-- กล่องแสดงรายละเอียดตามช่องทางชำระเงินที่เลือก -->
+            <!-- 1. กล่องสแกน QR PromptPay -->
+            <div id="chkBoxPromptPay" style="background: #101015; border: 1px solid #262632; border-radius: 12px; padding: 16px; text-align: center; margin-bottom: 14px;">
+                <div style="font-size: 12px; font-weight: 700; color: #ffffff; margin-bottom: 8px;">สแกน QR PromptPay ด้วยแอปธนาคารใดก็ได้</div>
+                <!-- QR Code จำลองมาตรฐาน PromptPay -->
+                <div style="width: 148px; height: 148px; margin: 0 auto 10px auto; background: #ffffff; padding: 10px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                    <svg viewBox="0 0 100 100" width="128" height="128">
+                        <rect width="100" height="100" fill="#fff" />
+                        <rect x="6" y="6" width="26" height="26" fill="none" stroke="#000" stroke-width="6" />
+                        <rect x="13" y="13" width="12" height="12" fill="#000" />
+                        <rect x="68" y="6" width="26" height="26" fill="none" stroke="#000" stroke-width="6" />
+                        <rect x="75" y="13" width="12" height="12" fill="#000" />
+                        <rect x="6" y="68" width="26" height="26" fill="none" stroke="#000" stroke-width="6" />
+                        <rect x="13" y="75" width="12" height="12" fill="#000" />
+                        <rect x="40" y="10" width="6" height="18" fill="#000" />
+                        <rect x="50" y="16" width="10" height="6" fill="#000" />
+                        <rect x="38" y="38" width="24" height="24" rx="4" fill="#e50914" />
+                        <text x="50" y="54" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="sans-serif">PG</text>
+                        <rect x="12" y="42" width="18" height="6" fill="#000" />
+                        <rect x="68" y="44" width="20" height="6" fill="#000" />
+                        <rect x="42" y="70" width="12" height="6" fill="#000" />
+                        <rect x="62" y="68" width="8" height="22" fill="#000" />
+                        <rect x="76" y="76" width="16" height="16" fill="#000" />
+                    </svg>
+                </div>
+                <div style="font-size: 11.5px; color: #a1a1aa; margin-bottom: 10px;">
+                    ชื่อบัญชี: <strong style="color: #fff;">บจก. ไพรเวทยิม (PrivateGym Co., Ltd.)</strong>
+                </div>
+                <div style="text-align: left;">
+                    <label style="font-size: 11px; color: #a1a1aa; display: block; margin-bottom: 4px;">เลขที่อ้างอิงสลิปโอนเงิน (4-8 หลักท้าย หรือเว้นว่างเพื่อใช้อ้างอิงอัตโนมัติ):</label>
+                    <input type="text" id="chkSlipInputPromptPay" maxlength="20" placeholder="เช่น SLIP9842" oninput="document.getElementById('chkFinalSlipRef').value = this.value" style="width: 100%; background: #181820; border: 1px solid #30303e; border-radius: 7px; padding: 8px 10px; color: #fff; font-size: 12.5px;" />
+                </div>
+            </div>
+
+            <!-- 2. กล่องตัดบัตรเครดิต/เดบิตที่ผูกไว้ -->
+            <div id="chkBoxCreditCard" style="display: none; background: #101015; border: 1px solid #262632; border-radius: 12px; padding: 14px; margin-bottom: 14px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <span style="font-size: 12px; font-weight: 700; color: #ffffff;">บัตรเครดิต / เดบิตที่ผูกไว้กับบัญชี</span>
+                    <span style="background: rgba(34,197,94,0.15); color: #4ade80; font-size: 10.5px; font-weight: 700; padding: 2px 7px; border-radius: 4px;">พร้อมตัดยอด</span>
+                </div>
+                <div style="background: #181820; border: 1px solid #2c2c38; border-radius: 8px; padding: 10px 12px; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <div style="font-size: 13px; font-weight: 700; color: #ffffff;">VISA / MASTERCARD &bull;&bull;&bull;&bull; 4829</div>
+                        <div style="font-size: 11px; color: #a1a1aa;">ผู้ถือบัตร: @ViewBag.FullName</div>
+                    </div>
+                    <span style="font-size: 11px; color: #71717a;">Verified</span>
+                </div>
+            </div>
+
+            <!-- 3. กล่องโอนผ่านบัญชีธนาคาร -->
+            <div id="chkBoxBankTransfer" style="display: none; background: #101015; border: 1px solid #262632; border-radius: 12px; padding: 14px; margin-bottom: 14px;">
+                <div style="font-size: 12px; font-weight: 700; color: #ffffff; margin-bottom: 6px;">โอนเงินเข้าบัญชีธนาคาร</div>
+                <div style="background: #181820; border: 1px solid #2c2c38; border-radius: 8px; padding: 10px 12px; margin-bottom: 10px; font-size: 12px; color: #e4e4e7;">
+                    <div>ธนาคารกสิกรไทย (KBANK)</div>
+                    <div style="font-size: 14px; font-weight: 800; color: #4ade80; margin: 2px 0;">094-2-88412-0</div>
+                    <div style="font-size: 11px; color: #a1a1aa;">ชื่อบัญชี: บริษัท ไพรเวทยิม จำกัด</div>
+                </div>
+                <div>
+                    <label style="font-size: 11px; color: #a1a1aa; display: block; margin-bottom: 4px;">กรอกรหัสอ้างอิงสลิปการโอนเงิน:</label>
+                    <input type="text" id="chkSlipInputBank" maxlength="20" placeholder="เช่น KBANK1029" oninput="document.getElementById('chkFinalSlipRef').value = this.value" style="width: 100%; background: #181820; border: 1px solid #30303e; border-radius: 7px; padding: 8px 10px; color: #fff; font-size: 12.5px;" />
+                </div>
+            </div>
+
+            <input type="hidden" name="slipRef" id="chkFinalSlipRef" value="" />
+
+            <div style="display: flex; gap: 8px;">
+                <button type="button" class="mp-btn-dark w-100" onclick="closeCheckoutModal()" style="justify-content: center;">ยกเลิก</button>
+                <button type="submit" class="mp-btn-red w-100" style="justify-content: center; padding: 11px 14px;">ยืนยันการชำระเงิน</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ================= MODAL ใบเสร็จรับเงิน / ใบกำกับภาษีอย่างย่อ (PDF Receipt Preview) ================= -->
+<div class="mp-sheet-backdrop" id="receiptModalBackdrop" onclick="if(event.target === this) closeReceiptModal()" style="align-items: center; padding: 16px;">
+    <div style="background: #141418; border: 1px solid #2d2d38; border-radius: 16px; width: 100%; max-width: 420px; padding: 24px;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; padding-bottom: 14px; border-bottom: 1px dashed #2c2c36;">
+            <div>
+                <div style="font-size: 11px; font-weight: 800; color: #e50914; letter-spacing: 0.5px;">PRIVATEGYM CO., LTD.</div>
+                <h4 style="font-size: 17px; font-weight: 800; color: #ffffff; margin: 2px 0;">ใบเสร็จรับเงิน / ใบกำกับภาษี</h4>
+                <div style="font-size: 11px; color: #71717a;">เลขผู้เสียภาษี: 0105562098421</div>
+            </div>
+            <span style="background: rgba(34,197,94,0.14); border: 1px solid rgba(34,197,94,0.35); color: #4ade80; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 6px;">ชำระแล้ว</span>
+        </div>
+
+        <div style="font-size: 13px; color: #d4d4d8; display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between;">
+                <span style="color: #71717a;">เลขที่เอกสาร:</span>
+                <strong style="font-family: monospace; color: #fff;" id="rcModalRef">-</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+                <span style="color: #71717a;">วันที่ทำรายการ:</span>
+                <span id="rcModalDate">-</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+                <span style="color: #71717a;">ลูกค้า:</span>
+                <span>@ViewBag.FullName</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+                <span style="color: #71717a;">ช่องทางชำระ:</span>
+                <span id="rcModalMethod">-</span>
+            </div>
+            <div style="padding: 12px; background: #0d0d10; border: 1px solid #24242d; border-radius: 8px; margin-top: 4px;">
+                <div style="font-size: 11.5px; color: #71717a; margin-bottom: 4px;">รายการที่ชำระ</div>
+                <div style="font-size: 13.5px; font-weight: 700; color: #fff;" id="rcModalDesc">-</div>
+                <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 10px; padding-top: 10px; border-top: 1px solid #1f1f27;">
+                    <span style="font-size: 12px; color: #a1a1aa;">ยอดชำระสุทธิ (รวมภาษีมูลค่าเพิ่ม 7%)</span>
+                    <strong style="font-size: 18px; color: #4ade80;" id="rcModalAmount">-</strong>
+                </div>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 10px;">
+            <button type="button" class="mp-btn-dark w-100" onclick="closeReceiptModal()" style="justify-content: center;">ปิดหน้าต่าง</button>
+            <button type="button" class="mp-btn-red w-100" onclick="window.print()" style="justify-content: center;">พิมพ์ / บันทึก PDF</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    function openMobileTopupSheet() {
+        var el = document.getElementById('mobileTopupSheetBackdrop');
+        if (el) el.classList.add('show');
+    }
+
+    function closeMobileTopupSheet() {
+        var el = document.getElementById('mobileTopupSheetBackdrop');
+        if (el) el.classList.remove('show');
+    }
+
+    function openChangePlanModal() {
+        var el = document.getElementById('changePlanModalBackdrop');
+        if (el) el.classList.add('show');
+    }
+
+    function closeChangePlanModal() {
+        var el = document.getElementById('changePlanModalBackdrop');
+        if (el) el.classList.remove('show');
+    }
+
+    // เปิดหน้าต่าง Checkout ยืนยันการชำระเงิน (รองรับทั้ง ซื้อโควต้าเพิ่ม / อัปเกรดทันที / ชำระล่วงหน้ารอบถัดไป)
+    function openCheckoutModal(actionMode, addonType, itemTitle, amount, changeMode) {
+        var form = document.getElementById('checkoutPaymentForm');
+        if (actionMode === 'next_cycle_pay') {
+            form.action = '/Customer/PayScheduledPlanNow';
+        } else {
+            form.action = '/Customer/TopUpQuota';
+        }
+
+        document.getElementById('chkAddonType').value = addonType || '';
+        document.getElementById('chkChangeMode').value = changeMode || 'next_cycle';
+        document.getElementById('chkItemTitle').innerText = itemTitle;
+        document.getElementById('chkAmountDisplay').innerText = '฿' + Number(amount).toLocaleString();
+        document.getElementById('chkFinalSlipRef').value = '';
+
+        var pInput = document.getElementById('chkSlipInputPromptPay');
+        if (pInput) pInput.value = '';
+        var bInput = document.getElementById('chkSlipInputBank');
+        if (bInput) bInput.value = '';
+
+        var currentRadio = document.querySelector('#checkoutPaymentForm input[name="paymentMethod"]:checked');
+        switchCheckoutMethod(currentRadio ? currentRadio.value : '@preferredMethod');
+
+        var el = document.getElementById('checkoutModalBackdrop');
+        if (el) el.classList.add('show');
+    }
+
+    function closeCheckoutModal() {
+        var el = document.getElementById('checkoutModalBackdrop');
+        if (el) el.classList.remove('show');
+    }
+
+    function switchCheckoutMethod(method) {
+        var boxPP = document.getElementById('chkBoxPromptPay');
+        var boxCC = document.getElementById('chkBoxCreditCard');
+        var boxBT = document.getElementById('chkBoxBankTransfer');
+
+        var tabPP = document.getElementById('chkTabPromptPay');
+        var tabCC = document.getElementById('chkTabCreditCard');
+        var tabBT = document.getElementById('chkTabBankTransfer');
+
+        if (boxPP) boxPP.style.display = (method === 'PromptPay') ? 'block' : 'none';
+        if (boxCC) boxCC.style.display = (method === 'CreditCard') ? 'block' : 'none';
+        if (boxBT) boxBT.style.display = (method === 'BankTransfer') ? 'block' : 'none';
+
+        if (tabPP) tabPP.style.borderColor = (method === 'PromptPay') ? '#e50914' : '#323240';
+        if (tabCC) tabCC.style.borderColor = (method === 'CreditCard') ? '#e50914' : '#323240';
+        if (tabBT) tabBT.style.borderColor = (method === 'BankTransfer') ? '#e50914' : '#323240';
+    }
+
+    function openReceiptModal(refNo, dateStr, desc, amount, method) {
+        document.getElementById('rcModalRef').innerText = refNo;
+        document.getElementById('rcModalDate').innerText = dateStr;
+        document.getElementById('rcModalDesc').innerText = desc;
+        document.getElementById('rcModalAmount').innerText = amount;
+        document.getElementById('rcModalMethod').innerText = method || 'สแกน QR PromptPay';
+        var el = document.getElementById('receiptModalBackdrop');
+        if (el) el.classList.add('show');
+    }
+
+    function closeReceiptModal() {
+        var el = document.getElementById('receiptModalBackdrop');
+        if (el) el.classList.remove('show');
+    }
+
+    function syncPaymentMethodInputs(val) {
+        document.querySelectorAll('.js-synced-pay-method').forEach(function (inp) {
+            inp.value = val;
+        });
+    }
+
+    // ระบบป้องกันการกดปุ่มซ้ำย้ำๆ (Client-Side Double-Submit & Rapid-Click Lock)
+    (function () {
+        var isSubmittingAnyForm = false;
+        document.querySelectorAll('form').forEach(function (form) {
+            form.addEventListener('submit', function (e) {
+                if (isSubmittingAnyForm || form.dataset.submitted === 'true') {
+                    e.preventDefault();
+                    return false;
+                }
+                isSubmittingAnyForm = true;
+                form.dataset.submitted = 'true';
+
+                var allBtns = document.querySelectorAll('button[type="submit"]');
+                allBtns.forEach(function (btn) {
+                    btn.disabled = true;
+                    btn.style.pointerEvents = 'none';
+                    btn.style.opacity = '0.6';
+                });
+
+                var clickedBtn = form.querySelector('button[type="submit"]');
+                if (clickedBtn) {
+                    clickedBtn.innerText = 'กำลังดำเนินการ...';
+                }
+            });
+        });
+    })();
+</script>

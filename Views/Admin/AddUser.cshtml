@@ -1,0 +1,174 @@
+@using PrivateGym.Models
+@{
+    ViewData["Title"] = "เพิ่มผู้ใช้งาน";
+    Layout = "~/Views/Shared/Admin/_AdminLayout.cshtml";
+    var branches = ViewBag.Branches as List<Branch> ?? new List<Branch>();
+    var roles = ViewBag.Roles as List<Role> ?? new List<Role>();
+}
+
+<div class="adm-page">
+    <div class="adm-page-head">
+        <div>
+            <h1 class="adm-page-title">เพิ่มผู้ใช้งานใหม่ (Add User)</h1>
+            <p class="adm-page-sub">สร้างบัญชีผู้ใช้ใหม่และบันทึกลงในฐานข้อมูล MySQL</p>
+        </div>
+        <a asp-controller="Admin" asp-action="UserList" class="st-btn-outline">
+            &larr; กลับรายการผู้ใช้
+        </a>
+    </div>
+
+    @if (!string.IsNullOrEmpty(ViewBag.Error))
+    {
+        <div class="alert alert-danger alert-dismissible fade show border-0 bg-danger bg-opacity-25 text-white mb-4" role="alert">
+            <div class="d-flex align-items-center gap-2">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+                <span>@ViewBag.Error</span>
+            </div>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <div class="row justify-content-center">
+        <div class="col-lg-9">
+            <div class="st-table-card" style="padding: 24px;">
+
+                <form asp-controller="Admin" asp-action="AddUser" method="post">
+
+                    <h5 class="fw-bold text-white mb-3 pb-2 border-bottom border-secondary border-opacity-50">
+                        1. ข้อมูลบัญชีผู้ใช้
+                    </h5>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label for="firstName" class="form-label text-white-50 small">ชื่อ <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control form-control-sm border-secondary text-white"
+                                   id="firstName" name="firstName" placeholder="ชื่อจริง" required
+                                   style="background:#1a1a1a;">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="lastName" class="form-label text-white-50 small">นามสกุล</label>
+                            <input type="text" class="form-control form-control-sm border-secondary text-white"
+                                   id="lastName" name="lastName" placeholder="นามสกุล"
+                                   style="background:#1a1a1a;">
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label for="email" class="form-label text-white-50 small">อีเมล (ใช้เข้าสู่ระบบ) <span class="text-danger">*</span></label>
+                            <input type="email" class="form-control form-control-sm border-secondary text-white"
+                                   id="email" name="email" placeholder="example@email.com" required
+                                   style="background:#1a1a1a;">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="phone" class="form-label text-white-50 small">เบอร์โทรศัพท์ <span class="text-danger">*</span></label>
+                            <input type="tel" class="form-control form-control-sm border-secondary text-white"
+                                   id="phone" name="phone" placeholder="08X-XXX-XXXX" required
+                                   style="background:#1a1a1a;">
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label for="role" class="form-label text-white-50 small">บทบาท (Role) <span class="text-danger">*</span></label>
+                            <select class="form-select form-select-sm border-secondary text-white"
+                                    id="role" name="role" required style="background:#1a1a1a;">
+                                @if (roles.Any())
+                                {
+                                    foreach (var r in roles)
+                                    {
+                                        <option value="@r.RoleName" selected="@(r.RoleName == "Member")">@r.RoleName</option>
+                                    }
+                                }
+                                else
+                                {
+                                    <option value="Member">Member</option>
+                                    <option value="Staff">Staff</option>
+                                    <option value="Trainer">Trainer</option>
+                                    <option value="Admin">Admin</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="homeBranchId" class="form-label text-white-50 small">สาขาประจำ (Home Branch)</label>
+                            <select class="form-select form-select-sm border-secondary text-white"
+                                    id="homeBranchId" name="homeBranchId" style="background:#1a1a1a;">
+                                @foreach (var b in branches)
+                                {
+                                    <option value="@b.BranchId">@b.BranchName</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label for="password" class="form-label text-white-50 small">รหัสผ่าน <span class="text-danger">*</span></label>
+                            <input type="password" class="form-control form-control-sm border-secondary text-white"
+                                   id="password" name="password" placeholder="••••••••••••" required
+                                   style="background:#1a1a1a;">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="gender" class="form-label text-white-50 small">เพศ</label>
+                            <select class="form-select form-select-sm border-secondary text-white"
+                                    id="gender" name="gender" style="background:#1a1a1a;">
+                                <option value="Male">ชาย (Male)</option>
+                                <option value="Female">หญิง (Female)</option>
+                                <option value="Other">ไม่ระบุ (Other)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <h5 class="fw-bold text-white mb-3 pb-2 border-bottom border-secondary border-opacity-50">
+                        2. ข้อมูลสุขภาพและฟิตเนส (สำหรับสมาชิก)
+                    </h5>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label for="height" class="form-label text-white-50 small">ส่วนสูง (ซม.)</label>
+                            <input type="number" step="0.5" class="form-control form-control-sm border-secondary text-white"
+                                   id="height" name="height" placeholder="เช่น 175"
+                                   style="background:#1a1a1a;">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="weight" class="form-label text-white-50 small">น้ำหนัก (กก.)</label>
+                            <input type="number" step="0.1" class="form-control form-control-sm border-secondary text-white"
+                                   id="weight" name="weight" placeholder="เช่น 70"
+                                   style="background:#1a1a1a;">
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label for="experienceLevel" class="form-label text-white-50 small">ระดับความชำนาญ</label>
+                            <select class="form-select form-select-sm border-secondary text-white"
+                                    id="experienceLevel" name="experienceLevel" style="background:#1a1a1a;">
+                                <option value="Beginner">Beginner (เริ่มต้น)</option>
+                                <option value="Intermediate" selected>Intermediate (ปานกลาง)</option>
+                                <option value="Advanced">Advanced (เชี่ยวชาญ)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="fitnessGoal" class="form-label text-white-50 small">เป้าหมายการฝึก</label>
+                            <input type="text" class="form-control form-control-sm border-secondary text-white"
+                                   id="fitnessGoal" name="fitnessGoal" placeholder="เช่น Hypertrophy, Fat Loss"
+                                   style="background:#1a1a1a;">
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2 pt-3" style="border-top: 1px solid #18181b;">
+                        <a asp-controller="Admin" asp-action="UserList" class="st-btn-outline">
+                            ยกเลิก
+                        </a>
+                        <button type="submit" class="st-btn-primary">
+                            บันทึกผู้ใช้ลงฐานข้อมูล
+                        </button>
+                    </div>
+
+                </form>
+
+            </div>
+        </div>
+    </div>
+
+</div>

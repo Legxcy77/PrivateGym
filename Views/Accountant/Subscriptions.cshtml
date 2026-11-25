@@ -1,0 +1,121 @@
+@model List<PrivateGym.Models.MemberSubscription>
+
+@{
+    ViewData["Title"] = "รอบบิลสมาชิก";
+    Layout = "~/Views/Shared/Accountant/_AccountantLayout.cshtml";
+
+    var list = Model ?? new List<PrivateGym.Models.MemberSubscription>();
+    var today = DateOnly.FromDateTime(DateTime.Today);
+    string filter = (ViewBag.Filter as string ?? "all").ToLower();
+
+    int allCount = ViewBag.AllCount is int ac ? ac : 0;
+    int activeCount = ViewBag.ActiveCount is int actc ? actc : 0;
+    int scheduledCount = ViewBag.ScheduledCount is int sc ? sc : 0;
+    int expiringCount = ViewBag.ExpiringCount is int exc ? exc : 0;
+    int expiredCount = ViewBag.ExpiredCount is int expc ? expc : 0;
+}
+
+<main class="cd-content">
+    <div class="cd-page-header" style="margin-bottom: 16px;">
+        <div>
+            <h1 class="cd-page-title">ติดตามสัญญาสมาชิกและรอบบิล</h1>
+            <p class="cd-page-subtext">
+                ตรวจสอบวันเริ่มต้น-สิ้นสุดรอบบิลของสมาชิก, รายการรอต่ออายุรอบถัดไป และโควต้าคงเหลือในแต่ละสัญญา
+            </p>
+        </div>
+    </div>
+
+    <div class="acc-filter-bar">
+        <div class="acc-chips">
+            <a asp-controller="Accountant" asp-action="Subscriptions" asp-route-email="@ViewBag.Email" asp-route-filter="all"
+               class="acc-chip @(filter == "all" ? "active" : "")">ทั้งหมด (@allCount)</a>
+            <a asp-controller="Accountant" asp-action="Subscriptions" asp-route-email="@ViewBag.Email" asp-route-filter="active"
+               class="acc-chip @(filter == "active" ? "active" : "")">ใช้งานอยู่ (@activeCount)</a>
+            <a asp-controller="Accountant" asp-action="Subscriptions" asp-route-email="@ViewBag.Email" asp-route-filter="scheduled"
+               class="acc-chip @(filter == "scheduled" ? "active" : "")">รอรอบบิลถัดไป (@scheduledCount)</a>
+            <a asp-controller="Accountant" asp-action="Subscriptions" asp-route-email="@ViewBag.Email" asp-route-filter="expiring"
+               class="acc-chip @(filter == "expiring" ? "active" : "")">ใกล้หมดอายุ &le; 7 วัน (@expiringCount)</a>
+            <a asp-controller="Accountant" asp-action="Subscriptions" asp-route-email="@ViewBag.Email" asp-route-filter="expired"
+               class="acc-chip @(filter == "expired" ? "active" : "")">หมดอายุ / ยกเลิก (@expiredCount)</a>
+        </div>
+    </div>
+
+    <div class="acc-table-card">
+        <div style="overflow-x: auto;">
+            <table class="acc-shadcn-table">
+                <thead>
+                    <tr>
+                        <th class="py-3 px-4">รหัสสัญญา</th>
+                        <th class="py-3">สมาชิก</th>
+                        <th class="py-3">แพ็กเกจ</th>
+                        <th class="py-3">ช่วงรอบบิล</th>
+                        <th class="py-3">โควต้าคงเหลือ (Pod / PT / InBody)</th>
+                        <th class="py-3 px-4">สถานะรอบบิล</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!list.Any())
+                    {
+                        <tr>
+                            <td colspan="6" class="text-center py-5" style="color: #71717a;">ไม่พบข้อมูลสัญญาแพ็กเกจในหมวดหมู่นี้</td>
+                        </tr>
+                    }
+                    else
+                    {
+                        foreach (var sub in list)
+                        {
+                            bool isScheduled = sub.Status == "Active" && sub.StartDate > today;
+                            bool isExpired = sub.Status != "Active" || sub.EndDate < today;
+                            int daysLeft = sub.EndDate.DayNumber - today.DayNumber;
+                            bool isVip = sub.Package?.IsVip ?? false;
+
+                            <tr>
+                                <td class="py-3 px-4" style="color: #a1a1aa; font-weight: 600;">#SUB-@sub.SubscriptionId.ToString("D5")</td>
+                                <td class="py-3">
+                                    <div style="font-weight: 700; color: #ffffff;">@(sub.User?.FullName ?? "-")</div>
+                                    <div style="font-size: 11px; color: #71717a;">@(sub.User?.Email ?? "") &bull; @(sub.User?.HomeBranch?.BranchName ?? "สาขาทองหล่อ")</div>
+                                </td>
+                                <td class="py-3">
+                                    <div class="fw-bold text-white">@(sub.Package?.PackageName ?? "-")</div>
+                                    <div style="font-size: 11px; color: #71717a;">฿@((sub.Package?.Price ?? 0m).ToString("N0"))</div>
+                                </td>
+                                <td class="py-3 text-white-50">
+                                    @sub.StartDate.ToString("dd/MM/yyyy") &ndash; @sub.EndDate.ToString("dd/MM/yyyy")
+                                </td>
+                                <td class="py-3 text-white">
+                                    @if (isVip)
+                                    {
+                                        <span style="color: #4ade80; font-weight: 700;">ไม่จำกัด (VIP)</span>
+                                    }
+                                    else
+                                    {
+                                        <span>@sub.RemainingPods / @sub.RemainingPt / @sub.RemainingInBody</span>
+                                    }
+                                </td>
+                                <td class="py-3 px-4">
+                                    @if (isScheduled)
+                                    {
+                                        <span class="acc-badge acc-badge-amber">รอรอบถัดไป (เริ่ม @sub.StartDate.ToString("dd/MM"))</span>
+                                    }
+                                    else if (isExpired)
+                                    {
+                                        <span class="acc-badge acc-badge-dim">หมดอายุ / ปิดรอบ</span>
+                                    }
+                                    else if (daysLeft <= 7)
+                                    {
+                                        <span class="acc-badge acc-badge-red">ใกล้หมดอายุ (เหลือ @daysLeft วัน)</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="acc-badge acc-badge-green">ใช้งานอยู่ (เหลือ @daysLeft วัน)</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</main>
+

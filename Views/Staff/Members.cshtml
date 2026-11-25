@@ -1,0 +1,102 @@
+@model List<PrivateGym.Models.User>
+
+@{
+    ViewData["Title"] = "รายชื่อสมาชิก";
+    Layout = "~/Views/Shared/Staff/_StaffLayout.cshtml";
+
+    var members = Model ?? new List<PrivateGym.Models.User>();
+    string search = ViewBag.Search as string ?? "";
+    var today = DateOnly.FromDateTime(DateTime.Today);
+}
+
+<main class="cd-content">
+    <!-- Mobile Top Bar -->
+    <div class="pg-m-topbar d-flex d-lg-none">
+        <a asp-controller="Staff" asp-action="Index" asp-route-email="@ViewBag.Email" class="pg-m-topbar-logo-left">
+            <img src="~/images/logo.png" alt="PrivateGym" />
+        </a>
+        <span class="pg-m-topbar-center">รายชื่อสมาชิก</span>
+        <div class="pg-m-topbar-right">
+            <button type="button" class="btn text-white p-1 border-0" onclick="openStaffSidebar()" aria-label="เปิดเมนู">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <line x1="3" y1="12" x2="21" y2="12"></line>
+                    <line x1="3" y1="6" x2="21" y2="6"></line>
+                    <line x1="3" y1="18" x2="21" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+        <div>
+            <h1 class="cd-page-title d-none d-lg-block" style="margin-bottom: 4px;">ฐานข้อมูลสมาชิกประจำสาขา</h1>
+            <p class="cd-page-subtext mb-0">ตรวจสอบสถานะสมาชิก แพ็กเกจปัจจุบัน และโควต้าคงเหลือของลูกค้า</p>
+        </div>
+
+        <form method="get" asp-controller="Staff" asp-action="Members" class="d-flex gap-2 align-items-center">
+            <input type="hidden" name="email" value="@ViewBag.Email" />
+            <input type="text" name="search" value="@search" placeholder="ค้นหาชื่อ, อีเมล, เบอร์โทร..." class="st-input" style="width: 240px;" />
+            <button type="submit" class="st-btn-primary">ค้นหา</button>
+        </form>
+    </div>
+
+    <div class="st-table-card">
+        <div style="overflow-x: auto;">
+            <table class="st-shadcn-table">
+                <thead>
+                    <tr>
+                        <th>สมาชิก</th>
+                        <th>เบอร์โทร</th>
+                        <th>สาขาประจำ</th>
+                        <th>แพ็กเกจปัจจุบัน</th>
+                        <th>โควต้าคงเหลือ (Pod / PT)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!members.Any())
+                    {
+                        <tr>
+                            <td colspan="5" class="text-center py-5" style="color: #71717a;">ไม่พบข้อมูลสมาชิก</td>
+                        </tr>
+                    }
+                    else
+                    {
+                        foreach (var m in members)
+                        {
+                            var activeSub = m.MemberSubscriptions
+                                .Where(s => s.Status == "Active" && s.StartDate <= today)
+                                .OrderByDescending(s => s.SubscriptionId)
+                                .FirstOrDefault();
+                            bool isVip = activeSub?.Package?.IsVip ?? false;
+
+                            <tr>
+                                <td class="py-3 px-4">
+                                    <div style="font-weight: 700; color: #ffffff;">@m.FullName</div>
+                                    <div style="font-size: 11px; color: #71717a;">@m.Email</div>
+                                </td>
+                                <td class="py-3 text-white-50">@m.Phone</td>
+                                <td class="py-3 text-white-50">@(m.HomeBranch?.BranchName ?? "สาขาทองหล่อ")</td>
+                                <td class="py-3 text-white">@(activeSub?.Package?.PackageName ?? "ยังไม่มีแพ็กเกจ")</td>
+                                <td class="py-3 px-4">
+                                    @if (activeSub == null)
+                                    {
+                                        <span style="color: #71717a;">-</span>
+                                    }
+                                    else if (isVip)
+                                    {
+                                        <span style="color: #4ade80; font-weight: 700;">ไม่จำกัด (VIP)</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-white">@activeSub.RemainingPods / @activeSub.RemainingPt</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</main>
+

@@ -1,0 +1,235 @@
+@model List<PrivateGym.Models.Payment>
+
+@{
+    ViewData["Title"] = "ใบเสร็จและใบกำกับภาษี";
+    Layout = "~/Views/Shared/Accountant/_AccountantLayout.cshtml";
+
+    var list = Model ?? new List<PrivateGym.Models.Payment>();
+    string search = ViewBag.Search as string ?? "";
+    string taxOnly = ViewBag.TaxOnly as string ?? "all";
+
+    string FormatMethod(string? m) => m switch
+    {
+        "CreditCard" => "บัตรเครดิต/เดบิต",
+        "BankTransfer" => "โอนผ่านธนาคาร",
+        _ => "QR PromptPay"
+    };
+}
+
+<style>
+    .inv-modal-backdrop {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.78);
+        backdrop-filter: blur(4px);
+        z-index: 10050;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+    }
+
+    .inv-modal-backdrop.show {
+        display: flex;
+    }
+
+    .inv-paper {
+        background: #ffffff;
+        color: #111827;
+        width: 100%;
+        max-width: 620px;
+        border-radius: 14px;
+        padding: 28px 32px;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+
+    @@media print {
+        body * {
+            visibility: hidden;
+        }
+        #invPaperPrint, #invPaperPrint * {
+            visibility: visible;
+        }
+        #invPaperPrint {
+            position: fixed;
+            inset: 0;
+            max-width: 100%;
+            box-shadow: none;
+        }
+        .no-print {
+            display: none !important;
+        }
+    }
+</style>
+
+<main class="cd-content">
+    <div class="cd-page-header" style="margin-bottom: 16px;">
+        <div>
+            <h1 class="cd-page-title">ใบเสร็จรับเงินและใบกำกับภาษี</h1>
+            <p class="cd-page-subtext">
+                รายการที่ชำระเงินสำเร็จแล้ว พร้อมตรวจสอบเลขประจำตัวผู้เสียภาษี (Tax ID) และที่อยู่ออกใบกำกับภาษีของสมาชิก
+            </p>
+        </div>
+    </div>
+
+    <div class="acc-filter-bar">
+        <div class="acc-chips">
+            <a asp-controller="Accountant" asp-action="TaxInvoices" asp-route-email="@ViewBag.Email" asp-route-taxOnly="all" asp-route-search="@search"
+               class="acc-chip @(taxOnly == "all" ? "active" : "")">
+                ใบเสร็จทั้งหมด (@list.Count)
+            </a>
+            <a asp-controller="Accountant" asp-action="TaxInvoices" asp-route-email="@ViewBag.Email" asp-route-taxOnly="tax" asp-route-search="@search"
+               class="acc-chip @(taxOnly == "tax" ? "active" : "")">
+                เฉพาะผู้ระบุ Tax ID
+            </a>
+        </div>
+
+        <form method="get" asp-controller="Accountant" asp-action="TaxInvoices" class="d-flex gap-2 align-items-center flex-wrap">
+            <input type="hidden" name="email" value="@ViewBag.Email" />
+            <input type="hidden" name="taxOnly" value="@taxOnly" />
+            <input type="text" name="search" value="@search" placeholder="ค้นหาชื่อ, Tax ID, เลขใบเสร็จ..." class="acc-input" style="width: 240px;" />
+            <button type="submit" class="acc-btn-primary">ค้นหา</button>
+        </form>
+    </div>
+
+    <div class="acc-table-card">
+        <div style="overflow-x: auto;">
+            <table class="acc-shadcn-table">
+                <thead>
+                    <tr>
+                        <th>เลขที่ใบเสร็จ / อ้างอิง</th>
+                        <th>ชื่อลูกค้า / ผู้เสียภาษี</th>
+                        <th>เลขประจำตัวผู้เสียภาษี (Tax ID)</th>
+                        <th>รายการแพ็กเกจ</th>
+                        <th class="py-3">ยอดรวม (รวม VAT 7%)</th>
+                        <th class="py-3">วันที่ออกเอกสาร</th>
+                        <th class="py-3 px-4 text-end">เอกสาร</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!list.Any())
+                    {
+                        <tr>
+                            <td colspan="7" class="text-center py-5" style="color: #71717a;">ไม่พบรายการใบเสร็จรับเงิน</td>
+                        </tr>
+                    }
+                    else
+                    {
+                        foreach (var item in list)
+                        {
+                            string invNo = !string.IsNullOrWhiteSpace(item.SlipReference) ? item.SlipReference : $"INV-{item.PaymentId:D5}";
+                            string customerName = item.User?.FullName ?? "-";
+                            string taxId = string.IsNullOrWhiteSpace(item.User?.TaxId) ? "ไม่ได้ระบุ (ใบเสร็จอย่างย่อ)" : item.User.TaxId;
+                            string billingAddr = string.IsNullOrWhiteSpace(item.User?.BillingAddress)
+                                ? (item.User?.HomeBranch?.BranchName ?? "สาขาทองหล่อ กรุงเทพมหานคร")
+                                : item.User.BillingAddress;
+                            string pkgName = item.Package?.PackageName ?? "ค่าบริการสมาชิก PrivateGym";
+                            string payDateStr = item.PaymentDate.HasValue ? item.PaymentDate.Value.ToString("dd/MM/yyyy HH:mm") : DateTime.Now.ToString("dd/MM/yyyy HH:mm");
+
+                            <tr>
+                                <td class="py-3 px-4" style="font-weight: 700; color: #fff;">@invNo</td>
+                                <td class="py-3">
+                                    <div style="font-weight: 700; color: #ffffff;">@customerName</div>
+                                    <div style="font-size: 11px; color: #71717a;">@billingAddr</div>
+                                </td>
+                                <td class="py-3" style="color: @(string.IsNullOrWhiteSpace(item.User?.TaxId) ? "#71717a" : "#4ade80"); font-weight: 600;">
+                                    @taxId
+                                </td>
+                                <td class="py-3 text-white">@pkgName</td>
+                                <td class="py-3 fw-bold text-white">฿@item.Amount.ToString("N2")</td>
+                                <td class="py-3 text-white-50">@payDateStr</td>
+                                <td class="py-3 px-4 text-end">
+                                    <button type="button" class="btn btn-sm btn-outline-light" style="font-size: 12px; border-color: #343442;"
+                                            onclick="openInvoiceModal('@invNo', '@customerName.Replace("'", "\\'")', '@taxId.Replace("'", "\\'")', '@billingAddr.Replace("'", "\\'")', '@pkgName.Replace("'", "\\'")', '@FormatMethod(item.PaymentMethod)', '@item.Amount.ToString("N2")', '@payDateStr')">
+                                        เปิดใบกำกับภาษี / พิมพ์
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</main>
+
+<!-- Modal แสดงใบเสร็จรับเงิน / ใบกำกับภาษีแบบพร้อมพิมพ์ -->
+<div class="inv-modal-backdrop" id="invModalBackdrop" onclick="if(event.target===this) closeInvoiceModal();">
+    <div class="inv-paper" id="invPaperPrint">
+        <div class="d-flex justify-content-between align-items-start pb-3 mb-3 border-bottom">
+            <div>
+                <h4 class="fw-bold mb-1" style="color: #111827;">บริษัท ไพรเวทยิม คลับ จำกัด (PrivateGym)</h4>
+                <div style="font-size: 12px; color: #4b5563;">เลขประจำตัวผู้เสียภาษีบริษัท: 0105566123456 (สำนักงานใหญ่)</div>
+                <div style="font-size: 12px; color: #4b5563;">ซอยทองหล่อ แขวงคลองตันเหนือ เขตวัฒนา กรุงเทพฯ 10110</div>
+            </div>
+            <div class="text-end">
+                <span class="badge bg-dark px-3 py-2" style="font-size: 12px;">ใบเสร็จรับเงิน / ใบกำกับภาษี</span>
+                <div class="mt-2 fw-bold" style="font-family: monospace; font-size: 13px;" id="mInvNo">-</div>
+            </div>
+        </div>
+
+        <div class="row g-2 mb-3" style="font-size: 13px;">
+            <div class="col-7">
+                <div class="text-muted" style="font-size: 11.5px;">ชื่อลูกค้า / นิติบุคคล</div>
+                <div class="fw-bold" id="mInvCustomer">-</div>
+                <div class="text-muted mt-1" style="font-size: 11.5px;">ที่อยู่ออกใบกำกับภาษี</div>
+                <div id="mInvAddress">-</div>
+            </div>
+            <div class="col-5 text-end">
+                <div class="text-muted" style="font-size: 11.5px;">เลขประจำตัวผู้เสียภาษีลูกค้า</div>
+                <div class="fw-bold" style="font-family: monospace;" id="mInvTaxId">-</div>
+                <div class="text-muted mt-1" style="font-size: 11.5px;">วันที่ออกเอกสาร</div>
+                <div id="mInvDate">-</div>
+            </div>
+        </div>
+
+        <table class="table table-bordered mb-3" style="font-size: 13px;">
+            <thead class="table-light">
+                <tr>
+                    <th>รายการ</th>
+                    <th>ช่องทางชำระ</th>
+                    <th class="text-end">จำนวนเงิน (บาท)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td id="mInvPkg">-</td>
+                    <td id="mInvMethod">-</td>
+                    <td class="text-end fw-bold" id="mInvTotal">-</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="d-flex justify-content-between align-items-center pt-2 border-top mb-3" style="font-size: 13px;">
+            <span class="text-muted">รวมภาษีมูลค่าเพิ่ม 7% แล้ว</span>
+            <span class="fs-5 fw-bold text-dark">ยอดสุทธิ ฿<span id="mInvNet">0.00</span></span>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2 no-print">
+            <button type="button" class="btn btn-secondary btn-sm px-3" onclick="closeInvoiceModal()">ปิดหน้าต่าง</button>
+            <button type="button" class="btn btn-danger btn-sm px-4 fw-bold" onclick="window.print()">สั่งพิมพ์ / บันทึก PDF</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    function openInvoiceModal(invNo, customer, taxId, address, pkg, method, amount, dateStr) {
+        document.getElementById('mInvNo').innerText = invNo;
+        document.getElementById('mInvCustomer').innerText = customer;
+        document.getElementById('mInvTaxId').innerText = taxId;
+        document.getElementById('mInvAddress').innerText = address;
+        document.getElementById('mInvPkg').innerText = pkg;
+        document.getElementById('mInvMethod').innerText = method;
+        document.getElementById('mInvTotal').innerText = '฿' + amount;
+        document.getElementById('mInvNet').innerText = amount;
+        document.getElementById('mInvDate').innerText = dateStr;
+        document.getElementById('invModalBackdrop').classList.add('show');
+    }
+
+    function closeInvoiceModal() {
+        document.getElementById('invModalBackdrop').classList.remove('show');
+    }
+</script>
+

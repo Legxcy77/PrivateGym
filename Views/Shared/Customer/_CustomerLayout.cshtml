@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>@ViewData["Title"] - PrivateGym</title>
+    <link rel="icon" type="image/png" href="~/IconPrivate.png" asp-append-version="true" />
+
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/CustomerDashboard.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/CustomerMobileApp.css" asp-append-version="true" />
+</head>
+<body class="customer-dashboard-body">
+
+    <!-- Mobile Offcanvas Backdrop -->
+    <div class="cd-sidebar-backdrop" id="cdSidebarBackdrop"></div>
+
+    <!-- ================= SIDEBAR CUSTOMER LAYOUT ================= -->
+    <aside class="cd-sidebar" id="cdSidebar">
+        <div>
+            <!-- Header of Sidebar with Logo and Mobile Close Button -->
+            <div class="d-flex align-items-center justify-content-between pb-2 mb-2 border-bottom border-secondary border-opacity-25">
+                <a asp-controller="Customer" asp-action="Index" asp-route-email="@ViewBag.Email" class="cd-sidebar-logo p-0 m-0 border-0">
+                    <img src="~/images/logo.png" alt="PrivateGym" class="cd-sidebar-logo-img" />
+                </a>
+                <button type="button" class="btn text-white-50 d-lg-none border-0 p-2" id="cdSidebarCloseBtn" aria-label="Close Menu" style="font-size: 24px; line-height: 1;">
+                    &times;
+                </button>
+            </div>
+
+            <div class="cd-sidebar-menu-title">เมนูหลัก</div>
+            <ul class="cd-sidebar-nav">
+                <li class="cd-nav-item @(ViewContext.RouteData.Values["Action"]?.ToString() == "Index" ? "active" : "")">
+                    <a asp-controller="Customer" asp-action="Index" asp-route-email="@ViewBag.Email">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/>
+                        </svg>
+                        <span>หน้าแรก</span>
+                    </a>
+                </li>
+                
+                <li class="cd-nav-item @(ViewContext.RouteData.Values["Action"]?.ToString() == "BookSession" ? "active" : "")">
+                    <a asp-controller="Customer" asp-action="BookSession" asp-route-email="@ViewBag.Email">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="8" x2="12" y2="16"></line>
+                            <line x1="8" y1="12" x2="16" y2="12"></line>
+                        </svg>
+                        <span>จองบริการ</span>
+                    </a>
+                </li>
+                <li class="cd-nav-item @(ViewContext.RouteData.Values["Action"]?.ToString() == "MyBookings" ? "active" : "")">
+                    <a asp-controller="Customer" asp-action="MyBookings" asp-route-email="@ViewBag.Email">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="16" y1="2" x2="16" y2="6"></line>
+                            <line x1="8" y1="2" x2="8" y2="6"></line>
+                            <line x1="3" y1="10" x2="21" y2="10"></line>
+                        </svg>
+                        <span>การจองของฉัน</span>
+                    </a>
+                </li>
+                <li class="cd-nav-item @(ViewContext.RouteData.Values["Action"]?.ToString() == "MyPackages" ? "active" : "")">
+                    <a asp-controller="Customer" asp-action="MyPackages" asp-route-email="@ViewBag.Email">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                        </svg>
+                        <span>แพ็กเกจของฉัน</span>
+                    </a>
+                </li>
+                <li class="cd-nav-item @(ViewContext.RouteData.Values["Action"]?.ToString() == "ServiceHistory" ? "active" : "")">
+                    <a asp-controller="Customer" asp-action="ServiceHistory" asp-route-email="@ViewBag.Email">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 6 12 12 16 14"></polyline>
+                        </svg>
+                        <span>ประวัติการใช้บริการ</span>
+                    </a>
+                </li>
+                <li class="cd-nav-item @(ViewContext.RouteData.Values["Action"]?.ToString() == "EditProfile" || ViewContext.RouteData.Values["Action"]?.ToString() == "Support" ? "active" : "")">
+                    <a asp-controller="Customer" asp-action="EditProfile" asp-route-email="@ViewBag.Email">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                        <span>ข้อมูลส่วนตัว</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        <div class="cd-sidebar-bottom">
+            <span>SECURITY STATUS</span>
+            <span class="cd-status-dot"></span>
+            <span style="color: #22c55e;">ACTIVE</span>
+        </div>
+    </aside>
+
+    <!-- ================= MAIN WRAPPER ================= -->
+    <div class="cd-main-wrapper">
+        @{
+            string currentAct = ViewContext.RouteData.Values["Action"]?.ToString() ?? "Index";
+            string headerCenterTitle = currentAct switch
+            {
+                "BookSession" => "จองบริการ",
+                "MyBookings" => "การจองของฉัน",
+                "MyPackages" => "แพ็กเกจของฉัน",
+                "ServiceHistory" => "ประวัติการใช้บริการ",
+                "EditProfile" => "ข้อมูลส่วนตัว",
+                "Support" => "ติดต่อสอบถาม",
+                _ => "หน้าแรก"
+            };
+        }
+        <!-- Top Bar (Desktop Only - Mobile uses native in-app headers) -->
+        <header class="cd-topbar d-none d-lg-flex" style="position: sticky; top: 0;">
+            <div class="d-flex align-items-center gap-2">
+                <div class="cd-breadcrumb">
+                    <span>PrivateGym</span>
+                    <span>/</span>
+                    <span class="active">@headerCenterTitle</span>
+                </div>
+            </div>
+
+            <div class="cd-topbar-right">
+                <div class="cd-quota-badge d-none d-sm-inline-flex">
+                    @(ViewBag.QuotaBadge ?? "Pod: 8 ครั้ง • PT: 4 ครั้ง")
+                </div>
+
+                <button class="cd-icon-btn d-none d-sm-inline-flex" title="การแจ้งเตือน" aria-label="Notifications">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                        <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                    </svg>
+                    <span class="cd-bell-dot"></span>
+                </button>
+
+                <!-- Hamburger Drawer Trigger on Mobile (Moved to right on mobile) -->
+                <button type="button" class="btn text-white p-2 d-lg-none border-0 cd-mobile-toggle-btn" id="cdMobileToggleBtn" aria-label="Open Navigation" title="เปิดเมนู">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="3" y1="12" x2="21" y2="12"></line>
+                        <line x1="3" y1="6" x2="21" y2="6"></line>
+                        <line x1="3" y1="18" x2="21" y2="18"></line>
+                    </svg>
+                </button>
+
+                <!-- Desktop-only Profile Dropdown Menu (on Mobile, functions are inside Profile tab) -->
+                <div class="dropdown d-none d-lg-block" style="position: relative;">
+                    @{
+                        string displayName = ViewData["FullName"]?.ToString() ?? "คุณปวริศร์ ธรรมวงค์";
+                        string displayEmail = ViewBag.Email?.ToString() ?? "member@privategym.club";
+                        char initialChar = string.IsNullOrEmpty(displayName) ? 'P' : displayName.TrimStart("คุณ".ToCharArray()).Trim().FirstOrDefault();
+                        if (initialChar == '\0') initialChar = 'P';
+                    }
+                    <button class="shadcn-profile-trigger" type="button" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false" aria-label="User Profile">
+                        <div class="cd-user-avatar">
+                            @initialChar
+                        </div>
+                        <div class="cd-user-info text-start d-none d-sm-flex">
+                            <span class="cd-user-name">@displayName</span>
+                            <span class="cd-user-role">@displayEmail</span>
+                        </div>
+                        <svg class="shadcn-chevron d-none d-sm-inline" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </button>
+
+                    <div class="dropdown-menu dropdown-menu-end shadcn-dropdown-menu">
+                        <!-- User Header Info -->
+                        <div class="shadcn-menu-header">
+                            <div class="d-flex align-items-center justify-content-between mb-1">
+                                <span class="fw-semibold text-white" style="font-size: 13.5px;">@displayName</span>
+                                <span class="shadcn-status-badge">Active</span>
+                            </div>
+                            <span class="text-muted" style="font-size: 11.5px; word-break: break-all;">@displayEmail</span>
+                        </div>
+
+                        <div class="shadcn-dropdown-divider"></div>
+
+                        <!-- Menu Items -->
+                        <a class="shadcn-menu-item" asp-controller="Customer" asp-action="Index" asp-route-email="@ViewBag.Email">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="7" height="7"></rect>
+                                <rect x="14" y="3" width="7" height="7"></rect>
+                                <rect x="14" y="14" width="7" height="7"></rect>
+                                <rect x="3" y="14" width="7" height="7"></rect>
+                            </svg>
+                            <span>ภาพรวมการใช้งาน</span>
+                        </a>
+
+                        <a class="shadcn-menu-item" asp-controller="Customer" asp-action="MyPackages" asp-route-email="@ViewBag.Email">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                                <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                            </svg>
+                            <span>แพ็กเกจและสิทธิ์สมาชิก</span>
+                        </a>
+
+                        <a class="shadcn-menu-item" asp-controller="Customer" asp-action="EditProfile" asp-route-email="@ViewBag.Email">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="12" cy="7" r="4"></circle>
+                            </svg>
+                            <span>แก้ไขข้อมูลส่วนตัว</span>
+                        </a>
+
+                        <div class="shadcn-dropdown-divider"></div>
+
+                        <a class="shadcn-menu-item shadcn-item-danger" asp-controller="Login" asp-action="Index">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                                <polyline points="16 17 21 12 16 7"></polyline>
+                                <line x1="21" y1="12" x2="9" y2="12"></line>
+                            </svg>
+                            <span>ออกจากระบบ</span>
+                            <span class="shadcn-shortcut text-danger opacity-75">Log out</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Content Body จาก RenderBody -->
+        <div class="cd-main-content">
+            @RenderBody()
+        </div>
+    </div>
+
+    <!-- ================= ADAPTIVE MOBILE BOTTOM NAVIGATION BAR ================= -->
+    <nav class="cd-bottom-nav d-lg-none" id="customerBottomNav">
+        <!-- 1. หน้าหลัก (Home) -->
+        <a asp-controller="Customer" asp-action="Index" asp-route-email="@ViewBag.Email" 
+           class="cd-bnav-item @(ViewContext.RouteData.Values["Action"]?.ToString() == "Index" ? "active" : "")">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                <polyline points="9 22 9 12 15 12 15 22"></polyline>
+            </svg>
+            <span>หน้าหลัก</span>
+        </a>
+
+        <!-- 2. แพ็กเกจ (Packages) -->
+        <a asp-controller="Customer" asp-action="MyPackages" asp-route-email="@ViewBag.Email" 
+           class="cd-bnav-item @(ViewContext.RouteData.Values["Action"]?.ToString() == "MyPackages" ? "active" : "")">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+            </svg>
+            <span>แพ็กเกจ</span>
+        </a>
+
+        <!-- 3. จองบริการ (ตรงกลาง เด่นพิเศษ Raised Action Button) -->
+        <a asp-controller="Customer" asp-action="BookSession" asp-route-email="@ViewBag.Email" class="cd-bnav-item-fab">
+            <div class="cd-bnav-fab-circle">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+            </div>
+            <span class="cd-bnav-fab-label">จองบริการ</span>
+        </a>
+
+        <!-- 4. การจอง (Bookings - อยู่ฝั่งขวา เข้าถึงง่ายด้วยนิ้วโป้ง) -->
+        <a asp-controller="Customer" asp-action="MyBookings" asp-route-email="@ViewBag.Email" 
+           class="cd-bnav-item @(ViewContext.RouteData.Values["Action"]?.ToString() == "MyBookings" ? "active" : "")">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+            <span>การจอง</span>
+        </a>
+
+        <!-- 5. โปรไฟล์ (Profile) -->
+        <a asp-controller="Customer" asp-action="EditProfile" asp-route-email="@ViewBag.Email" 
+           class="cd-bnav-item @(ViewContext.RouteData.Values["Action"]?.ToString() == "EditProfile" || ViewContext.RouteData.Values["Action"]?.ToString() == "Support" ? "active" : "")">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            <span>โปรไฟล์</span>
+        </a>
+    </nav>
+
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        // ================= MOBILE SIDEBAR DRAWER TOGGLE =================
+        const cdSidebar = document.getElementById('cdSidebar');
+        const cdBackdrop = document.getElementById('cdSidebarBackdrop');
+        const cdToggleBtn = document.getElementById('cdMobileToggleBtn');
+        const cdCloseBtn = document.getElementById('cdSidebarCloseBtn');
+
+        function openSidebar() {
+            if (cdSidebar) cdSidebar.classList.add('mobile-open');
+            if (cdBackdrop) cdBackdrop.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeSidebar() {
+            if (cdSidebar) cdSidebar.classList.remove('mobile-open');
+            if (cdBackdrop) cdBackdrop.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        if (cdToggleBtn) cdToggleBtn.addEventListener('click', openSidebar);
+        if (cdCloseBtn) cdCloseBtn.addEventListener('click', closeSidebar);
+        if (cdBackdrop) cdBackdrop.addEventListener('click', closeSidebar);
+
+        // ================= ADAPTIVE BOTTOM NAV (ALWAYS VISIBLE ON MOBILE) =================
+        const bottomNav = document.getElementById('customerBottomNav');
+        if (bottomNav) {
+            bottomNav.classList.remove('nav-hidden');
+        }
+
+        // Helper navigation scrolls
+        function scrollToBookingSection(e) {
+            const target = document.getElementById('customerBookingSection');
+            if (target) {
+                e.preventDefault();
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+
+        function scrollToQuotaSection(e) {
+            const target = document.getElementById('customerQuotaSection');
+            if (target) {
+                e.preventDefault();
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+    </script>
+
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

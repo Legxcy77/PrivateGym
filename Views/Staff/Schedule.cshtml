@@ -1,0 +1,550 @@
+@model List<PrivateGym.Models.Booking>
+@using PrivateGym.Models
+
+@{
+    ViewData["Title"] = "ตารางการใช้ห้อง (Schedule)";
+    Layout = "~/Views/Shared/Staff/_StaffLayout.cshtml";
+
+    var bookings = Model ?? new List<Booking>();
+    var pods = ViewBag.Pods as List<Pod> ?? new List<Pod>();
+    var trainers = ViewBag.Trainers as List<Trainer> ?? new List<Trainer>();
+    var branches = ViewBag.Branches as List<Branch> ?? new List<Branch>();
+    var branchPodCounts = ViewBag.BranchPodCounts as Dictionary<int, int> ?? new Dictionary<int, int>();
+    int totalAllPods = ViewBag.TotalAllPods is int tap ? tap : 0;
+    int selectedBranchId = ViewBag.SelectedBranchId is int sb ? sb : 0;
+    var selectedDate = ViewBag.SelectedDate is DateOnly sd ? sd : DateOnly.FromDateTime(DateTime.Today);
+    var today = DateOnly.FromDateTime(DateTime.Today);
+    var nowTime = TimeOnly.FromDateTime(DateTime.Now);
+    string viewMode = ViewBag.ViewMode as string ?? "pod";
+
+    var slots = new[]
+    {
+        new { Code = "SLOT 01", Start = "08:00", End = "09:15", StartTime = new TimeOnly(8, 0),  EndTime = new TimeOnly(9, 15),  IsPeak = false },
+        new { Code = "SLOT 02", Start = "09:30", End = "10:45", StartTime = new TimeOnly(9, 30), EndTime = new TimeOnly(10, 45), IsPeak = false },
+        new { Code = "SLOT 03", Start = "11:00", End = "12:15", StartTime = new TimeOnly(11, 0), EndTime = new TimeOnly(12, 15), IsPeak = false },
+        new { Code = "SLOT 04", Start = "14:00", End = "15:15", StartTime = new TimeOnly(14, 0), EndTime = new TimeOnly(15, 15), IsPeak = false },
+        new { Code = "SLOT 05", Start = "18:00", End = "19:15", StartTime = new TimeOnly(18, 0), EndTime = new TimeOnly(19, 15), IsPeak = true },
+        new { Code = "SLOT 06", Start = "19:30", End = "20:45", StartTime = new TimeOnly(19, 30), EndTime = new TimeOnly(20, 45), IsPeak = true }
+    };
+
+    int totalCapacitySlots = pods.Count * slots.Length;
+    int bookedSlotsCount = bookings.Count;
+    int availableSlotsCount = Math.Max(0, totalCapacitySlots - bookedSlotsCount);
+    double occupancyPct = totalCapacitySlots > 0 ? Math.Round((double)bookedSlotsCount * 100.0 / totalCapacitySlots, 1) : 0;
+
+    int checkedInOrCompleted = bookings.Count(b => b.Status == "Completed" || (b.CheckIns != null && b.CheckIns.Any()));
+    int activeInRoomCount = bookings.Count(b => b.Status != "Completed" && b.CheckIns != null && b.CheckIns.Any(c => c.CheckOutTime == null));
+    int ptSessionsCount = bookings.Count(b => b.TrainerId != null);
+    int soloSessionsCount = bookings.Count(b => b.TrainerId == null);
+
+    var prevDate = selectedDate.AddDays(-1).ToString("yyyy-MM-dd");
+    var nextDate = selectedDate.AddDays(1).ToString("yyyy-MM-dd");
+    var todayStr = today.ToString("yyyy-MM-dd");
+}
+
+<style>
+    .sch-toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 14px;
+    }
+
+    .sch-date-group {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: #0c0c0f;
+        border: 1px solid #27272a;
+        border-radius: 10px;
+        padding: 4px;
+    }
+
+    .sch-date-btn {
+        height: 32px;
+        padding: 0 12px;
+        border-radius: 7px;
+        background: transparent;
+        border: none;
+        color: #d4d4d8;
+        font-size: 12.5px;
+        font-weight: 500;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        transition: background-color 0.15s ease;
+    }
+
+    .sch-date-btn:hover {
+        background: #18181b;
+        color: #ffffff;
+    }
+
+    .sch-date-input {
+        height: 32px;
+        background: #121216;
+        border: 1px solid #27272a;
+        border-radius: 7px;
+        color: #fafafa;
+        font-size: 12.5px;
+        padding: 0 10px;
+        color-scheme: dark;
+    }
+
+    .sch-legend-bar {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        background: #0c0c0f;
+        border: 1px solid #27272a;
+        border-radius: 10px;
+        padding: 10px 16px;
+        margin-bottom: 16px;
+        font-size: 12px;
+        color: #a1a1aa;
+    }
+
+    .sch-legend-items {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+        align-items: center;
+    }
+
+    .sch-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 9999px;
+        display: inline-block;
+        margin-right: 6px;
+    }
+
+    .sch-grid-wrap {
+        background: #0c0c0f;
+        border: 1px solid #27272a;
+        border-radius: 12px;
+        overflow: hidden;
+        margin-bottom: 18px;
+    }
+
+    .sch-grid-table {
+        width: 100%;
+        table-layout: fixed;
+        border-collapse: collapse;
+        min-width: 1120px;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .sch-grid-table thead th {
+        background: #121216;
+        border-bottom: 1px solid #27272a;
+        border-right: 1px solid #1f1f24;
+        padding: 12px 10px;
+        text-align: center;
+        font-weight: 500;
+        color: #fafafa;
+        font-size: 12.5px;
+    }
+
+    .sch-grid-table thead th:first-child {
+        text-align: left;
+        width: 200px;
+        padding-left: 16px;
+    }
+
+    .sch-ellipsis {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .sch-grid-table thead th:last-child {
+        border-right: none;
+    }
+
+    .sch-grid-table thead th.is-current {
+        background: rgba(34, 197, 94, 0.08);
+        border-top: 2px solid #22c55e;
+    }
+
+    .sch-grid-table thead th.is-peak {
+        color: #fca5a5;
+    }
+
+    .sch-grid-table tbody td {
+        border-bottom: 1px solid #1f1f24;
+        border-right: 1px solid #1f1f24;
+        padding: 8px;
+        vertical-align: top;
+        height: 98px;
+    }
+
+    .sch-grid-table tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    .sch-grid-table tbody td:last-child {
+        border-right: none;
+    }
+
+    .sch-row-head {
+        padding: 12px 16px !important;
+        background: #0e0e12;
+        vertical-align: middle !important;
+    }
+
+    .sch-slot-card {
+        height: 100%;
+        min-height: 82px;
+        border-radius: 8px;
+        padding: 9px 11px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        font-size: 12px;
+        border: 1px solid #27272a;
+        background: #131318;
+    }
+
+    .sch-slot-card.booked {
+        border-left: 3px solid #e50914;
+        background: rgba(229, 9, 20, 0.06);
+    }
+
+    .sch-slot-card.inroom {
+        border-left: 3px solid #22c55e;
+        background: rgba(34, 197, 94, 0.08);
+    }
+
+    .sch-slot-card.past {
+        opacity: 0.68;
+        background: #101014;
+    }
+
+    .sch-slot-card.maint {
+        border: 1px dashed rgba(245, 158, 11, 0.45);
+        background: rgba(245, 158, 11, 0.06);
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        color: #fcd34d;
+    }
+
+    .sch-slot-empty {
+        height: 100%;
+        min-height: 82px;
+        border-radius: 8px;
+        border: 1px dashed #23232a;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11.5px;
+        color: #52525b;
+    }
+
+    .sch-summary-3 {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 14px;
+    }
+
+    .sch-sum-card {
+        background: #0c0c0f;
+        border: 1px solid #27272a;
+        border-radius: 12px;
+        padding: 18px 20px;
+    }
+
+    .sch-trainer-mini-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+        margin-top: 10px;
+    }
+
+    .sch-trainer-mini {
+        background: #121216;
+        border: 1px solid #22222a;
+        border-radius: 8px;
+        padding: 8px 10px;
+        text-align: center;
+    }
+
+    @@media (max-width: 991.98px) {
+        .sch-summary-3 {
+            grid-template-columns: 1fr;
+        }
+        .sch-trainer-mini-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+</style>
+
+<main class="cd-content">
+    <!-- Mobile Top Bar -->
+    <div class="pg-m-topbar d-flex d-lg-none no-print">
+        <a asp-controller="Staff" asp-action="Index" asp-route-email="@ViewBag.Email" class="pg-m-topbar-logo-left">
+            <img src="~/images/logo.png" alt="PrivateGym" />
+        </a>
+        <span class="pg-m-topbar-center">ตารางการใช้ห้อง</span>
+        <div class="pg-m-topbar-right">
+            <button type="button" class="btn text-white p-1 border-0" onclick="openStaffSidebar()" aria-label="เปิดเมนู">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <line x1="3" y1="12" x2="21" y2="12"></line>
+                    <line x1="3" y1="6" x2="21" y2="6"></line>
+                    <line x1="3" y1="18" x2="21" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <div class="cd-page-header d-none d-lg-flex">
+        <div>
+            <h1 class="cd-page-title">ตารางเวลาการใช้ห้องฝึกและเทรนเนอร์ (Master Schedule Grid)</h1>
+            <p class="cd-page-subtext">แสดงข้อมูลการจองห้อง Pod และคิวเทรนเนอร์จริงจากระบบแบบ Real-time ประจำวันที่ @selectedDate.ToString("dd/MM/yyyy")</p>
+        </div>
+    </div>
+
+    <!-- Toolbar: Date Picker + Branch Filter + View Mode Toggle -->
+    <div class="sch-toolbar no-print">
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <div class="sch-date-group">
+                <a asp-controller="Staff" asp-action="Schedule" asp-route-email="@ViewBag.Email" asp-route-date="@prevDate" asp-route-viewMode="@viewMode" asp-route-branchId="@selectedBranchId" class="sch-date-btn">&lsaquo; ก่อนหน้า</a>
+                <a asp-controller="Staff" asp-action="Schedule" asp-route-email="@ViewBag.Email" asp-route-date="@todayStr" asp-route-viewMode="@viewMode" asp-route-branchId="@selectedBranchId" class="sch-date-btn @(selectedDate == today ? "text-white" : "")">วันนี้</a>
+                <a asp-controller="Staff" asp-action="Schedule" asp-route-email="@ViewBag.Email" asp-route-date="@nextDate" asp-route-viewMode="@viewMode" asp-route-branchId="@selectedBranchId" class="sch-date-btn">ถัดไป &rsaquo;</a>
+                <form method="get" asp-controller="Staff" asp-action="Schedule" class="d-inline-flex align-items-center ms-1">
+                    <input type="hidden" name="email" value="@ViewBag.Email" />
+                    <input type="hidden" name="viewMode" value="@viewMode" />
+                    <input type="hidden" name="branchId" value="@selectedBranchId" />
+                    <input type="date" name="date" value="@selectedDate.ToString("yyyy-MM-dd")" class="sch-date-input" onchange="this.form.submit()" />
+                </form>
+            </div>
+
+            <form method="get" asp-controller="Staff" asp-action="Schedule" class="d-inline-flex align-items-center">
+                <input type="hidden" name="email" value="@ViewBag.Email" />
+                <input type="hidden" name="viewMode" value="@viewMode" />
+                <input type="hidden" name="date" value="@selectedDate.ToString("yyyy-MM-dd")" />
+                <select name="branchId" class="st-input" style="min-width: 210px;" onchange="this.form.submit()">
+                    <option value="0" selected="@(selectedBranchId == 0)">ทุกสาขา (@branches.Count สาขา &bull; @totalAllPods Pods)</option>
+                    @foreach (var br in branches)
+                    {
+                        int podCnt = branchPodCounts.GetValueOrDefault(br.BranchId, 0);
+                        <option value="@br.BranchId" selected="@(selectedBranchId == br.BranchId)">@br.BranchName (@podCnt Pods)</option>
+                    }
+                </select>
+            </form>
+        </div>
+
+        <div class="st-chips">
+            <a asp-controller="Staff" asp-action="Schedule" asp-route-email="@ViewBag.Email" asp-route-date="@selectedDate.ToString("yyyy-MM-dd")" asp-route-viewMode="pod" asp-route-branchId="@selectedBranchId"
+               class="st-chip @(viewMode == "pod" ? "active" : "")">แยกตามห้อง Pod (@pods.Count ห้อง)</a>
+            <a asp-controller="Staff" asp-action="Schedule" asp-route-email="@ViewBag.Email" asp-route-date="@selectedDate.ToString("yyyy-MM-dd")" asp-route-viewMode="trainer" asp-route-branchId="@selectedBranchId"
+               class="st-chip @(viewMode == "trainer" ? "active" : "")">แยกตามเทรนเนอร์ (@trainers.Count ท่าน)</a>
+        </div>
+    </div>
+
+    <!-- Legend -->
+    <div class="sch-legend-bar">
+        <div class="sch-legend-items">
+            <span><span class="sch-dot" style="background: #e50914;"></span>จองแล้ว (Booked)</span>
+            <span><span class="sch-dot" style="background: #22c55e;"></span>กำลังใช้งาน (In Room)</span>
+            <span><span class="sch-dot" style="background: #f59e0b;"></span>ปิดปรับปรุง (Maintenance)</span>
+            <span><span class="sch-dot" style="background: #3f3f46;"></span>ว่างพร้อมจอง</span>
+        </div>
+        <div style="color: #4ade80; font-weight: 500;">
+            LIVE @DateTime.Now.ToString("HH:mm") &bull; @(ViewBag.BranchName ?? "สาขาทองหล่อ")
+        </div>
+    </div>
+
+    <!-- Master Grid Table -->
+    <div class="sch-grid-wrap">
+        <div style="overflow-x: auto;">
+            <table class="sch-grid-table">
+                <thead>
+                    <tr>
+                        <th>@(viewMode == "trainer" ? "เทรนเนอร์ (TRAINER)" : "ห้องซ้อม (POD SUITE)")</th>
+                        @foreach (var s in slots)
+                        {
+                            bool isCurrent = selectedDate == today && nowTime >= s.StartTime && nowTime < s.EndTime;
+                            <th class="@(isCurrent ? "is-current" : (s.IsPeak ? "is-peak" : ""))">
+                                <div>@s.Start - @s.End</div>
+                                <div style="font-size: 10.5px; color: @(isCurrent ? "#4ade80" : (s.IsPeak ? "#f87171" : "#71717a")); margin-top: 2px;">
+                                    @(isCurrent ? "CURRENT NOW" : (s.IsPeak ? $"{s.Code} • PEAK" : s.Code))
+                                </div>
+                            </th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (viewMode == "pod")
+                    {
+                        foreach (var pod in pods)
+                        {
+                            bool isMaint = pod.Status == "Maintenance";
+                            var podBookings = bookings.Where(b => b.PodId == pod.PodId).ToList();
+                            <tr>
+                                <td class="sch-row-head">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <span style="font-weight: 600; color: #fafafa;">@pod.PodName</span>
+                                        <span class="st-badge @(isMaint ? "st-badge-amber" : "st-badge-green")" style="font-size: 10px; padding: 2px 7px;">
+                                            @(isMaint ? "MAINT" : "READY")
+                                        </span>
+                                    </div>
+                                    <div style="font-size: 11.5px; color: #71717a;">@pod.PodType</div>
+                                    <div style="font-size: 11px; color: #a1a1aa; margin-top: 4px;">
+                                        วันนี้: @podBookings.Count/@slots.Length รอบ
+                                    </div>
+                                </td>
+
+                                @foreach (var s in slots)
+                                {
+                                    var b = podBookings.FirstOrDefault(x => x.StartTime == s.StartTime);
+                                    <td>
+                                        @if (isMaint && b == null)
+                                        {
+                                            <div class="sch-slot-card maint">
+                                                <div style="font-weight: 500;">ปิดปรับปรุง</div>
+                                                <div style="font-size: 10.5px; color: #a1a1aa;">Maintenance</div>
+                                            </div>
+                                        }
+                                        else if (b == null)
+                                        {
+                                            <div class="sch-slot-empty">ว่าง</div>
+                                        }
+                                        else
+                                        {
+                                            bool isSlotMaint = b.User != null && b.User.RoleId != 4;
+                                            bool hasCi = b.CheckIns != null && b.CheckIns.Any();
+                                            bool isInRoom = !isSlotMaint && b.Status != "Completed" && b.CheckIns != null && b.CheckIns.Any(c => c.CheckOutTime == null);
+                                            bool isPast = !isSlotMaint && (b.Status == "Completed" || (selectedDate < today) || (selectedDate == today && b.EndTime <= nowTime));
+                                            string rawTrainer = b.Trainer?.User?.FullName ?? "";
+                                            string shortTrainer = string.IsNullOrEmpty(rawTrainer)
+                                                ? "(Self-Train)"
+                                                : "TR. " + rawTrainer.Split('(')[0].Replace("Coach ", "").Trim();
+                                            string trainerLabel = isSlotMaint ? "Staff Lock" : shortTrainer;
+                                            string subTopic = isSlotMaint ? "Maintenance" : (b.Trainer?.Specialty ?? pod.PodType ?? "Private Session");
+                                            string statusText = isSlotMaint ? "MAINT" : (isInRoom ? "IN ROOM" : (b.Status == "Completed" ? "DONE" : (isPast ? "PAST" : "BOOKED")));
+                                            string cardClass = isSlotMaint ? "maint" : (isInRoom ? "inroom" : (isPast ? "past" : "booked"));
+
+                                            <div class="sch-slot-card @cardClass">
+                                                <div>
+                                                    <div class="d-flex justify-content-between align-items-center gap-1">
+                                                        <span class="sch-ellipsis" style="font-weight: 600; font-size: 12.5px; color: @(isSlotMaint ? "#fcd34d" : "#fafafa");">@(isSlotMaint ? "ปิดปรับปรุงเฉพาะรอบ" : (b.User?.FullName ?? "-"))</span>
+                                                        <span style="font-size: 10px; font-weight: 600; flex-shrink: 0; color: @(isSlotMaint ? "#fcd34d" : (isInRoom ? "#4ade80" : (isPast ? "#71717a" : "#f87171")));">@statusText</span>
+                                                    </div>
+                                                    <div class="sch-ellipsis" style="font-size: 11px; color: @(isInRoom ? "#f87171" : "#a1a1aa"); margin-top: 2px;">@subTopic</div>
+                                                </div>
+                                                <div style="font-size: 10.5px; color: #71717a; margin-top: 8px; display: flex; justify-content: space-between; gap: 4px;">
+                                                    <span class="sch-ellipsis" style="color: #d4d4d8;">@trainerLabel</span>
+                                                    <span style="flex-shrink: 0;">@s.Start-@s.End</span>
+                                                </div>
+                                            </div>
+                                        }
+                                    </td>
+                                }
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        foreach (var tr in trainers)
+                        {
+                            var trBookings = bookings.Where(b => b.TrainerId == tr.TrainerId).ToList();
+                            <tr>
+                                <td class="sch-row-head">
+                                    <div style="font-weight: 600; color: #fafafa;">@(tr.User?.FullName ?? "Coach")</div>
+                                    <div style="font-size: 11.5px; color: #f87171;">@(tr.Specialty ?? "Personal Trainer")</div>
+                                    <div style="font-size: 11px; color: #a1a1aa; margin-top: 4px;">
+                                        วันนี้: @trBookings.Count คิว
+                                    </div>
+                                </td>
+
+                                @foreach (var s in slots)
+                                {
+                                    var b = trBookings.FirstOrDefault(x => x.StartTime == s.StartTime);
+                                    <td>
+                                        @if (b == null)
+                                        {
+                                            <div class="sch-slot-empty">ว่าง</div>
+                                        }
+                                        else
+                                        {
+                                            bool isInRoom = b.Status != "Completed" && b.CheckIns != null && b.CheckIns.Any(c => c.CheckOutTime == null);
+                                            bool isPast = b.Status == "Completed" || (selectedDate < today) || (selectedDate == today && b.EndTime <= nowTime);
+                                            string statusText = isInRoom ? "IN ROOM" : (b.Status == "Completed" ? "DONE" : (isPast ? "PAST" : "BOOKED"));
+                                            string cardClass = isInRoom ? "inroom" : (isPast ? "past" : "booked");
+
+                                            <div class="sch-slot-card @cardClass">
+                                                <div>
+                                                    <div class="d-flex justify-content-between align-items-center gap-1">
+                                                        <span class="sch-ellipsis" style="font-weight: 600; font-size: 12.5px; color: #fafafa;">@(b.User?.FullName ?? "-")</span>
+                                                        <span style="font-size: 10px; font-weight: 600; flex-shrink: 0; color: @(isInRoom ? "#4ade80" : (isPast ? "#71717a" : "#f87171"));">@statusText</span>
+                                                    </div>
+                                                    <div class="sch-ellipsis" style="font-size: 11px; color: @(isInRoom ? "#f87171" : "#a1a1aa"); margin-top: 2px;">@(tr.Specialty ?? "Personal Training")</div>
+                                                </div>
+                                                <div style="font-size: 10.5px; color: #71717a; margin-top: 8px; display: flex; justify-content: space-between; gap: 4px;">
+                                                    <span class="sch-ellipsis" style="color: #d4d4d8;">@(b.Pod?.PodName ?? "-")</span>
+                                                    <span style="flex-shrink: 0;">@s.Start-@s.End</span>
+                                                </div>
+                                            </div>
+                                        }
+                                    </td>
+                                }
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Bottom 3 Summary Cards (100% Real DB Data) -->
+    <div class="sch-summary-3">
+        <div class="sch-sum-card">
+            <div style="font-size: 11.5px; color: #a1a1aa; font-weight: 500;">DAILY CAPACITY LOAD</div>
+            <div class="d-flex justify-content-between align-items-baseline mt-2">
+                <div style="font-size: 26px; font-weight: 600; color: #fafafa;">@bookedSlotsCount <span style="font-size: 14px; color: #71717a;">/ @totalCapacitySlots Slots</span></div>
+                <div style="font-size: 12px; color: #4ade80;">ว่าง @availableSlotsCount สล็อต</div>
+            </div>
+            <div style="height: 6px; background: #18181b; border-radius: 999px; overflow: hidden; margin-top: 12px;">
+                <div style="height: 100%; width: @occupancyPct%; background: #e50914;"></div>
+            </div>
+            <div style="font-size: 12px; color: #71717a; margin-top: 8px;">อัตราการจองใช้งานวันที่เลือก: @occupancyPct%</div>
+        </div>
+
+        <div class="sch-sum-card">
+            <div style="font-size: 11.5px; color: #a1a1aa; font-weight: 500;">CHECK-INS &amp; ACTIVE SESSIONS</div>
+            <div class="d-flex justify-content-between align-items-baseline mt-2">
+                <div style="font-size: 26px; font-weight: 600; color: #fafafa;">@checkedInOrCompleted <span style="font-size: 14px; color: #71717a;">/ @bookedSlotsCount รายการ</span></div>
+                <div style="font-size: 12px; color: #4ade80;">กำลังอยู่ในห้อง @activeInRoomCount</div>
+            </div>
+            <div style="font-size: 12px; color: #71717a; margin-top: 18px;">
+                จองแบบฝึกส่วนตัว (Solo): @soloSessionsCount รอบ &bull; มีโค้ชดูแล (PT): @ptSessionsCount รอบ
+            </div>
+        </div>
+
+        <div class="sch-sum-card">
+            <div style="font-size: 11.5px; color: #a1a1aa; font-weight: 500;">TRAINERS ON DUTY (@trainers.Count ท่าน)</div>
+            <div class="sch-trainer-mini-grid">
+                @foreach (var tr in trainers.Take(6))
+                {
+                    int cnt = bookings.Count(b => b.TrainerId == tr.TrainerId);
+                    string shortName = (tr.User?.FullName ?? "Coach").Split('(')[0].Replace("Coach ", "").Trim();
+                    <div class="sch-trainer-mini">
+                        <div style="font-size: 12.5px; font-weight: 500; color: #fafafa;">@shortName</div>
+                        <div style="font-size: 11px; color: #f87171; margin-top: 2px;">@cnt คิว</div>
+                    </div>
+                }
+            </div>
+            <div style="font-size: 11.5px; color: #71717a; margin-top: 10px;">
+                รวมคิวเทรนส่วนตัว @ptSessionsCount คิว &bull; ฝึกเดี่ยว @soloSessionsCount คิว
+            </div>
+        </div>
+    </div>
+</main>
+

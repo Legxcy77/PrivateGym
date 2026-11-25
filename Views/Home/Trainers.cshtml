@@ -1,0 +1,402 @@
+@model List<PrivateGym.Models.Trainer>
+
+@{
+    ViewData["Title"] = "ทีมโค้ชและผู้เชี่ยวชาญการฝึกสอน";
+    Layout = "_Nav_HomeLayout";
+    var trainers = Model ?? new List<PrivateGym.Models.Trainer>();
+}
+
+<style>
+    .dt-wrap {
+        padding-top: 120px;
+        padding-bottom: 96px;
+    }
+
+    .dt-hero {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        gap: 24px;
+        flex-wrap: wrap;
+        margin-bottom: 36px;
+    }
+
+    .dt-h1 {
+        font-size: 42px;
+        font-weight: 900;
+        color: #ffffff;
+        line-height: 1.12;
+        margin: 10px 0 14px 0;
+    }
+
+    .dt-section-gap {
+        margin-top: 76px;
+        padding-top: 56px;
+        border-top: 1px solid #1b1b22;
+    }
+
+    .dt-hero-stats {
+        display: flex;
+        gap: 12px;
+    }
+
+    .dt-stat-box {
+        background: #121216;
+        border: 1px solid #262632;
+        border-radius: 10px;
+        padding: 12px 18px;
+    }
+
+    /* Filter Tabs */
+    .dt-filter-bar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 28px;
+        padding: 10px;
+        background: #111115;
+        border: 1px solid #22222b;
+        border-radius: 12px;
+    }
+
+    .dt-filter-btn {
+        background: transparent;
+        border: 1px solid transparent;
+        color: #a1a1aa;
+        font-size: 12.5px;
+        font-weight: 700;
+        padding: 8px 14px;
+        border-radius: 8px;
+        cursor: pointer;
+    }
+
+    .dt-filter-btn.active {
+        background: #e50914;
+        color: #ffffff;
+    }
+
+    /* 2-Col Coach Showcase Cards */
+    .dt-coach-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 24px;
+        margin-top: 28px;
+    }
+
+    .dt-coach-card {
+        background: #121216;
+        border: 1px solid #25252f;
+        border-radius: 18px;
+        overflow: hidden;
+        display: grid;
+        grid-template-columns: 0.44fr 0.56fr;
+    }
+
+    .dt-coach-portrait {
+        background-position: center top;
+        background-size: cover;
+        background-repeat: no-repeat;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        min-height: 310px;
+        border-right: 1px solid #23232c;
+    }
+
+    .dt-coach-tag {
+        align-self: flex-start;
+        background: rgba(12, 12, 16, 0.85);
+        border: 1px solid #2f2f3d;
+        color: #e4e4e7;
+        font-size: 10px;
+        font-weight: 800;
+        padding: 4px 8px;
+        border-radius: 6px;
+        letter-spacing: 0.5px;
+    }
+
+    .dt-coach-body {
+        padding: 26px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        gap: 18px;
+    }
+
+    .dt-cert-badge {
+        background: rgba(34, 197, 94, 0.14);
+        border: 1px solid rgba(34, 197, 94, 0.35);
+        color: #4ade80;
+        font-family: monospace;
+        font-size: 10.5px;
+        font-weight: 700;
+        padding: 3px 8px;
+        border-radius: 6px;
+        white-space: nowrap;
+    }
+
+    .dt-bio-text {
+        font-size: 13.5px;
+        color: #a1a1aa;
+        line-height: 1.7;
+        margin: 14px 0 0 0;
+    }
+
+    /* 4-Pillar Methodology */
+    .dt-pillar-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 20px;
+        margin-top: 28px;
+    }
+
+    .dt-pillar-card {
+        background: #121216;
+        border: 1px solid #24242c;
+        border-radius: 16px;
+        padding: 26px;
+    }
+
+    .dt-pillar-num {
+        font-size: 26px;
+        font-weight: 900;
+        color: #e50914;
+        margin-bottom: 10px;
+    }
+
+    /* 3 Case Outcomes */
+    .dt-case-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+        margin-bottom: 52px;
+    }
+
+    .dt-case-card {
+        background: #121216;
+        border: 1px solid #24242c;
+        border-radius: 14px;
+        padding: 22px;
+    }
+
+    .dt-case-metrics {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+        background: #17171d;
+        border: 1px solid #252530;
+        border-radius: 10px;
+        padding: 12px;
+        margin: 12px 0;
+    }
+
+    @@media (max-width: 991.98px) {
+        .dt-h1 { font-size: 28px; }
+        .dt-coach-grid, .dt-pillar-grid, .dt-case-grid {
+            grid-template-columns: 1fr;
+        }
+        .dt-coach-card {
+            grid-template-columns: 1fr;
+        }
+        .dt-coach-portrait {
+            min-height: 160px;
+            border-right: none;
+            border-bottom: 1px solid #23232c;
+        }
+    }
+</style>
+
+<div class="dt-wrap">
+    <div class="pg-container">
+        <!-- Hero -->
+        <div class="dt-hero">
+            <div>
+                <div class="pg-tag-red">DIVISION OF ATHLETIC HUMAN PERFORMANCE</div>
+                <h1 class="dt-h1">ทีมโค้ชและผู้เชี่ยวชาญการฝึกสอน</h1>
+                <p style="font-size: 14px; color: #a1a1aa; max-width: 600px; margin: 0; line-height: 1.65;">
+                    Elite Certified Coaches &amp; Strength Specialists — โค้ชประจำ PrivateGym ทุกท่านผ่านการรับรองมาตรฐานสากล (NSCA, EXOS, USAW, NASM) ออกแบบโปรแกรมเฉพาะบุคคลแบบส่วนตัวใน Private Pods 100%
+                </p>
+            </div>
+
+            <div class="dt-hero-stats">
+                <div class="dt-stat-box">
+                    <div style="font-size: 10px; color: #71717a; font-weight: 700;">COACH TO MEMBER</div>
+                    <div style="font-size: 18px; font-weight: 900; color: #ffffff;">1 : 1 STRICT</div>
+                </div>
+                <div class="dt-stat-box">
+                    <div style="font-size: 10px; color: #71717a; font-weight: 700;">ACCREDITED CERTS</div>
+                    <div style="font-size: 18px; font-weight: 900; color: #f87171;">100% VERIFIED</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filter Tabs -->
+        @{
+            var trainerBranches = ViewBag.Branches as List<PrivateGym.Models.Branch> ?? new List<PrivateGym.Models.Branch>();
+        }
+        <div class="dt-filter-bar d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div class="d-flex flex-wrap gap-2">
+                <button type="button" class="dt-filter-btn active" onclick="filterCoaches(this, 'all')">ทั้งหมด (All)</button>
+                <button type="button" class="dt-filter-btn" onclick="filterCoaches(this, 'strength')">Strength &amp; Hypertrophy</button>
+                <button type="button" class="dt-filter-btn" onclick="filterCoaches(this, 'functional')">Functional &amp; Power</button>
+                <button type="button" class="dt-filter-btn" onclick="filterCoaches(this, 'rehab')">Posture &amp; Rehabilitation</button>
+            </div>
+            <select id="branchFilterSelect" onchange="filterCoachesByBranch(this.value)" style="background: #18181f; border: 1px solid #2b2b36; color: #fff; font-size: 12.5px; padding: 7px 12px; border-radius: 8px;">
+                <option value="all">ทุกสาขา (@trainers.Count ท่าน)</option>
+                @foreach (var br in trainerBranches)
+                {
+                    <option value="@br.BranchId">@br.BranchName</option>
+                }
+            </select>
+        </div>
+
+        <!-- 2-Column Coach Showcase (Real DB Trainers) -->
+        <div class="dt-coach-grid" id="coachGrid">
+            @{ int cIdx = 0; }
+            @foreach (var t in trainers)
+            {
+                cIdx++;
+                string name = t.User?.FullName ?? "Coach PrivateGym";
+                string spec = t.Specialty ?? "Strength & Conditioning";
+                string specLower = spec.ToLower();
+                string cat = specLower.Contains("rehab") || specLower.Contains("pilates") || specLower.Contains("posture")
+                    ? "rehab"
+                    : (specLower.Contains("functional") || specLower.Contains("weightlifting") || specLower.Contains("power") ? "functional" : "strength");
+                string badgeText = cIdx == 1 ? "HEAD COACH" : (cIdx == 2 ? "SENIOR COACH" : "SPECIALIST");
+                string initial = name.Replace("Coach ", "").Trim().FirstOrDefault().ToString();
+                if (string.IsNullOrEmpty(initial)) initial = "C";
+                string lowerName = name.ToLower();
+                string portraitImg = lowerName.Contains("alex") ? "/images/trainer-alex.jpg"
+                    : (lowerName.Contains("sarah") ? "/images/trainer-sarah.jpg"
+                    : (lowerName.Contains("ken") ? "/images/trainer-ken.jpg"
+                    : (lowerName.Contains("mew") ? "/images/trainer-mew.jpg"
+                    : (cIdx % 4 == 1 ? "/images/trainer-alex.jpg" : (cIdx % 4 == 2 ? "/images/trainer-sarah.jpg" : (cIdx % 4 == 3 ? "/images/trainer-ken.jpg" : "/images/trainer-mew.jpg"))))));
+
+                <div class="dt-coach-card" data-category="@cat" data-branch-id="@(t.User?.HomeBranchId ?? 0)">
+                    <div class="dt-coach-portrait" style="background-image: linear-gradient(180deg, rgba(15,15,20,0.12) 0%, rgba(12,12,16,0.88) 100%), url('@portraitImg');">
+                        <span class="dt-coach-tag">@badgeText</span>
+                        <div style="width: 46px; height: 46px; border-radius: 50%; background: rgba(229,9,20,0.9); color: #fff; font-weight: 800; font-size: 18px; display: flex; align-items: center; justify-content: center;">
+                            @initial
+                        </div>
+                    </div>
+
+                    <div class="dt-coach-body">
+                        <div>
+                            <div class="d-flex justify-content-between align-items-start gap-2 mb-1">
+                                <h3 class="text-white fw-bold mb-0" style="font-size: 18px;">@name</h3>
+                                <span class="dt-cert-badge">CERTIFIED</span>
+                            </div>
+                            <div style="font-size: 12.5px; color: #f87171; font-weight: 700;">@spec</div>
+
+                            <p class="dt-bio-text">
+                                @(!string.IsNullOrWhiteSpace(t.Bio) ? t.Bio : "ออกแบบโปรแกรมฝึกเฉพาะบุคคลตามสรีระและเป้าหมายจริงในห้อง Private Pod")
+                            </p>
+                        </div>
+
+                        <div class="pt-3 border-top border-secondary border-opacity-25">
+                            <div class="d-flex justify-content-between align-items-center mb-3" style="font-size: 12.5px; color: #a1a1aa;">
+                                <span>@(t.User?.HomeBranch?.BranchName ?? "สาขาทองหล่อ")</span>
+                                <span style="color: #4ade80; font-weight: 700;">&#3647;@((t.HourlyRate ?? 1500m).ToString("N0")) / รอบ</span>
+                            </div>
+                            <a asp-controller="Register" asp-action="Index" class="btn btn-danger w-100 fw-bold py-2" style="font-size: 13px;">
+                                นัดหมายปรึกษา / จองคอร์ส &rsaquo;
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <!-- 4-Pillar Methodology -->
+        <div class="dt-section-gap">
+        <div class="mb-2">
+            <div class="pg-tag-red">THE 4-PILLAR METHODOLOGY</div>
+            <h2 class="text-white fw-bold mb-1" style="font-size: 26px;">ปรัชญาการฝึก 4 มิติ</h2>
+            <p style="font-size: 13px; color: #71717a;">กระบวนการฝึกสอนเชิงวิศวกรรมสรีระที่ออกแบบเพื่อผลลัพธ์ยั่งยืน</p>
+        </div>
+
+        <div class="dt-pillar-grid">
+            <div class="dt-pillar-card"><div class="dt-pillar-num">01</div><h5 class="text-white fw-bold mb-2">Biomechanical Assessment</h5><p style="font-size: 12px; color: #a1a1aa; margin: 0;">ประเมินสรีระ องศาข้อต่อ และจุดอ่อนกล้ามเนื้อก่อนเริ่มฝึกเพื่อความปลอดภัยสูงสุด</p></div>
+            <div class="dt-pillar-card"><div class="dt-pillar-num">02</div><h5 class="text-white fw-bold mb-2">Periodized Programming</h5><p style="font-size: 12px; color: #a1a1aa; margin: 0;">วางตารางฝึกแบบ Progressive Overload ปรับระดับความหนักตามพัฒนาการทุกสัปดาห์</p></div>
+            <div class="dt-pillar-card"><div class="dt-pillar-num">03</div><h5 class="text-white fw-bold mb-2">Nutritional Guidance</h5><p style="font-size: 12px; color: #a1a1aa; margin: 0;">คำนวณสารอาหารหลักให้เหมาะกับเป้าหมาย ทั้งการสร้างกล้ามเนื้อและลดไขมัน</p></div>
+            <div class="dt-pillar-card"><div class="dt-pillar-num">04</div><h5 class="text-white fw-bold mb-2">100% Undivided Attention</h5><p style="font-size: 12px; color: #a1a1aa; margin: 0;">ฝึกสอนใน Private Pod แบบปิดล็อก โค้ชโฟกัสฟอร์มการเคลื่อนไหวของคุณคนเดียวตลอดรอบ</p></div>
+        </div>
+        </div>
+
+        <!-- Verified Case Outcomes -->
+        <div class="dt-section-gap">
+        <div class="mb-3">
+            <div class="pg-tag-red">VERIFIED CASE OUTCOMES</div>
+            <h2 class="text-white fw-bold mb-1" style="font-size: 26px;">คำรับรองและผลลัพธ์จริงจากสมาชิก</h2>
+        </div>
+
+        <div class="dt-case-grid">
+            <div class="dt-case-card">
+                <div class="d-flex justify-content-between align-items-center mb-1"><strong class="text-white">คุณธนินทร์ ว.</strong><span class="badge bg-danger">COACH ALEX</span></div>
+                <div style="font-size: 11.5px; color: #71717a;">Managing Director</div>
+                <div class="dt-case-metrics">
+                    <div><div style="font-size: 10.5px; color: #71717a;">Body Fat Drop</div><strong class="text-success fs-5">-8.4%</strong></div>
+                    <div><div style="font-size: 10.5px; color: #71717a;">Deadlift 1RM</div><strong class="text-white fs-5">+45 KG</strong></div>
+                </div>
+                <p style="font-size: 12px; color: #a1a1aa; margin: 0;">"ก่อนหน้านี้เข้ายิมทั่วไปแล้วเสียสมาธิมาก ที่นี่เงียบสงบและโค้ชวางโปรแกรมให้ตรงจุดจนพัฒนาได้จริง"</p>
+            </div>
+            <div class="dt-case-card">
+                <div class="d-flex justify-content-between align-items-center mb-1"><strong class="text-white">คุณแพรวา ส.</strong><span class="badge bg-danger">COACH MEW</span></div>
+                <div style="font-size: 11.5px; color: #71717a;">Senior Software Architect</div>
+                <div class="dt-case-metrics">
+                    <div><div style="font-size: 10.5px; color: #71717a;">Posture Alignment</div><strong class="text-success fs-5">100%</strong></div>
+                    <div><div style="font-size: 10.5px; color: #71717a;">Pain Score</div><strong class="text-white fs-5">8 &rarr; 1</strong></div>
+                </div>
+                <p style="font-size: 12px; color: #a1a1aa; margin: 0;">"ปวดคอบ่าไหล่เรื้อรังมานาน โค้ชช่วยจัดระเบียบกล้ามเนื้อในห้องส่วนตัวจนหายปวดและนอนหลับดีขึ้นมาก"</p>
+            </div>
+            <div class="dt-case-card">
+                <div class="d-flex justify-content-between align-items-center mb-1"><strong class="text-white">คุณวริศ จ.</strong><span class="badge bg-danger">COACH KEN</span></div>
+                <div style="font-size: 11.5px; color: #71717a;">Triathlete &amp; Entrepreneur</div>
+                <div class="dt-case-metrics">
+                    <div><div style="font-size: 10.5px; color: #71717a;">Max Power Output</div><strong class="text-success fs-5">+28%</strong></div>
+                    <div><div style="font-size: 10.5px; color: #71717a;">Vertical Jump</div><strong class="text-white fs-5">+9.5 CM</strong></div>
+                </div>
+                <p style="font-size: 13px; color: #a1a1aa; margin: 0; line-height: 1.65;">"ได้เทคนิคฝึกความเร็วและพละกำลังที่ถูกต้อง พร้อมอุปกรณ์ Eleiko ครบครันโดยไม่ต้องรอต่อคิว"</p>
+            </div>
+        </div>
+        </div>
+
+        <!-- Bottom Sanctuary Banner -->
+        <div class="p-4 p-md-5 rounded-4 d-flex justify-content-between align-items-center flex-wrap gap-3 mt-5" style="background: #121216; border: 1px solid #24242c;">
+            <div>
+                <div class="pg-tag-red">DEDICATED SANCTUARY</div>
+                <h3 class="text-white fw-bold mb-2" style="font-size: 24px;">การฝึกสอนเกิดขึ้นใน PRIVATE PODS เท่านั้น</h3>
+                <p style="font-size: 13px; color: #a1a1aa; max-width: 600px; margin-bottom: 14px;">หมดปัญหาการแย่งอุปกรณ์หรือเสียงรบกวนรอบข้าง ทุกเซสชันดำเนินการในห้องส่วนตัวพร้อมระบบกรองอากาศ HEPA H14</p>
+                <a asp-controller="Home" asp-action="Facilities" class="btn btn-outline-light btn-sm px-3 py-2" style="border-color: #343442;">ชมห้อง Autonomous Pods และอุปกรณ์ &rarr;</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    var activeCoachCategory = 'all';
+    var activeCoachBranch = 'all';
+
+    function applyCoachFilters() {
+        document.querySelectorAll('#coachGrid .dt-coach-card').forEach(card => {
+            var c = card.getAttribute('data-category');
+            var b = card.getAttribute('data-branch-id');
+            var matchCat = (activeCoachCategory === 'all' || c === activeCoachCategory);
+            var matchBranch = (activeCoachBranch === 'all' || b === activeCoachBranch);
+            card.style.display = (matchCat && matchBranch) ? 'grid' : 'none';
+        });
+    }
+
+    function filterCoaches(btn, category) {
+        document.querySelectorAll('.dt-filter-btn').forEach(b => b.classList.remove('active'));
+        if (btn) btn.classList.add('active');
+        activeCoachCategory = category;
+        applyCoachFilters();
+    }
+
+    function filterCoachesByBranch(branchId) {
+        activeCoachBranch = branchId;
+        applyCoachFilters();
+    }
+</script>

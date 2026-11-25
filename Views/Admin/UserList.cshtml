@@ -1,0 +1,834 @@
+@model PrivateGym.ViewModels.AdminDashboardViewModel
+@{
+    ViewData["Title"] = "จัดการสมาชิกทั้งหมด";
+    Layout = "~/Views/Shared/Admin/_AdminLayout.cshtml";
+    string activeTab = ViewBag.ActiveTab ?? "all";
+    string currentSearch = ViewBag.Search ?? "";
+    string currentStatus = ViewBag.Status ?? "all";
+    string currentPkg = ViewBag.Pkg ?? "all";
+}
+
+<div class="container-fluid py-3 px-4">
+
+    <!-- Flash message -->
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show border-0 bg-success bg-opacity-25 text-white mb-3 d-flex align-items-center justify-content-between" role="alert">
+            <div class="d-flex align-items-center gap-2">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+                <span>@TempData["SuccessMessage"]</span>
+            </div>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show border-0 bg-danger bg-opacity-25 text-white mb-3 d-flex align-items-center justify-content-between" role="alert">
+            <div class="d-flex align-items-center gap-2">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+                <span>@TempData["ErrorMessage"]</span>
+            </div>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <!-- 1. Header Section -->
+    <div class="adm-header-wrap">
+        <div class="adm-title-block">
+            <h1>
+                จัดการสมาชิกทั้งหมด
+                <span style="font-size: 15px; font-weight: 400; color: var(--adm-text-dim);">(Member Directory & Lifecycle)</span>
+            </h1>
+            <p class="adm-subtitle">
+                ค้นหา ตรวจสอบสถานะ และจัดการฐานข้อมูลสมาชิกระบบ PrivateGym (@Model.TotalCount สมาชิกที่กำลังใช้งาน)
+            </p>
+        </div>
+
+        <div class="adm-header-actions">
+            <a asp-controller="Admin" asp-action="ExportDashboardCsv" class="adm-btn-ghost">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                ส่งออกข้อมูล CSV
+            </a>
+            <a asp-controller="Admin" asp-action="AddUser" class="adm-btn-red">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+                + เพิ่มสมาชิกใหม่ (Add Member)
+            </a>
+        </div>
+    </div>
+
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success" style="background: rgba(16, 185, 129, 0.14); border: 1px solid rgba(16, 185, 129, 0.35); color: #fafafa; border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; font-size: 13px;">
+            @TempData["SuccessMessage"]
+        </div>
+    }
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger" style="background: rgba(239, 68, 68, 0.14); border: 1px solid rgba(239, 68, 68, 0.35); color: #fafafa; border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; font-size: 13px;">
+            @TempData["ErrorMessage"]
+        </div>
+    }
+
+    <!-- 2. KPI Cards (4 Items) -->
+    <div class="adm-kpi-grid" style="grid-template-columns: repeat(4, 1fr);">
+        <!-- Active Clients -->
+        <div class="adm-kpi-card">
+            <div class="adm-kpi-header">
+                <span class="adm-kpi-label">ACTIVE CLIENTS</span>
+                <span class="adm-kpi-dot green"></span>
+            </div>
+            <div class="adm-kpi-value-row">
+                <span class="adm-kpi-val">@Model.ActiveClients</span>
+                <span class="adm-kpi-val-sub">/ @Model.MaxSlots SLOTS</span>
+            </div>
+            <div class="adm-kpi-meta">
+                <span>ความจุระบบ (Cap)</span>
+                <span style="font-weight: 600; color: #fff;">@Model.CapacityPercent%</span>
+            </div>
+            <div class="adm-kpi-bar">
+                <div class="adm-kpi-bar-fill green" style="width: @Model.CapacityPercent%;"></div>
+            </div>
+        </div>
+
+        <!-- New This Month -->
+        <div class="adm-kpi-card">
+            <div class="adm-kpi-header">
+                <span class="adm-kpi-label">NEW THIS MONTH</span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--adm-text-dim);"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+            </div>
+            <div class="adm-kpi-value-row">
+                <span class="adm-kpi-val">@Model.NewThisMonth</span>
+                <span style="color: var(--adm-green); font-size: 12px; font-weight: 600;">+@Model.MomGrowthPercent% MoM</span>
+            </div>
+            <div class="adm-kpi-meta">
+                <span>เป้าหมายใหม่ (Target)</span>
+                <span>@Model.TargetNew คน</span>
+            </div>
+            <div class="adm-kpi-bar">
+                <div class="adm-kpi-bar-fill white" style="width: 100%;"></div>
+            </div>
+        </div>
+
+        <!-- Expiring < 7 Days -->
+        <div class="adm-kpi-card">
+            <div class="adm-kpi-header">
+                <span class="adm-kpi-label">EXPIRING &lt; 7 DAYS</span>
+                <span class="adm-kpi-dot orange"></span>
+            </div>
+            <div class="adm-kpi-value-row">
+                <span class="adm-kpi-val" style="color: #fbbf24;">@Model.ExpiringIn7Days</span>
+                <span class="adm-kpi-val-sub">คนต้องติดตาม</span>
+            </div>
+            <div class="adm-kpi-meta">
+                <span>ส่งการแจ้งเตือนแล้ว</span>
+                <span style="color: #fbbf24;">5/7 รายการ</span>
+            </div>
+            <div class="adm-kpi-bar">
+                <div class="adm-kpi-bar-fill orange" style="width: 71%;"></div>
+            </div>
+        </div>
+
+        <!-- Pending Audit -->
+        <div class="adm-kpi-card">
+            <div class="adm-kpi-header">
+                <span class="adm-kpi-label">PENDING AUDIT</span>
+                <span class="adm-kpi-dot red"></span>
+            </div>
+            <div class="adm-kpi-value-row">
+                <span class="adm-kpi-val" style="color: #f87171;">@Model.PendingAuditCount</span>
+                <span class="adm-kpi-val-sub">รายการค้าง</span>
+            </div>
+            <div class="adm-kpi-meta">
+                <span>ยอดรอตรวจสอบ</span>
+                <span style="color: #f87171; font-weight: 600;">฿@Model.PendingAuditAmount.ToString("N0")</span>
+            </div>
+            <div class="adm-kpi-bar">
+                <div class="adm-kpi-bar-fill red" style="width: 25%;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. Search and Filter Bar -->
+    <form method="get" asp-controller="Admin" asp-action="UserList" class="adm-filter-bar">
+        <input type="hidden" name="tab" value="@activeTab" />
+        <div class="adm-search-input-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input type="text" name="search" value="@currentSearch" class="adm-search-input" placeholder="ค้นหาชื่อสมาชิก, รหัสบัตร PG-XXXXX, อีเมล หรือเบอร์โทร..." />
+        </div>
+
+        <select name="status" class="adm-select" onchange="this.form.submit()">
+            <option value="all" selected="@(currentStatus == "all")">สถานะ: ทั้งหมด</option>
+            <option value="active" selected="@(currentStatus == "active")">กำลังใช้งาน</option>
+            <option value="warning" selected="@(currentStatus == "warning")">รอต่ออายุ</option>
+            <option value="suspended" selected="@(currentStatus == "suspended")">ระงับชั่วคราว</option>
+            <option value="expired" selected="@(currentStatus == "expired")">หมดอายุแล้ว</option>
+        </select>
+
+        <select name="pkg" class="adm-select" onchange="this.form.submit()">
+            <option value="all" selected="@(currentPkg == "all")">แพ็กเกจ: ทุกระดับ</option>
+            <option value="elite" selected="@(currentPkg == "elite")">Elite Concierge VIP</option>
+            <option value="pro" selected="@(currentPkg == "pro")">Performance Pro</option>
+            <option value="essential" selected="@(currentPkg == "essential")">Essential Access</option>
+        </select>
+
+        <select class="adm-select">
+            <option>กำหนดหมดอายุ: ทั้งหมด</option>
+            <option>ภายใน 7 วัน</option>
+            <option>ภายใน 30 วัน</option>
+        </select>
+
+        <a asp-controller="Admin" asp-action="UserList" class="adm-btn-ghost" style="padding: 6px 10px;" title="รีเฟรช">
+            &#x21bb;
+        </a>
+    </form>
+
+    <!-- 4. Lifecycle Tabs Navigation -->
+    <div class="adm-tabs-row">
+        <a asp-controller="Admin" asp-action="UserList" asp-route-tab="all" asp-route-search="@currentSearch" class="adm-tab-link @(activeTab == "all" ? "active" : "")">
+            ทั้งหมด <span class="adm-tab-count">@Model.TotalCount</span>
+        </a>
+        <a asp-controller="Admin" asp-action="UserList" asp-route-tab="active" asp-route-search="@currentSearch" class="adm-tab-link @(activeTab == "active" ? "active" : "")">
+            กำลังใช้งาน <span class="adm-tab-count">@Model.ActiveCount</span>
+        </a>
+        <a asp-controller="Admin" asp-action="UserList" asp-route-tab="expiring" asp-route-search="@currentSearch" class="adm-tab-link @(activeTab == "expiring" ? "active" : "")">
+            <span style="color: var(--adm-amber);">&#x25CF;</span> ใกล้หมดอายุ (&lt; 7 วัน) <span class="adm-tab-count">@Model.ExpiringCount</span>
+        </a>
+        <a asp-controller="Admin" asp-action="UserList" asp-route-tab="suspended" asp-route-search="@currentSearch" class="adm-tab-link @(activeTab == "suspended" ? "active" : "")">
+            ระงับชั่วคราว <span class="adm-tab-count">@Model.SuspendedCount</span>
+        </a>
+        <a asp-controller="Admin" asp-action="UserList" asp-route-tab="expired" asp-route-search="@currentSearch" class="adm-tab-link @(activeTab == "expired" ? "active" : "")">
+            หมดอายุ <span class="adm-tab-count">@Model.ExpiredCount</span>
+        </a>
+    </div>
+
+    <!-- 5. Main Members Table -->
+    <div class="adm-table-container">
+        <div class="table-responsive d-none d-lg-block">
+            <table class="adm-table">
+                <thead>
+                    <tr>
+                        <th style="width: 36px;"><input type="checkbox" style="accent-color: var(--adm-red); cursor: pointer;" /></th>
+                        <th>รหัส &amp; ข้อมูลสมาชิก</th>
+                        <th>แพ็กเกจ</th>
+                        <th>สถานะ</th>
+                        <th>โควต้าคงเหลือ (PODS / PT)</th>
+                        <th>ระยะเวลา &amp; อายุคงเหลือ</th>
+                        <th>ยอดสะสม (LTV)</th>
+                        <th style="text-align: right; padding-right: 18px;">การกระทำ</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.Members.Any())
+                    {
+                        foreach (var m in Model.Members)
+                        {
+                            <tr>
+                                <td>
+                                    <input type="checkbox" style="accent-color: var(--adm-red); cursor: pointer;" />
+                                </td>
+                                <td>
+                                    <div class="adm-member-cell">
+                                        <div class="adm-avatar">@m.AvatarInitials</div>
+                                        <div class="adm-member-info">
+                                            <div class="adm-member-name">
+                                                @m.FullName
+                                                @if (m.IsVerified)
+                                                {
+                                                    <span class="adm-verify-badge">&#10003;</span>
+                                                }
+                                            </div>
+                                            <div class="adm-member-id-phone">
+                                                @m.MemberCode &bull; @m.Phone
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="adm-pkg-badge @m.PackageTierClass">
+                                        @if (m.PackageTierClass == "elite")
+                                        {
+                                            <span style="color: var(--adm-red); margin-right: 3px;">&#x25CF;</span>
+                                        }
+                                        @m.PackageName
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="adm-status-item @m.StatusClass">
+                                        <span class="dot"></span> @m.StatusText
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="adm-quota-wrap">
+                                        <div class="adm-quota-label">
+                                            @if (m.StatusClass == "suspended")
+                                            {
+                                                <span style="color: var(--adm-text-dim); font-size: 11px;">Freeze: พักการใช้ 30 วัน</span>
+                                            }
+                                            else
+                                            {
+                                                <span>Pods: <strong>@m.RemainingPods/@m.TotalPods</strong></span>
+                                                <span style="color: var(--adm-text-dim);">PT: @(m.TotalPt > 0 ? $"{m.RemainingPt}/{m.TotalPt}" : "--")</span>
+                                            }
+                                        </div>
+                                        <div class="adm-mini-bar">
+                                            <div class="adm-mini-bar-fill" style="width: @(m.PodProgressPercent)%;"></div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="adm-date-main">@m.StartDateFormatted - @m.EndDateFormatted</div>
+                                    <div class="adm-date-sub @m.ExpiryNoteClass">
+                                        @if (m.ExpiryNoteClass == "orange")
+                                        {
+                                            <span>&#9888;</span>
+                                        }
+                                        else if (m.ExpiryNoteClass == "green")
+                                        {
+                                            <span>&#9201;</span>
+                                        }
+                                        @m.ExpiryNote
+                                    </div>
+                                </td>
+                                <td>
+                                    <span style="font-weight: 600; color: #fff;">฿@m.LifetimeValue.ToString("N0")</span>
+                                </td>
+                                <td style="text-align: right; padding-right: 16px; white-space: nowrap;">
+                                    <div class="d-inline-flex align-items-center justify-content-end gap-2">
+                                        @if (m.StatusClass == "suspended")
+                                        {
+                                            <button type="button" class="st-btn-outline" style="height: 30px; padding: 0 10px; font-size: 12px; color: #10b981;"
+                                                    data-userid="@m.UserId"
+                                                    data-username="@m.FullName"
+                                                    data-action="activate"
+                                                    onclick="handleStatusModalClick(this)">
+                                                เปิดใช้งาน
+                                            </button>
+                                        }
+                                        else if (!string.IsNullOrEmpty(m.PrimaryActionText))
+                                        {
+                                            <button type="button"
+                                                    class="@(m.PrimaryActionClass == "red" ? "st-btn-primary" : "st-btn-outline")"
+                                                    style="height: 30px; padding: 0 10px; font-size: 12px;"
+                                                    onclick="openRenewPaymentModal(@m.UserId, '@m.FullName', '@m.PackageName', '@m.ExpiryNote', 'UserList')">
+                                                @m.PrimaryActionText
+                                            </button>
+                                        }
+
+                                        <button type="button" class="st-btn-outline" style="height: 30px; padding: 0 10px; font-size: 12px;" onclick="showUserDetails(@m.UserId)">
+                                            ดูข้อมูล
+                                        </button>
+
+                                        <a asp-controller="Admin" asp-action="EditUser" asp-route-id="@m.UserId"
+                                           class="st-btn-outline" style="height: 30px; padding: 0 10px; font-size: 12px;">
+                                            แก้ไข
+                                        </a>
+
+                                        <div class="dropdown d-inline">
+                                            <button class="st-btn-outline" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="height: 30px; width: 30px; padding: 0; font-size: 14px;" title="ตัวเลือกเพิ่มเติม">
+                                                &#8942;
+                                            </button>
+                                            <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end" style="background: #09090b; border: 1px solid #27272a; font-size: 12.5px;">
+                                                <li>
+                                                    @if (m.StatusClass == "suspended")
+                                                    {
+                                                        <button type="button" class="dropdown-item text-success"
+                                                                data-userid="@m.UserId"
+                                                                data-username="@m.FullName"
+                                                                data-action="activate"
+                                                                onclick="handleStatusModalClick(this)">
+                                                            เปิดใช้งานบัญชี (Activate)
+                                                        </button>
+                                                    }
+                                                    else
+                                                    {
+                                                        <button type="button" class="dropdown-item text-warning"
+                                                                data-userid="@m.UserId"
+                                                                data-username="@m.FullName"
+                                                                data-action="deactivate"
+                                                                onclick="handleStatusModalClick(this)">
+                                                            ระงับการใช้งานชั่วคราว (Suspend)
+                                                        </button>
+                                                    }
+                                                </li>
+                                                <li><hr class="dropdown-divider" style="border-color: #27272a;"></li>
+                                                <li>
+                                                    <button type="button" class="dropdown-item text-danger"
+                                                            onclick="handleDeleteModalClick(@m.UserId, '@m.FullName')">
+                                                        ลบข้อมูลถาวร (Delete)
+                                                    </button>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="8" class="text-center py-5 text-secondary">
+                                ไม่พบข้อมูลสมาชิกที่ตรงกับเงื่อนไขการค้นหา
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Mobile Member Cards (Adaptive Layout per PrivateGym Mobile Standard) -->
+        <div class="adm-mobile-cards-list d-lg-none p-3">
+            @if (Model.Members.Any())
+            {
+                foreach (var m in Model.Members)
+                {
+                    <div class="adm-mcard mb-3 p-3 rounded-3 border border-secondary border-opacity-25" style="background: #121216;">
+                        <!-- Top Row: Avatar + Name + Status -->
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="adm-avatar" style="width: 38px; height: 38px; font-size: 13px;">@m.AvatarInitials</div>
+                                <div>
+                                    <div class="fw-bold text-white" style="font-size: 14.5px;">@m.FullName</div>
+                                    <div class="text-muted small" style="font-size: 11.5px;">@m.MemberCode &bull; @m.BranchName</div>
+                                </div>
+                            </div>
+                            <span class="adm-status-item @m.StatusClass" style="font-size: 11px; padding: 3px 8px;">
+                                <span class="dot"></span> @m.StatusText
+                            </span>
+                        </div>
+
+                        <!-- Info Row -->
+                        <div class="py-2 my-2 border-top border-bottom border-secondary border-opacity-25">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="adm-pkg-badge @m.PackageTierClass">@m.PackageName</span>
+                                <span class="text-white fw-bold small">฿@m.LifetimeValue.ToString("N0")</span>
+                            </div>
+
+                            <div class="adm-quota-wrap">
+                                <div class="adm-quota-label text-muted small d-flex justify-content-between mb-1" style="font-size: 11.5px;">
+                                    <span>Pods: <strong class="text-white">@m.RemainingPods/@m.TotalPods</strong></span>
+                                    <span>PT: <strong class="text-white">@(m.TotalPt > 0 ? $"{m.RemainingPt}/{m.TotalPt}" : "--")</strong></span>
+                                </div>
+                                <div class="adm-mini-bar" style="height: 4px;">
+                                    <div class="adm-mini-bar-fill" style="width: @(m.PodProgressPercent)%;"></div>
+                                </div>
+                            </div>
+
+                            <div class="text-muted small mt-2 d-flex justify-content-between" style="font-size: 11px;">
+                                <span>อายุสมาชิก:</span>
+                                <span>@m.StartDateFormatted - @m.EndDateFormatted</span>
+                            </div>
+                        </div>
+
+                        <!-- Bottom Touch Action Buttons (Min 44-48px touch target) -->
+                        <div class="d-flex gap-2 pt-1">
+                            <button type="button" class="btn btn-sm flex-fill text-white border border-secondary border-opacity-50" 
+                                    style="min-height: 44px; background: rgba(255,255,255,0.05); font-size: 12.5px;"
+                                    onclick="showUserDetails(@m.UserId)">
+                                ดูข้อมูล
+                            </button>
+                            <a asp-controller="Admin" asp-action="EditUser" asp-route-id="@m.UserId"
+                               class="btn btn-sm flex-fill text-warning border border-warning border-opacity-50 d-inline-flex align-items-center justify-content-center"
+                               style="min-height: 44px; background: rgba(234, 179, 8, 0.1); font-size: 12.5px;">
+                                แก้ไข
+                            </a>
+                            <button type="button" class="btn btn-sm flex-fill text-danger border border-danger border-opacity-50"
+                                    style="min-height: 44px; background: rgba(239, 68, 68, 0.1); font-size: 12.5px;"
+                                    onclick="handleDeleteModalClick(@m.UserId, '@m.FullName')">
+                                ลบ
+                            </button>
+                        </div>
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="text-center py-5 text-secondary">
+                    ไม่พบข้อมูลสมาชิกที่ตรงกับเงื่อนไขการค้นหา
+                </div>
+            }
+        </div>
+
+        <!-- Pagination footer -->
+        @{
+            int curPage = ViewBag.Page is int pg ? pg : 1;
+            int pageSize = ViewBag.PageSize is int ps ? ps : 10;
+            int totalPages = ViewBag.TotalPages is int tp ? tp : 1;
+            int filteredCount = ViewBag.FilteredCount is int fc ? fc : Model.Members.Count;
+            int startRow = filteredCount == 0 ? 0 : (curPage - 1) * pageSize + 1;
+            int endRow = Math.Min(curPage * pageSize, filteredCount);
+            string pgTab = ViewBag.ActiveTab as string ?? "all";
+            string searchQ = ViewBag.Search as string ?? "";
+            string statusQ = ViewBag.Status as string ?? "";
+            string pkgQ = ViewBag.Pkg as string ?? "";
+        }
+        <div class="adm-pagination-wrap">
+            <form asp-controller="Admin" asp-action="UserList" method="get" class="d-inline-flex align-items-center gap-2" style="margin:0;">
+                <input type="hidden" name="tab" value="@pgTab" />
+                <input type="hidden" name="search" value="@searchQ" />
+                <input type="hidden" name="status" value="@statusQ" />
+                <input type="hidden" name="pkg" value="@pkgQ" />
+                <input type="hidden" name="page" value="1" />
+                <span>แสดง @startRow - @endRow จากทั้งหมด @filteredCount สมาชิก &nbsp;&bull;&nbsp; แถวต่อหน้า:</span>
+                <select name="pageSize" class="adm-select" style="min-height: 28px; height: 28px; padding: 0 8px !important; font-size: 12px !important;" onchange="this.form.submit()">
+                    <option value="10" selected="@(pageSize == 10)">10</option>
+                    <option value="25" selected="@(pageSize == 25)">25</option>
+                    <option value="50" selected="@(pageSize == 50)">50</option>
+                </select>
+            </form>
+            <div class="adm-pages">
+                @if (curPage > 1)
+                {
+                    <a asp-controller="Admin" asp-action="UserList"
+                       asp-route-tab="@pgTab" asp-route-search="@searchQ" asp-route-status="@statusQ" asp-route-pkg="@pkgQ"
+                       asp-route-page="@(curPage - 1)" asp-route-pageSize="@pageSize"
+                       class="adm-page-num" style="width: auto; padding: 0 8px;">&lt;</a>
+                }
+                @for (int p = 1; p <= totalPages; p++)
+                {
+                    if (p == curPage)
+                    {
+                        <span class="adm-page-num active">@p</span>
+                    }
+                    else
+                    {
+                        <a asp-controller="Admin" asp-action="UserList"
+                           asp-route-tab="@pgTab" asp-route-search="@searchQ" asp-route-status="@statusQ" asp-route-pkg="@pkgQ"
+                           asp-route-page="@p" asp-route-pageSize="@pageSize"
+                           class="adm-page-num">@p</a>
+                    }
+                }
+                @if (curPage < totalPages)
+                {
+                    <a asp-controller="Admin" asp-action="UserList"
+                       asp-route-tab="@pgTab" asp-route-search="@searchQ" asp-route-status="@statusQ" asp-route-pkg="@pkgQ"
+                       asp-route-page="@(curPage + 1)" asp-route-pageSize="@pageSize"
+                       class="adm-page-num" style="width: auto; padding: 0 8px;">&gt;</a>
+                }
+            </div>
+        </div>
+    </div>
+
+</div>
+
+@await Html.PartialAsync("~/Views/Shared/Admin/_RenewPaymentModal.cshtml")
+
+<!-- Modal รายละเอียดสมาชิกเจาะลึก -->
+<div class="modal fade" id="userDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border border-secondary" style="background: #141414; color: #fff;">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title fw-bold" id="modalUserName">รายละเอียดสมาชิก</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="p-3 mb-3 rounded" style="background: #111114; border: 1px solid #27272a;">
+                    <div class="row g-2 small">
+                        <div class="col-6">
+                            <span class="text-secondary">รหัสสมาชิก:</span>
+                            <div class="fw-bold" id="modalUserId">-</div>
+                        </div>
+                        <div class="col-6">
+                            <span class="text-secondary">บทบาท:</span>
+                            <div class="fw-bold text-danger" id="modalRole">-</div>
+                        </div>
+                        <div class="col-12">
+                            <span class="text-secondary">อีเมล:</span>
+                            <div class="fw-bold text-break" id="modalEmail">-</div>
+                        </div>
+                        <div class="col-6">
+                            <span class="text-secondary">เบอร์โทรศัพท์:</span>
+                            <div class="fw-bold" id="modalPhone">-</div>
+                        </div>
+                        <div class="col-6">
+                            <span class="text-secondary">สาขาประจำ:</span>
+                            <div class="fw-bold" id="modalBranch">-</div>
+                        </div>
+                        <div class="col-6">
+                            <span class="text-secondary">แพ็กเกจปัจจุบัน:</span>
+                            <div class="fw-bold text-success" id="modalPackage">-</div>
+                        </div>
+                    </div>
+                </div>
+
+                <h6 class="fw-bold text-white-50 small mb-2 text-uppercase">ข้อมูลสุขภาพและเป้าหมาย</h6>
+                <div class="p-3 rounded mb-3" style="background: #1c1c1c;">
+                    <div class="row g-2 small">
+                        <div class="col-4">
+                            <span class="text-secondary">ส่วนสูง:</span>
+                            <div class="fw-bold" id="modalHeight">-</div>
+                        </div>
+                        <div class="col-4">
+                            <span class="text-secondary">น้ำหนัก:</span>
+                            <div class="fw-bold" id="modalWeight">-</div>
+                        </div>
+                        <div class="col-4">
+                            <span class="text-secondary">เพศ:</span>
+                            <div class="fw-bold" id="modalGender">-</div>
+                        </div>
+                        <div class="col-6">
+                            <span class="text-secondary">ระดับความฟิต:</span>
+                            <div class="fw-bold" id="modalExperience">-</div>
+                        </div>
+                        <div class="col-6">
+                            <span class="text-secondary">เป้าหมาย:</span>
+                            <div class="fw-bold" id="modalGoal">-</div>
+                        </div>
+                    </div>
+                </div>
+
+                <h6 class="fw-bold text-white-50 small mb-2 text-uppercase">ข้อมูลภาษีและใบเสร็จ</h6>
+                <div class="p-3 rounded" style="background: #1c1c1c;">
+                    <div class="row g-2 small">
+                        <div class="col-12">
+                            <span class="text-secondary">เลขประจำตัวผู้เสียภาษี (Tax ID):</span>
+                            <div class="fw-bold" id="modalTaxId">-</div>
+                        </div>
+                        <div class="col-12">
+                            <span class="text-secondary">ที่อยู่ออกใบเสร็จ:</span>
+                            <div class="fw-bold" id="modalBillingAddress">-</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">ปิด</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal ยืนยันปิด/เปิดการใช้งานบัญชี (Custom Modern Dialog ตามแบบรูปตัวอย่าง) -->
+<div class="modal fade" id="statusConfirmModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 410px;">
+        <div class="modal-content border-0" style="background: #18181b; color: #fff; border-radius: 20px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.75); border: 1px solid rgba(255, 255, 255, 0.08); overflow: hidden;">
+            <div class="modal-body p-4 text-center">
+                
+                <!-- Icon Badge (Rounded square with subtle tint) -->
+                <div id="statusModalIconBox" style="width: 58px; height: 58px; margin: 6px auto 18px auto; border-radius: 14px; display: flex; align-items: center; justify-content: center; background: rgba(239, 68, 68, 0.14); border: 1px solid rgba(239, 68, 68, 0.25);">
+                    <svg id="statusModalIcon" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        <line x1="10" y1="11" x2="10" y2="17"></line>
+                        <line x1="14" y1="11" x2="14" y2="17"></line>
+                    </svg>
+                </div>
+
+                <!-- Title -->
+                <h5 class="fw-bold mb-2 text-white" id="statusModalTitle" style="font-size: 1.22rem; letter-spacing: -0.01em;">
+                    ปิดการใช้งานบัญชี?
+                </h5>
+
+                <!-- Description -->
+                <p class="mb-4 px-2" id="statusModalDesc" style="font-size: 0.92rem; line-height: 1.6; color: #a1a1aa !important;">
+                    การปิดการใช้งานบัญชีของ <strong class="text-white" id="statusModalUserName">คุณ สมชาย</strong> จะทำให้สมาชิกไม่สามารถเข้าสู่ระบบและระงับการจองชั่วคราว ข้อมูลสถิติยังคงถูกบันทึกไว้อย่างปลอดภัย
+                </p>
+
+                <!-- Actions Divider & Buttons (Cancel & Action) -->
+                <div class="pt-3" style="border-top: 1px solid rgba(255, 255, 255, 0.08);">
+                    <form method="post" asp-controller="Admin" asp-action="ToggleUserStatus" id="statusConfirmForm">
+                        <input type="hidden" name="id" id="statusModalUserId" value="" />
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn flex-fill py-2" data-bs-dismiss="modal" 
+                                    style="background: #27272a; color: #f4f4f5; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; font-weight: 500; font-size: 0.95rem; transition: all 0.2s;">
+                                ยกเลิก
+                            </button>
+                            <button type="submit" id="statusModalSubmitBtn" class="btn flex-fill py-2" 
+                                    style="background: rgba(239, 68, 68, 0.22); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.35); border-radius: 12px; font-weight: 600; font-size: 0.95rem; transition: all 0.2s;">
+                                ปิดการใช้งาน
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal ยืนยันการลบผู้ใช้ถาวร (Hard Delete) -->
+<div class="modal fade" id="deleteUserModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 420px;">
+        <div class="modal-content border-0" style="background: #18181b; color: #fff; border-radius: 20px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.75); border: 1px solid rgba(239, 68, 68, 0.3); overflow: hidden;">
+            <div class="modal-body p-4 text-center">
+                
+                <div style="width: 58px; height: 58px; margin: 6px auto 18px auto; border-radius: 14px; display: flex; align-items: center; justify-content: center; background: rgba(239, 68, 68, 0.18); border: 1px solid rgba(239, 68, 68, 0.35);">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        <line x1="10" y1="11" x2="10" y2="17"></line>
+                        <line x1="14" y1="11" x2="14" y2="17"></line>
+                    </svg>
+                </div>
+
+                <h5 class="fw-bold mb-2 text-danger" style="font-size: 1.25rem;">
+                    ยืนยันการลบผู้ใช้งานถาวร?
+                </h5>
+
+                <p class="mb-4 px-2" style="font-size: 0.92rem; line-height: 1.6; color: #a1a1aa !important;">
+                    คุณต้องการลบข้อมูลของ <strong class="text-white" id="deleteModalUserName">...</strong> ออกจากระบบฐานข้อมูลจริงหรือไม่?<br/>
+                    <span class="text-warning small">&#9888; ข้อมูลนี้จะถูกลบออกจากตาราง Users ถาวรและไม่สามารถกู้คืนได้</span>
+                </p>
+
+                <div class="pt-3" style="border-top: 1px solid rgba(255, 255, 255, 0.08);">
+                    <form method="post" asp-controller="Admin" asp-action="DeleteUser">
+                        <input type="hidden" name="id" id="deleteModalUserId" value="" />
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn flex-fill py-2" data-bs-dismiss="modal" 
+                                    style="background: #27272a; color: #f4f4f5; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; font-weight: 500;">
+                                ยกเลิก
+                            </button>
+                            <button type="submit" class="btn flex-fill py-2 text-white" 
+                                    style="background: #dc2626; border-radius: 12px; font-weight: 600;">
+                                ลบข้อมูลถาวร
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    #statusConfirmModal .btn:hover,
+    #deleteUserModal .btn:hover {
+        filter: brightness(1.15);
+    }
+    #statusConfirmModal .modal-content,
+    #deleteUserModal .modal-content {
+        animation: statusModalPop 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    @@keyframes statusModalPop {
+        from {
+            opacity: 0;
+            transform: scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+
+    /* Mobile Bottom Sheet Drawer Style (PrivateGym Standard) */
+    @@media (max-width: 575.98px) {
+        #statusConfirmModal .modal-dialog,
+        #deleteUserModal .modal-dialog,
+        #userDetailModal .modal-dialog {
+            margin: 0 !important;
+            position: fixed !important;
+            bottom: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            max-width: 100% !important;
+            width: 100% !important;
+        }
+        #statusConfirmModal .modal-content,
+        #deleteUserModal .modal-content,
+        #userDetailModal .modal-content {
+            border-radius: 24px 24px 0 0 !important;
+            border-bottom: none !important;
+            animation: bottomSheetSlideUp 0.24s cubic-bezier(0.16, 1, 0.3, 1) !important;
+            max-height: 88vh;
+            overflow-y: auto;
+        }
+        @@keyframes bottomSheetSlideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+    }
+</style>
+
+@section Scripts {
+<script>
+    function handleStatusModalClick(button) {
+        const userId = button.getAttribute('data-userid');
+        const userName = button.getAttribute('data-username');
+        const action = button.getAttribute('data-action');
+        
+        document.getElementById('statusModalUserId').value = userId;
+        document.getElementById('statusModalUserName').innerText = userName;
+
+        const iconBox = document.getElementById('statusModalIconBox');
+        const titleEl = document.getElementById('statusModalTitle');
+        const descEl = document.getElementById('statusModalDesc');
+        const submitBtn = document.getElementById('statusModalSubmitBtn');
+
+        if (action === 'deactivate') {
+            iconBox.style.background = 'rgba(239, 68, 68, 0.14)';
+            iconBox.style.borderColor = 'rgba(239, 68, 68, 0.25)';
+            iconBox.innerHTML = `
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    <line x1="10" y1="11" x2="10" y2="17"></line>
+                    <line x1="14" y1="11" x2="14" y2="17"></line>
+                </svg>
+            `;
+            titleEl.innerText = 'ปิดการใช้งานบัญชี?';
+            descEl.innerHTML = `การปิดการใช้งานบัญชีของ <strong class="text-white">${userName}</strong> ซึ่งจะทำให้สมาชิกไม่สามารถเข้าสู่ระบบและระงับการจองชั่วคราว ข้อมูลสถิติยังคงถูกบันทึกไว้อย่างปลอดภัย`;
+            submitBtn.style.background = 'rgba(239, 68, 68, 0.22)';
+            submitBtn.style.borderColor = 'rgba(239, 68, 68, 0.35)';
+            submitBtn.style.color = '#f87171';
+            submitBtn.innerText = 'ปิดการใช้งาน';
+        } else {
+            iconBox.style.background = 'rgba(34, 197, 94, 0.14)';
+            iconBox.style.borderColor = 'rgba(34, 197, 94, 0.25)';
+            iconBox.innerHTML = `
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>
+            `;
+            titleEl.innerText = 'เปิดการใช้งานบัญชี?';
+            descEl.innerHTML = `เปิดการใช้งานบัญชีของ <strong class="text-white">${userName}</strong> เพื่อให้สมาชิกสามารถเข้าสู่ระบบและใช้งานบริการ PrivateGym ได้ตามปกติ`;
+            submitBtn.style.background = 'rgba(34, 197, 94, 0.22)';
+            submitBtn.style.borderColor = 'rgba(34, 197, 94, 0.35)';
+            submitBtn.style.color = '#4ade80';
+            submitBtn.innerText = 'เปิดการใช้งาน';
+        }
+
+        const modal = new bootstrap.Modal(document.getElementById('statusConfirmModal'));
+        modal.show();
+    }
+
+    function showUserDetails(userId) {
+        fetch('/Admin/GetUserDetails/' + userId)
+            .then(res => {
+                if (!res.ok) throw new Error('Not found');
+                return res.json();
+            })
+            .then(data => {
+                document.getElementById('modalUserName').innerText = data.fullName;
+                document.getElementById('modalUserId').innerText = '#PG-' + data.userId;
+                document.getElementById('modalRole').innerText = data.role;
+                document.getElementById('modalEmail').innerText = data.email;
+                document.getElementById('modalPhone').innerText = data.phone;
+                document.getElementById('modalBranch').innerText = data.branch;
+                document.getElementById('modalPackage').innerText = data.packageName;
+                document.getElementById('modalHeight').innerText = data.height !== '-' ? data.height + ' ซม.' : '-';
+                document.getElementById('modalWeight').innerText = data.weight !== '-' ? data.weight + ' กก.' : '-';
+                document.getElementById('modalGender').innerText = data.gender;
+                document.getElementById('modalExperience').innerText = data.experience;
+                document.getElementById('modalGoal').innerText = data.goal;
+                document.getElementById('modalTaxId').innerText = data.taxId;
+                document.getElementById('modalBillingAddress').innerText = data.billingAddress;
+
+                const modal = new bootstrap.Modal(document.getElementById('userDetailModal'));
+                modal.show();
+            })
+            .catch(err => {
+                console.error(err);
+                alert('กำลังโหลดข้อมูลสมาชิก...');
+            });
+    }
+
+    function handleDeleteModalClick(userId, userName) {
+        document.getElementById('deleteModalUserId').value = userId;
+        document.getElementById('deleteModalUserName').innerText = userName;
+        const modal = new bootstrap.Modal(document.getElementById('deleteUserModal'));
+        modal.show();
+    }
+</script>
+}

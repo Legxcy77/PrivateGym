@@ -1,0 +1,385 @@
+@model PrivateGym.Models.Trainer
+@{
+    ViewData["Title"] = "โปรไฟล์และความเชี่ยวชาญโค้ช";
+    Layout = "~/Views/Shared/Trainer/_TrainerLayout.cshtml";
+
+    string trainerEmail = Model.User?.Email ?? ViewBag.Email ?? "alex@privategym.club";
+    string trainerName = Model.User?.FullName ?? "Coach PrivateGym";
+    string branchName = Model.User?.HomeBranch?.BranchName ?? "สาขาทองหล่อ";
+    decimal rate = Model.HourlyRate ?? 1500m;
+
+    int completedSessions = ViewBag.CompletedSessions ?? 0;
+    int totalClients = ViewBag.TotalClients ?? 0;
+    int attendanceRate = ViewBag.AttendanceRate ?? 100;
+    string avatarPath = ViewBag.AvatarPath ?? "/images/trainer-alex.jpg";
+    var credentials = ViewBag.Credentials as List<string> ?? new List<string>();
+}
+
+<style>
+    .pf-grid {
+        display: grid;
+        grid-template-columns: minmax(290px, 370px) minmax(0, 1fr);
+        gap: 20px;
+        align-items: start;
+    }
+    .pf-panel {
+        background: #09090b;
+        border: 1px solid #27272a;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+    .pf-panel-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 14px 18px;
+        border-bottom: 1px solid #27272a;
+        background: #0c0c0f;
+    }
+    .pf-photo-wrap {
+        position: relative;
+        width: 100%;
+        aspect-ratio: 4 / 3;
+        border-radius: 10px;
+        overflow: hidden;
+        border: 1px solid #27272a;
+        background: #111114;
+    }
+    .pf-photo-wrap img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: center top;
+        display: block;
+    }
+    .pf-badge-verified {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 700;
+        background: rgba(16, 185, 129, 0.9);
+        color: #ffffff;
+    }
+    .pf-badge-branch {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 600;
+        background: rgba(9, 9, 11, 0.85);
+        border: 1px solid #3f3f46;
+        color: #fafafa;
+    }
+    .pf-badge-rate {
+        position: absolute;
+        bottom: 10px;
+        left: 10px;
+        padding: 4px 11px;
+        border-radius: 999px;
+        font-size: 11.5px;
+        font-weight: 700;
+        background: #e50914;
+        color: #ffffff;
+    }
+    .pf-stat-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        margin-top: 14px;
+    }
+    .pf-stat-box {
+        background: #111114;
+        border: 1px solid #27272a;
+        border-radius: 8px;
+        padding: 10px;
+    }
+    .pf-stat-lbl {
+        font-size: 10.5px;
+        color: #71717a;
+    }
+    .pf-stat-val {
+        font-size: 14px;
+        font-weight: 700;
+        color: #fafafa;
+        margin-top: 2px;
+    }
+    .pf-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 10px;
+        border-radius: 7px;
+        font-size: 12px;
+        background: #141418;
+        border: 1px solid #27272a;
+        color: #d4d4d8;
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+    .pf-chip.active {
+        background: rgba(229, 9, 20, 0.14);
+        border-color: rgba(229, 9, 20, 0.55);
+        color: #fafafa;
+    }
+    .pf-field-lbl {
+        display: block;
+        font-size: 12px;
+        font-weight: 500;
+        color: #a1a1aa;
+        margin-bottom: 6px;
+    }
+    .pf-cred-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 9px 12px;
+        background: #111114;
+        border: 1px solid #27272a;
+        border-radius: 8px;
+    }
+    .pf-cred-row input {
+        flex: 1;
+        background: transparent;
+        border: none;
+        color: #fafafa;
+        font-size: 13px;
+        outline: none;
+    }
+    @@media (max-width: 1020px) {
+        .pf-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<main class="cd-content">
+    <div class="d-flex justify-content-between align-items-end flex-wrap gap-3 mb-4">
+        <div>
+            <h1 class="cd-page-title">โปรไฟล์และความเชี่ยวชาญโค้ช</h1>
+            <p class="cd-page-subtext">จัดการข้อมูลโปรไฟล์ ความเชี่ยวชาญ และใบรับรองที่แสดงให้สมาชิกเห็นบนหน้าจองบริการ PrivateGym</p>
+        </div>
+        <span class="st-badge st-badge-green">ออนไลน์ / เปิดรับลูกค้า</span>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success" style="background: rgba(16, 185, 129, 0.14); border: 1px solid rgba(16, 185, 129, 0.35); color: #fafafa; border-radius: 10px; padding: 12px 16px; margin-bottom: 18px; font-size: 13px;">
+            @TempData["Success"]
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger" style="background: rgba(239, 68, 68, 0.14); border: 1px solid rgba(239, 68, 68, 0.35); color: #fafafa; border-radius: 10px; padding: 12px 16px; margin-bottom: 18px; font-size: 13px;">
+            @TempData["Error"]
+        </div>
+    }
+
+    <div class="pf-grid">
+        <!-- Left Column: Public Coach Card Preview -->
+        <div class="pf-panel">
+            <div class="pf-panel-head">
+                <div>
+                    <h2 style="font-size:14px; font-weight:600; color:#fafafa; margin:0;">Public Coach Card Preview</h2>
+                    <div style="font-size:11.5px; color:#71717a;">ตัวอย่างการ์ดที่สมาชิกเห็นตอนเลือกจองโค้ช</div>
+                </div>
+                <span class="st-badge st-badge-green">Live Preview</span>
+            </div>
+
+            <div style="padding: 18px;">
+                <div class="pf-photo-wrap mb-3">
+                    <img src="@avatarPath" alt="@trainerName" />
+                    <span class="pf-badge-verified">Verified Coach</span>
+                    <span class="pf-badge-branch">@branchName</span>
+                    <span class="pf-badge-rate">฿@rate.ToString("N0") / รอบ</span>
+                </div>
+
+                <div id="previewName" style="font-size:18px; font-weight:700; color:#fafafa;">@trainerName</div>
+                <div id="previewSpecialtyLine" style="font-size:12.5px; color:#a1a1aa; margin-top:2px;">@(string.IsNullOrWhiteSpace(Model.Specialty) ? "Strength & Conditioning Coach" : Model.Specialty)</div>
+
+                <div id="previewTagChips" class="d-flex flex-wrap gap-1 mt-3"></div>
+
+                <div id="previewBio" style="font-size:12.5px; color:#d4d4d8; margin-top:12px; padding-top:12px; border-top:1px solid #18181b; line-height:1.5;">
+                    @(string.IsNullOrWhiteSpace(Model.Bio) ? "Personal Trainer ประจำคลับ PrivateGym" : Model.Bio)
+                </div>
+
+                <div class="pf-stat-grid">
+                    <div class="pf-stat-box">
+                        <div class="pf-stat-lbl">สอนสำเร็จ</div>
+                        <div class="pf-stat-val">@completedSessions เซสชัน</div>
+                    </div>
+                    <div class="pf-stat-box">
+                        <div class="pf-stat-lbl">ลูกค้า</div>
+                        <div class="pf-stat-val">@totalClients คน</div>
+                    </div>
+                    <div class="pf-stat-box">
+                        <div class="pf-stat-lbl">อัตราเข้าสอน</div>
+                        <div class="pf-stat-val" style="color:#10b981;">@attendanceRate%</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Edit Profile & Credentials Form -->
+        <form method="post" asp-controller="Trainer" asp-action="UpdateProfile" id="profileForm" onsubmit="syncCredentials()" class="d-flex flex-column gap-3">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="trainerId" value="@Model.TrainerId" />
+            <input type="hidden" name="email" value="@trainerEmail" />
+            <input type="hidden" name="credentialsJson" id="credentialsJsonInput" value="[]" />
+
+            <!-- Card 1: Profile & Specialty Editor -->
+            <div class="pf-panel">
+                <div class="pf-panel-head">
+                    <h2 style="font-size:14px; font-weight:600; color:#fafafa; margin:0;">ข้อมูลทั่วไปและความเชี่ยวชาญ (Profile &amp; Specialty Editor)</h2>
+                </div>
+                <div style="padding: 18px;" class="d-flex flex-column gap-3">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="pf-field-lbl">ชื่อ-นามสกุลที่แสดง (Full Name)</label>
+                            <input type="text" name="fullName" id="inputFullName" value="@trainerName" class="st-input w-100" oninput="updatePreview()" required />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="pf-field-lbl">อีเมลบัญชี (Email)</label>
+                            <input type="text" value="@trainerEmail" class="st-input w-100" readonly style="opacity:0.65; cursor:not-allowed;" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="pf-field-lbl">เบอร์โทรศัพท์ (Phone)</label>
+                            <input type="text" name="phone" value="@Model.User?.Phone" class="st-input w-100" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="pf-field-lbl">สาขาประจำ &amp; อัตราค่าสอน</label>
+                            <input type="text" value="@branchName • ฿@rate.ToString("N0") / รอบ" class="st-input w-100" readonly style="opacity:0.65; cursor:not-allowed;" />
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="pf-field-lbl">ความเชี่ยวชาญหลัก (Specialties — คั่นด้วยเครื่องหมายจุลภาค , หรือกดเลือกแท็ก)</label>
+                        <input type="text" name="specialty" id="inputSpecialty" value="@Model.Specialty" class="st-input w-100 mb-2"
+                               placeholder="เช่น Strength & Hypertrophy, Weight Management" oninput="updatePreview()" />
+                        <div class="d-flex flex-wrap gap-2">
+                            @{
+                                string[] quickSpecs = new[] { "Strength & Hypertrophy", "Olympic Weightlifting", "Weight Management", "Mobility & Rehab", "Sport Performance", "Functional Conditioning" };
+                            }
+                            @foreach (var sp in quickSpecs)
+                            {
+                                <button type="button" class="pf-chip" onclick="toggleSpecialtyTag('@sp')">+ @sp</button>
+                            }
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="pf-field-lbl">ประวัติย่อ / Bio (แนะนำตัวสำหรับสมาชิก)</label>
+                        <textarea name="bio" id="inputBio" rows="4" class="st-input w-100" style="height:auto; padding:10px 12px !important;" oninput="updatePreview()">@Model.Bio</textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 2: Certifications & Experience -->
+            <div class="pf-panel">
+                <div class="pf-panel-head">
+                    <h2 style="font-size:14px; font-weight:600; color:#fafafa; margin:0;">ใบรับรองและประวัติการทำงาน (Certifications &amp; Experience)</h2>
+                    <button type="button" class="st-btn-outline" style="height:30px; padding:0 10px; font-size:12px;" onclick="addCredentialRow('')">+ เพิ่มใบรับรอง / ประสบการณ์</button>
+                </div>
+                <div style="padding: 18px;">
+                    <div id="credentialsList" class="d-flex flex-column gap-2"></div>
+                </div>
+            </div>
+
+            <!-- Action Bar -->
+            <div class="d-flex justify-content-end gap-2">
+                <a asp-controller="Trainer" asp-action="Profile" asp-route-email="@trainerEmail" class="st-btn-outline">ยกเลิก</a>
+                <button type="submit" class="st-btn-primary">บันทึกข้อมูลโปรไฟล์</button>
+            </div>
+        </form>
+    </div>
+</main>
+
+@section Scripts {
+<script>
+    let credsState = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(credentials));
+
+    (function initProfile() {
+        renderCredentials();
+        updatePreview();
+    })();
+
+    function renderCredentials() {
+        const container = document.getElementById('credentialsList');
+        if (!container) return;
+        container.innerHTML = '';
+
+        if (!credsState.length) {
+            container.innerHTML = `<div style="font-size:12.5px; color:#71717a; text-align:center; padding:10px 0;">ยังไม่มีรายการ กด "+ เพิ่มใบรับรอง / ประสบการณ์" ด้านบน</div>`;
+            return;
+        }
+
+        credsState.forEach((txt, idx) => {
+            const row = document.createElement('div');
+            row.className = 'pf-cred-row';
+            row.innerHTML = `
+                <span style="font-size:11px; color:#ef4444; font-weight:700;">#${idx + 1}</span>
+                <input type="text" value="${escapeAttr(txt)}" placeholder="เช่น NSCA - CSCS (2021)" oninput="credsState[${idx}] = this.value" />
+                <button type="button" onclick="removeCredentialRow(${idx})" style="background:none; border:none; color:#71717a; cursor:pointer; font-size:15px;">&times;</button>
+            `;
+            container.appendChild(row);
+        });
+    }
+
+    function addCredentialRow(val) {
+        credsState.push(val || '');
+        renderCredentials();
+    }
+
+    function removeCredentialRow(idx) {
+        credsState.splice(idx, 1);
+        renderCredentials();
+    }
+
+    function syncCredentials() {
+        document.getElementById('credentialsJsonInput').value = JSON.stringify(credsState);
+    }
+
+    function toggleSpecialtyTag(tag) {
+        const inp = document.getElementById('inputSpecialty');
+        if (!inp) return;
+        let parts = inp.value.split(',').map(s => s.trim()).filter(Boolean);
+        if (parts.includes(tag)) {
+            parts = parts.filter(p => p !== tag);
+        } else {
+            parts.push(tag);
+        }
+        inp.value = parts.join(', ');
+        updatePreview();
+    }
+
+    function updatePreview() {
+        const name = document.getElementById('inputFullName')?.value?.trim() || 'Coach PrivateGym';
+        const spec = document.getElementById('inputSpecialty')?.value?.trim() || 'Strength & Conditioning';
+        const bio = document.getElementById('inputBio')?.value?.trim() || 'Personal Trainer ประจำคลับ PrivateGym';
+
+        document.getElementById('previewName').textContent = name;
+        document.getElementById('previewSpecialtyLine').textContent = spec;
+        document.getElementById('previewBio').textContent = bio;
+
+        const chipsWrap = document.getElementById('previewTagChips');
+        if (chipsWrap) {
+            const parts = spec.split(',').map(s => s.trim()).filter(Boolean);
+            chipsWrap.innerHTML = parts.map(p =>
+                `<span style="padding:3px 9px; border-radius:6px; font-size:11px; background:#141418; border:1px solid #27272a; color:#e4e4e7;">${escapeHtml(p)}</span>`
+            ).join('');
+        }
+    }
+
+    function escapeAttr(s) {
+        return String(s || '').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+    }
+    function escapeHtml(s) {
+        return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+</script>
+}

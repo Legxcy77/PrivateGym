@@ -1,0 +1,810 @@
+@model List<PrivateGym.Models.Pod>
+@using PrivateGym.Models
+
+@{
+    ViewData["Title"] = "สถานะห้องซ้อม Pod";
+    Layout = "~/Views/Shared/Staff/_StaffLayout.cshtml";
+
+    var pods = Model ?? new List<Pod>();
+    var todayBookings = ViewBag.TodayBookings as List<Booking> ?? new List<Booking>();
+    var slotLocks = ViewBag.SlotLocks as List<Booking> ?? new List<Booking>();
+    var maintenanceLogs = ViewBag.MaintenanceLogs as List<Dictionary<string, string>> ?? new List<Dictionary<string, string>>();
+    var nowTime = TimeOnly.FromDateTime(DateTime.Now);
+    var todayStr = DateOnly.FromDateTime(DateTime.Today).ToString("yyyy-MM-dd");
+
+    var podStatuses = pods.Select(pod =>
+    {
+        bool isMaint = pod.Status == "Maintenance";
+        var podLocks = slotLocks.Where(l => l.PodId == pod.PodId).ToList();
+        var currentSession = todayBookings.FirstOrDefault(b =>
+            b.PodId == pod.PodId &&
+            b.User != null && b.User.RoleId == 4 &&
+            ((b.CheckIns != null && b.CheckIns.Any()) || (b.StartTime <= nowTime && b.EndTime > nowTime)));
+        var nextSession = todayBookings.FirstOrDefault(b =>
+            b.PodId == pod.PodId && b.User != null && b.User.RoleId == 4 && b.StartTime > nowTime);
+        string statusKey = isMaint ? "maintenance" : (currentSession != null ? "occupied" : "ready");
+
+        return new
+        {
+            Pod = pod,
+            IsMaint = isMaint,
+            Locks = podLocks,
+            CurrentSession = currentSession,
+            NextSession = nextSession,
+            StatusKey = statusKey,
+            BranchName = pod.Branch?.BranchName ?? "สาขาหลัก"
+        };
+    }).ToList();
+
+    int totalCount = podStatuses.Count;
+    int readyCount = podStatuses.Count(x => x.StatusKey == "ready");
+    int occupiedCount = podStatuses.Count(x => x.StatusKey == "occupied");
+    int maintCount = podStatuses.Count(x => x.StatusKey == "maintenance" || x.Locks.Any());
+
+    var branchGroups = podStatuses
+        .GroupBy(x => new { x.Pod.BranchId, x.BranchName })
+        .OrderByDescending(g => g.Count())
+        .ThenBy(g => g.Key.BranchId)
+        .ToList();
+}
+
+<style>
+    .pod-kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+
+    .pod-kpi-btn {
+        background: #0c0c0f;
+        border: 1px solid #27272a;
+        border-radius: 12px;
+        padding: 14px 18px;
+        text-align: left;
+        cursor: pointer;
+        transition: border-color 0.15s ease, background-color 0.15s ease;
+    }
+
+    .pod-kpi-btn:hover {
+        background: #121216;
+        border-color: #3f3f46;
+    }
+
+    .pod-kpi-btn.active {
+        background: #121216;
+        border-color: rgba(229, 9, 20, 0.65);
+    }
+
+    .pod-kpi-lbl {
+        font-size: 12px;
+        color: #a1a1aa;
+        font-weight: 500;
+    }
+
+    .pod-kpi-val {
+        font-size: 22px;
+        font-weight: 600;
+        color: #fafafa;
+        margin-top: 4px;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .pod-branch-section {
+        margin-top: 28px;
+        padding-top: 24px;
+        border-top: 1px solid #1f1f24;
+    }
+
+    .pod-branch-section:first-of-type {
+        margin-top: 8px;
+        padding-top: 0;
+        border-top: none;
+    }
+
+    .pod-branch-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 14px;
+    }
+
+    .st-pod-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+    }
+
+    .st-pod-card {
+        background: #0c0c0f;
+        border: 1px solid #27272a;
+        border-radius: 12px;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        gap: 16px;
+        transition: border-color 0.15s ease;
+    }
+
+    .st-pod-card:hover {
+        border-color: #3f3f46;
+    }
+
+    .st-pod-card.ready {
+        border-left: 3px solid rgba(34, 197, 94, 0.7);
+    }
+
+    .st-pod-card.occupied {
+        border-left: 3px solid #38bdf8;
+        background: rgba(56, 189, 248, 0.03);
+    }
+
+    .st-pod-card.maintenance {
+        border-left: 3px solid #f59e0b;
+        background: rgba(245, 158, 11, 0.03);
+    }
+
+    .st-badge-blue {
+        background: rgba(56, 189, 248, 0.14);
+        border: 1px solid rgba(56, 189, 248, 0.35);
+        color: #38bdf8;
+    }
+
+    .pod-meta-line {
+        font-size: 12.5px;
+        color: #a1a1aa;
+        padding-top: 12px;
+        border-top: 1px solid #1f1f24;
+        line-height: 1.5;
+    }
+
+    .pod-lock-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 3px 9px;
+        border-radius: 6px;
+        font-size: 11px;
+        background: rgba(245, 158, 11, 0.12);
+        border: 1px solid rgba(245, 158, 11, 0.32);
+        color: #fcd34d;
+        margin: 6px 4px 0 0;
+    }
+
+    .pod-action-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 8px;
+    }
+
+    .pod-action-btn {
+        height: 36px;
+        padding: 0 12px;
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer;
+        border: 1px solid #27272a;
+        background: #141418;
+        color: #d4d4d8;
+        transition: all 0.15s ease;
+        white-space: nowrap;
+    }
+
+    .pod-action-btn:hover {
+        background: #1c1c22;
+        border-color: #3f3f46;
+        color: #fafafa;
+    }
+
+    .pod-action-btn.is-maint {
+        background: rgba(34, 197, 94, 0.12);
+        border-color: rgba(34, 197, 94, 0.35);
+        color: #4ade80;
+    }
+
+    /* shadcn/ui Modal & Calendar */
+    .pod-modal-backdrop {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.78);
+        backdrop-filter: blur(4px);
+        z-index: 10050;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+    }
+
+    .pod-modal-backdrop.show {
+        display: flex;
+    }
+
+    .pod-modal-box {
+        background: #09090b;
+        border: 1px solid #27272a;
+        border-radius: 14px;
+        width: 100%;
+        max-width: 430px;
+        padding: 24px;
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.8);
+        max-height: 92vh;
+        overflow-y: auto;
+    }
+
+    .sh-cal {
+        background: #0c0c0f;
+        border: 1px solid #27272a;
+        border-radius: 10px;
+        padding: 12px;
+    }
+
+    .sh-cal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+
+    .sh-cal-nav {
+        width: 28px;
+        height: 28px;
+        border-radius: 6px;
+        background: transparent;
+        border: 1px solid #27272a;
+        color: #a1a1aa;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+    }
+
+    .sh-cal-nav:hover {
+        background: #18181b;
+        color: #fafafa;
+    }
+
+    .sh-cal-weekdays,
+    .sh-cal-days {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 2px;
+        text-align: center;
+    }
+
+    .sh-cal-weekdays div {
+        font-size: 11px;
+        color: #71717a;
+        padding: 4px 0 6px 0;
+        font-weight: 500;
+    }
+
+    .sh-cal-day {
+        height: 32px;
+        border-radius: 6px;
+        font-size: 12.5px;
+        border: 1px solid transparent;
+        background: transparent;
+        color: #e4e4e7;
+        cursor: pointer;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .sh-cal-day:hover:not(:disabled) {
+        background: #18181b;
+    }
+
+    .sh-cal-day.is-today {
+        border-color: #3f3f46;
+    }
+
+    .sh-cal-day.is-selected {
+        background: #fafafa;
+        color: #09090b;
+        font-weight: 600;
+    }
+
+    .sh-cal-day:disabled {
+        color: #3f3f46;
+        cursor: not-allowed;
+    }
+
+    .sh-reason-chip {
+        padding: 4px 10px;
+        border-radius: 9999px;
+        font-size: 11px;
+        border: 1px solid #27272a;
+        background: #141418;
+        color: #a1a1aa;
+        cursor: pointer;
+    }
+
+    .sh-reason-chip:hover {
+        border-color: #3f3f46;
+        color: #fafafa;
+    }
+
+    @@media (max-width: 991.98px) {
+        .pod-kpi-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        .st-pod-grid {
+            grid-template-columns: 1fr;
+            gap: 12px;
+        }
+    }
+</style>
+
+<main class="cd-content">
+    <!-- Mobile Top Bar -->
+    <div class="pg-m-topbar d-flex d-lg-none">
+        <a asp-controller="Staff" asp-action="Index" asp-route-email="@ViewBag.Email" class="pg-m-topbar-logo-left">
+            <img src="~/images/logo.png" alt="PrivateGym" />
+        </a>
+        <span class="pg-m-topbar-center">สถานะห้องซ้อม Pod</span>
+        <div class="pg-m-topbar-right">
+            <button type="button" class="btn text-white p-1 border-0" onclick="openStaffSidebar()" aria-label="เปิดเมนู">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <line x1="3" y1="12" x2="21" y2="12"></line>
+                    <line x1="3" y1="6" x2="21" y2="6"></line>
+                    <line x1="3" y1="18" x2="21" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <div class="cd-page-header d-none d-lg-flex">
+        <div>
+            <h1 class="cd-page-title">สถานะห้องซ้อมส่วนตัว (Pod Telemetry &amp; Control)</h1>
+            <p class="cd-page-subtext">แยกสีสถานะชัดเจน สามารถเลือกปิดปรับปรุงเฉพาะรอบเวลาพร้อมระบุเหตุผล และดูประวัติบันทึกได้ด้านล่าง</p>
+        </div>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success" style="background: rgba(34, 197, 94, 0.14); border: 1px solid rgba(34, 197, 94, 0.35); color: #fff; border-radius: 10px; padding: 12px 16px; margin-bottom: 18px; font-size: 13px;">
+            @TempData["Success"]
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger" style="background: rgba(239, 68, 68, 0.14); border: 1px solid rgba(239, 68, 68, 0.35); color: #fff; border-radius: 10px; padding: 12px 16px; margin-bottom: 18px; font-size: 13px;">
+            @TempData["Error"]
+        </div>
+    }
+
+    <!-- 1. KPI Quick Status Filters -->
+    <div class="pod-kpi-grid">
+        <button type="button" class="pod-kpi-btn active" onclick="filterPodStatus('all', this)">
+            <div class="pod-kpi-lbl">ห้องซ้อมทั้งหมด</div>
+            <div class="pod-kpi-val">@totalCount <span style="font-size: 13px; color: #71717a; font-weight: 400;">ห้อง</span></div>
+        </button>
+        <button type="button" class="pod-kpi-btn" onclick="filterPodStatus('ready', this)">
+            <div class="pod-kpi-lbl" style="color: #4ade80;">ว่างพร้อมใช้</div>
+            <div class="pod-kpi-val" style="color: #4ade80;">@readyCount <span style="font-size: 13px; color: #71717a; font-weight: 400;">ห้อง</span></div>
+        </button>
+        <button type="button" class="pod-kpi-btn" onclick="filterPodStatus('occupied', this)">
+            <div class="pod-kpi-lbl" style="color: #38bdf8;">กำลังใช้งาน</div>
+            <div class="pod-kpi-val" style="color: #38bdf8;">@occupiedCount <span style="font-size: 13px; color: #71717a; font-weight: 400;">ห้อง</span></div>
+        </button>
+        <button type="button" class="pod-kpi-btn" onclick="filterPodStatus('maintenance', this)">
+            <div class="pod-kpi-lbl" style="color: #fbbf24;">ปิดปรับปรุง / ล็อกรอบ</div>
+            <div class="pod-kpi-val" style="color: #fbbf24;">@maintCount <span style="font-size: 13px; color: #71717a; font-weight: 400;">ห้อง</span></div>
+        </button>
+    </div>
+
+    <!-- 2. Branch Filter Chips + Jump to Log -->
+    <div class="st-filter-bar">
+        <div class="st-chips">
+            <button type="button" class="st-chip active" onclick="filterPodBranch('all', this)">ทุกสาขา (@totalCount ห้อง)</button>
+            @foreach (var grp in branchGroups)
+            {
+                <button type="button" class="st-chip" onclick="filterPodBranch('@grp.Key.BranchId', this)">@grp.Key.BranchName (@grp.Count())</button>
+            }
+        </div>
+        <a href="#maintenanceLogSection" class="pod-action-btn d-inline-flex align-items-center text-decoration-none">
+            ดูประวัติการปรับปรุง (@maintenanceLogs.Count)
+        </a>
+    </div>
+
+    <!-- 3. Grouped by Branch Sections -->
+    @foreach (var grp in branchGroups)
+    {
+        int branchReady = grp.Count(x => x.StatusKey == "ready");
+        <section class="pod-branch-section" data-branch-id="@grp.Key.BranchId">
+            <div class="pod-branch-head">
+                <div class="d-flex align-items-center gap-2">
+                    <h2 style="font-size: 16px; font-weight: 600; color: #fafafa; margin: 0;">@grp.Key.BranchName</h2>
+                    <span class="st-badge" style="background: #141418; border: 1px solid #27272a; color: #a1a1aa;">@grp.Count() ห้อง</span>
+                </div>
+                <span style="font-size: 12.5px; color: #4ade80;">ว่างพร้อมใช้ @branchReady / @grp.Count() ห้อง</span>
+            </div>
+
+            <div class="st-pod-grid">
+                @foreach (var item in grp)
+                {
+                    var pod = item.Pod;
+                    bool hasSlotLocks = item.Locks.Any();
+                    string filterKey = item.IsMaint ? "maintenance" : (hasSlotLocks && item.StatusKey == "ready" ? "ready maintenance" : item.StatusKey);
+
+                    <div class="st-pod-card @item.StatusKey" data-status="@filterKey" data-branch-id="@pod.BranchId">
+                        <div>
+                            <div class="d-flex justify-content-between align-items-start gap-2 mb-3">
+                                <div>
+                                    <div style="font-size: 15px; font-weight: 600; color: #fafafa;">@pod.PodName</div>
+                                    <div style="font-size: 12px; color: #71717a; margin-top: 2px;">@pod.PodType</div>
+                                </div>
+
+                                @if (item.IsMaint)
+                                {
+                                    <span class="st-badge st-badge-amber">ปิดทั้งห้อง</span>
+                                }
+                                else if (item.CurrentSession != null)
+                                {
+                                    <span class="st-badge st-badge-blue">กำลังใช้งาน</span>
+                                }
+                                else
+                                {
+                                    <span class="st-badge st-badge-green">ว่างพร้อมใช้</span>
+                                }
+                            </div>
+
+                            <div class="pod-meta-line">
+                                @if (item.CurrentSession != null)
+                                {
+                                    <div>สมาชิก: <span style="color: #fafafa; font-weight: 500;">@(item.CurrentSession.User?.FullName ?? "-")</span></div>
+                                    <div style="color: #71717a; margin-top: 2px;">รอบ @item.CurrentSession.StartTime.ToString("HH:mm") - @item.CurrentSession.EndTime.ToString("HH:mm") น.</div>
+                                }
+                                else if (item.NextSession != null)
+                                {
+                                    <div>คิวถัดไป: <span style="color: #fafafa; font-weight: 500;">@item.NextSession.StartTime.ToString("HH:mm") น.</span></div>
+                                    <div style="color: #71717a; margin-top: 2px;">สมาชิก: @(item.NextSession.User?.FullName ?? "-")</div>
+                                }
+                                else
+                                {
+                                    <div style="color: #71717a;">ไม่มีคิวจองที่กำลังจะเริ่มในวันนี้</div>
+                                }
+
+                                @if (hasSlotLocks)
+                                {
+                                    <div class="mt-2">
+                                        @foreach (var lk in item.Locks)
+                                        {
+                                            <span class="pod-lock-pill">
+                                                <span>ปิด @lk.BookingDate.ToString("dd/MM") (@lk.StartTime.ToString("HH:mm"))</span>
+                                                <button type="button"
+                                                        title="เปิดให้บริการรอบเวลานี้"
+                                                        onclick="openUnlockModal(@lk.BookingId, '@pod.PodName', '@lk.BookingDate.ToString("dd/MM/yyyy")', '@lk.StartTime.ToString("HH:mm") - @lk.EndTime.ToString("HH:mm")')"
+                                                        style="background: none; border: none; color: #fcd34d; padding: 0; font-weight: 700; cursor: pointer; line-height: 1;">
+                                                    &times;
+                                                </button>
+                                            </span>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        </div>
+
+                        <div class="pod-action-row">
+                            <button type="button" class="pod-action-btn" onclick="openSlotLockModal(@pod.PodId, '@pod.PodName')">
+                                ปิดเฉพาะรอบเวลา
+                            </button>
+                            <button type="button"
+                                    class="pod-action-btn @(item.IsMaint ? "is-maint" : "")"
+                                    onclick="openFullToggleModal(@pod.PodId, '@pod.PodName', @(item.IsMaint ? "true" : "false"))">
+                                @(item.IsMaint ? "เปิดทั้งห้อง" : "ปิดทั้งห้อง")
+                            </button>
+                        </div>
+                    </div>
+                }
+            </div>
+        </section>
+    }
+
+    <!-- 4. Maintenance Audit Log Section -->
+    <section id="maintenanceLogSection" style="margin-top: 40px; padding-top: 28px; border-top: 1px solid #1f1f24;">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+            <div>
+                <h2 style="font-size: 16px; font-weight: 600; color: #fafafa; margin: 0;">บันทึกประวัติการปิด-เปิดปรับปรุงห้อง (Maintenance Audit Log)</h2>
+                <p style="font-size: 12.5px; color: #71717a; margin: 4px 0 0 0;">เก็บประวัติถาวรพร้อมเหตุผลและผู้ดำเนินการ (แสดงล่าสุด @maintenanceLogs.Count รายการ)</p>
+            </div>
+        </div>
+
+        <div class="st-table-card">
+            <div style="overflow-x: auto;">
+                <table class="st-shadcn-table">
+                    <thead>
+                        <tr>
+                            <th>วันเวลาที่บันทึก</th>
+                            <th>ห้อง Pod</th>
+                            <th>การดำเนินการ</th>
+                            <th>ช่วงเวลา</th>
+                            <th>เหตุผล</th>
+                            <th>ผู้ดำเนินการ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (!maintenanceLogs.Any())
+                        {
+                            <tr>
+                                <td colspan="6" class="text-center py-4" style="color: #71717a;">ยังไม่มีประวัติการปิดปรับปรุงห้องในระบบ</td>
+                            </tr>
+                        }
+                        else
+                        {
+                            foreach (var log in maintenanceLogs.Take(30))
+                            {
+                                string act = log.GetValueOrDefault("Action", "");
+                                bool isOpen = act.Contains("เปิด");
+                                <tr>
+                                    <td style="color: #a1a1aa;">@log.GetValueOrDefault("Timestamp", "-")</td>
+                                    <td style="color: #fafafa; font-weight: 500;">@log.GetValueOrDefault("PodName", "-")</td>
+                                    <td>
+                                        <span class="st-badge @(isOpen ? "st-badge-green" : "st-badge-amber")">@act</span>
+                                    </td>
+                                    <td style="color: #d4d4d8;">@log.GetValueOrDefault("SlotInfo", "-")</td>
+                                    <td style="color: #a1a1aa;">@log.GetValueOrDefault("Reason", "-")</td>
+                                    <td style="color: #fafafa;">@log.GetValueOrDefault("StaffName", "-")</td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+</main>
+
+<!-- Modal 1: ปิดปรับปรุงเฉพาะรอบเวลา (พร้อม shadcn Calendar + เหตุผล) -->
+<div class="pod-modal-backdrop" id="slotLockModal" onclick="if (event.target === this) closeModal('slotLockModal');">
+    <div class="pod-modal-box">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+            <div>
+                <div style="font-size: 11px; color: #fbbf24; font-weight: 600;">SLOT MAINTENANCE</div>
+                <h5 style="font-size: 17px; font-weight: 600; color: #fafafa; margin: 2px 0 0 0;" id="slotLockPodTitle">ปิดปรับปรุงเฉพาะรอบเวลา</h5>
+            </div>
+            <button type="button" onclick="closeModal('slotLockModal')" style="background: none; border: none; color: #a1a1aa; font-size: 20px; line-height: 1;">&times;</button>
+        </div>
+        <p style="font-size: 12.5px; color: #a1a1aa; margin-bottom: 14px;">
+            เลือกรอบเวลาที่ต้องการปิดซ่อมบำรุง รอบเวลาอื่นในวันเดียวกันจะยังเปิดให้สมาชิกจองได้ตามปกติ
+        </p>
+
+        <form method="post" asp-controller="Staff" asp-action="LockPodSlot">
+            <input type="hidden" name="podId" id="slotLockPodId" />
+            <input type="hidden" name="email" value="@ViewBag.Email" />
+            <input type="hidden" name="date" id="slotLockDateInput" value="@todayStr" />
+
+            <!-- shadcn/ui Calendar Widget -->
+            <div class="mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <label style="font-size: 12.5px; color: #d4d4d8; font-weight: 500;">วันที่ต้องการปิดปรับปรุง</label>
+                    <span id="shCalSelectedText" style="font-size: 12px; color: #fafafa; font-weight: 500;">@todayStr</span>
+                </div>
+                <div class="sh-cal">
+                    <div class="sh-cal-header">
+                        <button type="button" class="sh-cal-nav" onclick="shiftCalMonth(-1)">&lsaquo;</button>
+                        <span id="shCalMonthLabel" style="font-size: 13px; font-weight: 600; color: #fafafa;"></span>
+                        <button type="button" class="sh-cal-nav" onclick="shiftCalMonth(1)">&rsaquo;</button>
+                    </div>
+                    <div class="sh-cal-weekdays">
+                        <div>อา</div><div>จ</div><div>อ</div><div>พ</div><div>พฤ</div><div>ศ</div><div>ส</div>
+                    </div>
+                    <div class="sh-cal-days" id="shCalDays"></div>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label style="font-size: 12.5px; color: #d4d4d8; margin-bottom: 6px; display: block; font-weight: 500;">รอบเวลาที่ปิดปรับปรุง (75 นาที)</label>
+                <select name="startTime" class="st-input w-100">
+                    <option value="08:00">08:00 - 09:15 น. (SLOT 01)</option>
+                    <option value="09:30">09:30 - 10:45 น. (SLOT 02)</option>
+                    <option value="11:00">11:00 - 12:15 น. (SLOT 03)</option>
+                    <option value="14:00">14:00 - 15:15 น. (SLOT 04)</option>
+                    <option value="18:00">18:00 - 19:15 น. (SLOT 05)</option>
+                    <option value="19:30">19:30 - 20:45 น. (SLOT 06)</option>
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label style="font-size: 12.5px; color: #d4d4d8; margin-bottom: 6px; display: block; font-weight: 500;">เหตุผลในการปิดปรับปรุง <span style="color: #ef4444;">*</span></label>
+                <input type="text" name="reason" id="slotLockReasonInput" required placeholder="ระบุสาเหตุ เช่น ตรวจเช็กแอร์ หรือซ่อมอุปกรณ์..." class="st-input w-100" />
+                <div class="d-flex flex-wrap gap-1 mt-2">
+                    <button type="button" class="sh-reason-chip" onclick="setReason('slotLockReasonInput', 'ตรวจเช็กเครื่องปรับอากาศ')">ตรวจเช็กแอร์</button>
+                    <button type="button" class="sh-reason-chip" onclick="setReason('slotLockReasonInput', 'ทำความสะอาดฆ่าเชื้อพิเศษ')">ฆ่าเชื้อพิเศษ</button>
+                    <button type="button" class="sh-reason-chip" onclick="setReason('slotLockReasonInput', 'ซ่อมบำรุงอุปกรณ์ในห้อง')">ซ่อมบำรุงอุปกรณ์</button>
+                </div>
+            </div>
+
+            <div class="d-flex gap-2 mt-4">
+                <button type="button" onclick="closeModal('slotLockModal')" class="pod-action-btn" style="flex: 1;">ยกเลิก</button>
+                <button type="submit" class="st-btn-primary" style="flex: 1;">ยืนยันปิดเฉพาะรอบนี้</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal 2: ยืนยันการเปิดให้บริการรอบเวลาที่ปิดไว้ (ถอนการปิดปรับปรุง) -->
+<div class="pod-modal-backdrop" id="unlockSlotModal" onclick="if (event.target === this) closeModal('unlockSlotModal');">
+    <div class="pod-modal-box" style="max-width: 400px;">
+        <div style="font-size: 11px; color: #4ade80; font-weight: 600;">CONFIRM REOPEN SLOT</div>
+        <h5 style="font-size: 17px; font-weight: 600; color: #fafafa; margin: 4px 0 8px 0;">ยืนยันการเปิดให้บริการรอบเวลานี้</h5>
+        <p style="font-size: 13px; color: #a1a1aa; line-height: 1.65; margin-bottom: 18px;" id="unlockSlotMessage">
+            คุณต้องการยกเลิกการปิดปรับปรุงรอบเวลานี้ เพื่อให้สมาชิกกลับมาจองใช้งานได้ตามปกติใช่หรือไม่?
+        </p>
+
+        <form method="post" asp-controller="Staff" asp-action="UnlockPodSlot">
+            <input type="hidden" name="bookingId" id="unlockBookingId" />
+            <input type="hidden" name="email" value="@ViewBag.Email" />
+            <div class="d-flex gap-2">
+                <button type="button" onclick="closeModal('unlockSlotModal')" class="pod-action-btn" style="flex: 1;">คงสถานะปิดไว้</button>
+                <button type="submit" class="st-btn-primary" style="flex: 1; background: #16a34a; border-color: #16a34a;">เปิดให้บริการรอบนี้</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal 3: ยืนยันปิด/เปิดทั้งห้อง พร้อมระบุเหตุผล -->
+<div class="pod-modal-backdrop" id="fullToggleModal" onclick="if (event.target === this) closeModal('fullToggleModal');">
+    <div class="pod-modal-box" style="max-width: 400px;">
+        <div style="font-size: 11px; color: #fbbf24; font-weight: 600;" id="fullToggleTag">ROOM STATUS</div>
+        <h5 style="font-size: 17px; font-weight: 600; color: #fafafa; margin: 4px 0 8px 0;" id="fullToggleTitle">ยืนยันเปลี่ยนสถานะห้อง</h5>
+        <p style="font-size: 12.5px; color: #a1a1aa; line-height: 1.6; margin-bottom: 14px;" id="fullToggleDesc"></p>
+
+        <form method="post" asp-controller="Staff" asp-action="TogglePodStatus">
+            <input type="hidden" name="podId" id="fullTogglePodId" />
+            <input type="hidden" name="email" value="@ViewBag.Email" />
+            <div class="mb-4">
+                <label style="font-size: 12.5px; color: #d4d4d8; margin-bottom: 6px; display: block; font-weight: 500;">เหตุผล / หมายเหตุ</label>
+                <input type="text" name="reason" id="fullToggleReasonInput" required placeholder="ระบุเหตุผลในการดำเนินการ..." class="st-input w-100" />
+            </div>
+            <div class="d-flex gap-2">
+                <button type="button" onclick="closeModal('fullToggleModal')" class="pod-action-btn" style="flex: 1;">ยกเลิก</button>
+                <button type="submit" class="st-btn-primary" id="fullToggleSubmitBtn" style="flex: 1;">ยืนยัน</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    var activePodStatus = 'all';
+    var activePodBranch = 'all';
+
+    function applyPodFilters() {
+        document.querySelectorAll('.pod-branch-section').forEach(sec => {
+            var secBranch = sec.getAttribute('data-branch-id');
+            var matchBranch = (activePodBranch === 'all' || secBranch === activePodBranch);
+
+            var visibleCards = 0;
+            sec.querySelectorAll('.st-pod-card').forEach(card => {
+                var cardStatus = card.getAttribute('data-status') || '';
+                var matchStatus = (activePodStatus === 'all' || cardStatus.indexOf(activePodStatus) !== -1);
+                var show = matchBranch && matchStatus;
+                card.style.display = show ? 'flex' : 'none';
+                if (show) visibleCards++;
+            });
+
+            sec.style.display = (matchBranch && visibleCards > 0) ? 'block' : 'none';
+        });
+    }
+
+    function filterPodStatus(status, btn) {
+        document.querySelectorAll('.pod-kpi-btn').forEach(b => b.classList.remove('active'));
+        if (btn) btn.classList.add('active');
+        activePodStatus = status;
+        applyPodFilters();
+    }
+
+    function filterPodBranch(branchId, btn) {
+        document.querySelectorAll('.st-chips .st-chip').forEach(b => b.classList.remove('active'));
+        if (btn) btn.classList.add('active');
+        activePodBranch = branchId;
+        applyPodFilters();
+    }
+
+    function closeModal(id) {
+        document.getElementById(id).classList.remove('show');
+    }
+
+    function setReason(inputId, text) {
+        document.getElementById(inputId).value = text;
+    }
+
+    // ---- Modal 1: Slot Lock + shadcn Calendar ----
+    var calViewYear = new Date().getFullYear();
+    var calViewMonth = new Date().getMonth();
+    var calSelectedStr = '@todayStr';
+    var thaiMonths = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+
+    function formatIsoDate(y, m, d) {
+        return y + '-' + String(m + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+    }
+
+    function renderShadcnCalendar() {
+        document.getElementById('shCalMonthLabel').innerText = thaiMonths[calViewMonth] + ' ' + calViewYear;
+        var grid = document.getElementById('shCalDays');
+        grid.innerHTML = '';
+
+        var firstDay = new Date(calViewYear, calViewMonth, 1).getDay();
+        var daysInMonth = new Date(calViewYear, calViewMonth + 1, 0).getDate();
+        var now = new Date();
+        var todayIso = formatIsoDate(now.getFullYear(), now.getMonth(), now.getDate());
+
+        for (var i = 0; i < firstDay; i++) {
+            var empty = document.createElement('div');
+            grid.appendChild(empty);
+        }
+
+        for (var d = 1; d <= daysInMonth; d++) {
+            var iso = formatIsoDate(calViewYear, calViewMonth, d);
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'sh-cal-day';
+            btn.innerText = d;
+            if (iso === todayIso) btn.classList.add('is-today');
+            if (iso === calSelectedStr) btn.classList.add('is-selected');
+            if (iso < todayIso) btn.disabled = true;
+
+            (function(dateVal) {
+                btn.onclick = function() {
+                    calSelectedStr = dateVal;
+                    document.getElementById('slotLockDateInput').value = dateVal;
+                    document.getElementById('shCalSelectedText').innerText = dateVal.split('-').reverse().join('/');
+                    renderShadcnCalendar();
+                };
+            })(iso);
+
+            grid.appendChild(btn);
+        }
+    }
+
+    function shiftCalMonth(delta) {
+        calViewMonth += delta;
+        if (calViewMonth < 0) { calViewMonth = 11; calViewYear--; }
+        if (calViewMonth > 11) { calViewMonth = 0; calViewYear++; }
+        renderShadcnCalendar();
+    }
+
+    function openSlotLockModal(podId, podName) {
+        document.getElementById('slotLockPodId').value = podId;
+        document.getElementById('slotLockPodTitle').innerText = 'ปิดปรับปรุงเฉพาะรอบ: ' + podName;
+        document.getElementById('slotLockReasonInput').value = '';
+        calSelectedStr = '@todayStr';
+        document.getElementById('slotLockDateInput').value = calSelectedStr;
+        document.getElementById('shCalSelectedText').innerText = calSelectedStr.split('-').reverse().join('/');
+        renderShadcnCalendar();
+        document.getElementById('slotLockModal').classList.add('show');
+    }
+
+    // ---- Modal 2: Unlock Confirmation ----
+    function openUnlockModal(bookingId, podName, dateText, slotText) {
+        document.getElementById('unlockBookingId').value = bookingId;
+        document.getElementById('unlockSlotMessage').innerText =
+            'คุณต้องการยกเลิกการปิดปรับปรุงห้อง ' + podName + ' ในวันที่ ' + dateText + ' รอบเวลา ' + slotText + ' น. เพื่อให้สมาชิกกลับมาจองใช้งานได้ตามปกติใช่หรือไม่?';
+        document.getElementById('unlockSlotModal').classList.add('show');
+    }
+
+    // ---- Modal 3: Full Room Toggle with Reason ----
+    function openFullToggleModal(podId, podName, isCurrentlyMaint) {
+        document.getElementById('fullTogglePodId').value = podId;
+        var reasonInput = document.getElementById('fullToggleReasonInput');
+        if (isCurrentlyMaint) {
+            document.getElementById('fullToggleTag').innerText = 'REOPEN ROOM';
+            document.getElementById('fullToggleTag').style.color = '#4ade80';
+            document.getElementById('fullToggleTitle').innerText = 'เปิดให้บริการ ' + podName;
+            document.getElementById('fullToggleDesc').innerText = 'ห้องจะกลับมาเปิดให้สมาชิกจองได้ทุกรอบเวลา';
+            reasonInput.value = 'ดำเนินการปรับปรุงเสร็จสิ้น พร้อมเปิดให้บริการ';
+            document.getElementById('fullToggleSubmitBtn').innerText = 'ยืนยันเปิดห้อง';
+        } else {
+            document.getElementById('fullToggleTag').innerText = 'FULL ROOM MAINTENANCE';
+            document.getElementById('fullToggleTag').style.color = '#fbbf24';
+            document.getElementById('fullToggleTitle').innerText = 'ปิดปรับปรุงทั้งห้อง: ' + podName;
+            document.getElementById('fullToggleDesc').innerText = 'คำเตือน: การปิดทั้งห้องจะงดการจองทุกรอบเวลาของห้องนี้ชั่วคราว';
+            reasonInput.value = '';
+            document.getElementById('fullToggleSubmitBtn').innerText = 'ยืนยันปิดทั้งห้อง';
+        }
+        document.getElementById('fullToggleModal').classList.add('show');
+    }
+</script>

@@ -1,0 +1,140 @@
+@model List<PrivateGym.Models.Role>
+@using PrivateGym.Models
+@{
+    ViewData["Title"] = "จัดการผู้ใช้งานและกำหนดสิทธิ์ (Users & Access Roles)";
+    Layout = "~/Views/Shared/Admin/_AdminLayout.cshtml";
+
+    var roles = Model ?? new List<Role>();
+    var users = ViewBag.Users as List<User> ?? new List<User>();
+    string roleFilter = ViewBag.RoleFilter ?? "all";
+    string search = ViewBag.Search ?? "";
+}
+
+<div class="adm-page">
+    <div class="adm-page-head">
+        <div>
+            <h1 class="adm-page-title">จัดการผู้ใช้งานและกำหนดสิทธิ์ (Users &amp; Access Roles)</h1>
+            <p class="adm-page-sub">กำหนดบทบาทการเข้าถึงระบบ (RBAC) สำหรับ Admin, Staff, Trainer, Member และ Accountant ในฐานข้อมูลจริง</p>
+        </div>
+        <a asp-controller="Admin" asp-action="AddUser" class="st-btn-primary">+ สร้างบัญชีผู้ใช้ใหม่</a>
+    </div>
+
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success" style="background: rgba(16, 185, 129, 0.14); border: 1px solid rgba(16, 185, 129, 0.35); color: #fafafa; border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; font-size: 13px;">
+            @TempData["SuccessMessage"]
+        </div>
+    }
+
+    <!-- Role Summary Cards -->
+    <div class="row g-3 mb-4">
+        @foreach (var r in roles)
+        {
+            <div class="col-md-4 col-lg">
+                <div class="adm-stat-card h-100">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="adm-stat-lbl mb-0">ROLE #@r.RoleId</span>
+                        <span class="st-badge st-badge-red">@r.RoleName</span>
+                    </div>
+                    <div class="adm-stat-val">@(r.Users?.Count ?? 0) <span style="font-size:12px; color:#71717a; font-weight:400;">บัญชี</span></div>
+                    <div class="adm-stat-sub">@(r.Description ?? "สิทธิ์การใช้งานมาตรฐาน")</div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="st-filter-bar">
+        <div class="st-chips">
+            <a asp-controller="Admin" asp-action="UsersAndRoles" asp-route-roleFilter="all" asp-route-search="@search"
+               class="st-chip @(roleFilter == "all" ? "active" : "")">ทุกบทบาท</a>
+            @foreach (var r in roles)
+            {
+                <a asp-controller="Admin" asp-action="UsersAndRoles" asp-route-roleFilter="@r.RoleId" asp-route-search="@search"
+                   class="st-chip @(roleFilter == r.RoleId.ToString() ? "active" : "")">@r.RoleName (@(r.Users?.Count ?? 0))</a>
+            }
+        </div>
+
+        <form asp-controller="Admin" asp-action="UsersAndRoles" method="get" class="d-flex gap-2">
+            <input type="hidden" name="roleFilter" value="@roleFilter" />
+            <input type="text" name="search" value="@search" class="st-input" style="min-width:240px;" placeholder="ค้นหาชื่อผู้ใช้, อีเมล, บทบาท..." />
+            <button type="submit" class="st-btn-primary">ค้นหา</button>
+        </form>
+    </div>
+
+    <div class="st-table-card">
+        <table class="st-shadcn-table">
+            <thead>
+                <tr>
+                    <th>ผู้ใช้งาน &amp; อีเมล</th>
+                    <th>สาขาประจำ</th>
+                    <th>บทบาทปัจจุบัน (ROLE)</th>
+                    <th>เปลี่ยนบทบาท</th>
+                    <th>สถานะบัญชี</th>
+                    <th style="text-align:right;">การจัดการ</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var u in users)
+                {
+                    bool isActive = u.Status != "Inactive" && u.Status != "Suspended";
+                    <tr>
+                        <td>
+                            <div style="font-weight:600; color:#fafafa;">@u.FullName <span style="font-size:11px; color:#71717a;">#USR-@u.UserId.ToString("D4")</span></div>
+                            <div style="font-size:12px; color:#a1a1aa;">@u.Email • @u.Phone</div>
+                        </td>
+                        <td>@(u.HomeBranch?.BranchName ?? "-")</td>
+                        <td>
+                            <span class="st-badge @(u.RoleId == 1 ? "st-badge-red" : (u.RoleId == 2 || u.RoleId == 3 ? "st-badge-blue" : "st-badge-green"))">
+                                @(u.Role?.RoleName ?? "Member")
+                            </span>
+                        </td>
+                        <td>
+                            <form asp-controller="Admin" asp-action="ChangeUserRole" method="post" class="d-inline-flex align-items-center gap-1"
+                                  data-confirm-title="ยืนยันเปลี่ยนสิทธิ์ผู้ใช้งาน"
+                                  data-confirm="ยืนยันเปลี่ยนบทบาท (Role) ของ @u.FullName หรือไม่?">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="userId" value="@u.UserId" />
+                                <select name="roleId" class="st-input" style="height:30px !important; font-size:12px !important; padding:0 8px !important;">
+                                    @foreach (var r in roles)
+                                    {
+                                        if (u.RoleId == r.RoleId)
+                                        {
+                                            <option value="@r.RoleId" selected>@r.RoleName</option>
+                                        }
+                                        else
+                                        {
+                                            <option value="@r.RoleId">@r.RoleName</option>
+                                        }
+                                    }
+                                </select>
+                                <button type="submit" class="st-btn-outline" style="height:30px; padding:0 10px; font-size:11.5px;">บันทึก</button>
+                            </form>
+                        </td>
+                        <td>
+                            @if (isActive)
+                            {
+                                <span class="st-badge st-badge-green">Active</span>
+                            }
+                            else
+                            {
+                                <span class="st-badge st-badge-red">Inactive</span>
+                            }
+                        </td>
+                        <td style="text-align:right; white-space:nowrap;">
+                            <a asp-controller="Admin" asp-action="EditUser" asp-route-id="@u.UserId" class="st-btn-outline" style="height:30px; padding:0 10px; font-size:12px;">แก้ไข</a>
+                            <form asp-controller="Admin" asp-action="ToggleUserStatus" method="post" style="display:inline;"
+                                  data-confirm-title="ยืนยันเปลี่ยนสถานะบัญชี"
+                                  data-confirm="ยืนยัน@(isActive ? "ระงับการใช้งาน" : "เปิดใช้งาน")บัญชีของ @u.FullName หรือไม่?">
+                                <input type="hidden" name="id" value="@u.UserId" />
+                                <input type="hidden" name="returnAction" value="UsersAndRoles" />
+                                <button type="submit" class="st-btn-outline" style="height:30px; padding:0 10px; font-size:12px; color:@(isActive ? "#f59e0b" : "#10b981");">
+                                    @(isActive ? "ระงับ" : "เปิดใช้")
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

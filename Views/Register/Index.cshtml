@@ -1,0 +1,663 @@
+@model PrivateGym.ViewModels.RegisterViewModel
+
+
+@{
+    ViewData["Title"] = "สมัครสมาชิก PrivateGym";
+    Layout = null;
+    var regPackages = ViewBag.Packages as List<PrivateGym.Models.Package> ?? new List<PrivateGym.Models.Package>();
+    var regBranches = ViewBag.Branches as List<PrivateGym.Models.Branch> ?? new List<PrivateGym.Models.Branch>();
+    var defaultPkg = regPackages.FirstOrDefault(p => p.PackageName.Contains("Pro", StringComparison.OrdinalIgnoreCase))
+                     ?? regPackages.FirstOrDefault();
+    string defaultPriceText = defaultPkg != null ? defaultPkg.Price.ToString("N0") : "5,900";
+}
+
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - PRIVATEGYM</title>
+    <link rel="icon" type="image/png" href="~/IconPrivate.png" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/Auth.css" asp-append-version="true" />
+</head>
+
+<body class="auth-page">
+    <header class="auth-header">
+        <a asp-controller="Home" asp-action="Index" class="auth-brand">
+            <img src="~/images/logo.png" alt="PrivateGym" class="auth-brand-logo-img" />
+        </a>
+
+        <div class="auth-header-nav">
+            <span class="auth-header-link">
+                มีบัญชีแล้ว?&nbsp;<a asp-controller="Login" asp-action="Index"
+                                     class="auth-header-link"><strong>เข้าสู่ระบบ</strong></a>
+            </span>
+        </div>
+    </header>
+    <div class="auth-wrapper">
+        <div class="auth-hero-panel">
+            <div class="auth-hero-bg"></div>
+            <div class="auth-hero-overlay"></div>
+
+            <div class="auth-hero-content">
+                <div class="auth-hero-tag">PRIVATE MEMBERSHIP &bull; APPLICATION</div>
+                <h1 class="auth-hero-title">BUILT FOR FOCUS.<br>LIMITED BY DESIGN.</h1>
+                <p class="auth-hero-desc">
+                    สร้างบัญชีเพื่อเริ่มต้นประสบการณ์ฝึกส่วนตัวระดับพรีเมียม<br>
+                    สมาชิกทุกประเภทใช้บัญชีเดียวกัน ระบบจะจัดการสิทธิ์ให้โดยอัตโนมัติ
+                </p>
+
+                <div class="auth-hero-features">
+                    <div class="auth-hero-feature-item">
+                        <span class="auth-hero-feature-box box-red"></span>
+                        80 MEMBERS MAXIMUM / BRANCH
+                    </div>
+                    <div class="auth-hero-feature-item">
+                        <span class="auth-hero-feature-box box-outline"></span>
+                        IDENTITY &amp; ACCESS PROTECTED
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="auth-form-panel">
+            <div class="auth-card auth-card-wide">
+                <div class="auth-card-tag">PRIVATE MEMBERSHIP APPLICATION</div>
+                <h2 class="auth-card-title">สมัครสมาชิก PrivateGym</h2>
+                <p class="auth-card-subtitle" id="stepSubtitle">ขั้นตอนที่ 1 จาก 4 &bull; กรอกข้อมูลบัญชีและความปลอดภัย
+                </p>
+                <div class="auth-stepper-wrap">
+                    <div class="auth-stepper-track">
+                        <div class="auth-step-item active" id="stepNode1">
+                            <div class="auth-step-circle" id="circle1">1</div>
+                            <span class="auth-step-title">บัญชีผู้ใช้</span>
+                        </div>
+                        <div class="auth-step-divider" id="line1"></div>
+
+                        <div class="auth-step-item" id="stepNode2">
+                            <div class="auth-step-circle" id="circle2">2</div>
+                            <span class="auth-step-title">สรีระ &amp; เป้าหมาย</span>
+                        </div>
+                        <div class="auth-step-divider" id="line2"></div>
+
+                        <div class="auth-step-item" id="stepNode3">
+                            <div class="auth-step-circle" id="circle3">3</div>
+                            <span class="auth-step-title">สาขา &amp; สมาชิก</span>
+                        </div>
+                        <div class="auth-step-divider" id="line3"></div>
+
+                        <div class="auth-step-item" id="stepNode4">
+                            <div class="auth-step-circle" id="circle4">4</div>
+                            <span class="auth-step-title">ชำระเงิน</span>
+                        </div>
+                    </div>
+                </div>
+
+                <form asp-controller="Register" asp-action="Register" method="post" id="regForm" onsubmit="if (typeof currentStep !== 'undefined' && currentStep < 4) { return false; }">
+                    @if (!string.IsNullOrEmpty(ViewBag.Error))
+                    {
+                        <div style="background: rgba(239, 68, 68, 0.15); border: 1px solid #ef4444; color: #fca5a5; padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; font-size: 14px; display: flex; align-items: center; gap: 8px;">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                            </svg>
+                            <span>@ViewBag.Error</span>
+                        </div>
+                    }
+                    <div class="auth-step-pane active" id="stepPane1">
+                        <div class="auth-section-title-wrap">
+                            <span class="auth-section-step">STEP 01 / 04</span>
+                            <span class="auth-section-heading">ข้อมูลบัญชีและความปลอดภัย</span>
+                        </div>
+                        <div class="auth-form-group">
+                            <div class="auth-label-row">
+                                <label class="auth-label" for="regFullName">ชื่อ-นามสกุล (ตรงตามบัตรประชาชน)</label>
+                            </div>
+                            <div class="auth-input-wrapper">
+                                <span class="auth-input-icon">
+                                    <svg viewBox="0 0 24 24">
+                                        <path
+                                        d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                                    </svg>
+                                </span>
+                                <input type="text" class="auth-input" id="regFullName" name="FullName"
+                                       asp-for="FullName" placeholder="เช่น นายปวริศร์ ธรรมวงค์" required
+                                       autocomplete="name" />
+                            </div>
+                        </div>
+                        <div class="auth-form-row">
+                            <div class="auth-form-group">
+                                <div class="auth-label-row">
+                                    <label class="auth-label" for="regPhone">หมายเลขโทรศัพท์ (รับ SMS รหัสประตู)</label>
+                                </div>
+                                <div class="auth-input-wrapper">
+                                    <span class="auth-input-icon">
+                                        <svg viewBox="0 0 24 24">
+                                            <path
+                                            d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z" />
+                                        </svg>
+                                    </span>
+                                    <input type="tel" class="auth-input" id="regPhone" name="Phone" asp-for="Phone"
+                                           placeholder="08X-XXX-XXXX" maxlength="10"
+                                           oninput="this.value = this.value.replace(/[^0-9]/g, '')" required
+                                           autocomplete="tel" />
+                                </div>
+                            </div>
+
+                            <div class="auth-form-group">
+                                <div class="auth-label-row">
+                                    <label class="auth-label" for="regEmail">อีเมล (รับใบเสร็จและ QR Pass)</label>
+                                </div>
+                                <div class="auth-input-wrapper">
+                                    <span class="auth-input-icon">
+                                        <svg viewBox="0 0 24 24">
+                                            <path
+                                            d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z" />
+                                        </svg>
+                                    </span>
+                                    <input type="email" class="auth-input" id="regEmail" name="Email" asp-for="Email"
+                                           placeholder="member@privategym.club" required autocomplete="email" />
+                                </div>
+                            </div>
+                        </div>
+                        <div class="auth-form-row">
+                            <div class="auth-form-group">
+                                <div class="auth-label-row">
+                                    <label class="auth-label" for="regPassword">รหัสผ่าน</label>
+                                    <button type="button" class="auth-label-link" id="toggleRegPwdBtn"
+                                            onclick="toggleRegPassword()">แสดง</button>
+                                </div>
+                                <div class="auth-input-wrapper">
+                                    <span class="auth-input-icon">
+                                        <svg viewBox="0 0 24 24">
+                                            <path
+                                            d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z" />
+                                        </svg>
+                                    </span>
+                                    <input type="password" class="auth-input" id="regPassword" name="Password"
+                                           asp-for="Password" placeholder="อย่างน้อย 8 ตัวอักษร" required
+                                           autocomplete="new-password" />
+                                </div>
+                            </div>
+
+                            <div class="auth-form-group">
+                                <div class="auth-label-row">
+                                    <label class="auth-label" for="regConfirmPassword">ยืนยันรหัสผ่าน</label>
+                                </div>
+                                <div class="auth-input-wrapper">
+                                    <span class="auth-input-icon">
+                                        <svg viewBox="0 0 24 24">
+                                            <path
+                                            d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z" />
+                                        </svg>
+                                    </span>
+                                    <input type="password" class="auth-input" id="regConfirmPassword"
+                                           name="ConfirmPassword" asp-for="ConfirmPassword"
+                                           placeholder="กรอกรหัสผ่านอีกครั้ง" required autocomplete="new-password" />
+                                </div>
+                            </div>
+                        </div>
+                        <div id="step1Error"
+                             style="display: none; font-size: 12px; color: #ff4d4f; background: rgba(255, 77, 79, 0.1); border: 1px solid rgba(255, 77, 79, 0.3); padding: 8px 12px; border-radius: 6px; margin-top: 12px;">
+                        </div>
+                        <div class="auth-step-actions">
+                            <button type="button" class="auth-btn-forward" onclick="nextStep(1)">
+                                <span>ถัดไป: ข้อมูลสรีระและเป้าหมาย</span>
+                                <span>&rarr;</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="auth-step-pane" id="stepPane2">
+                        <div class="auth-section-title-wrap">
+                            <span class="auth-section-step">STEP 02 / 04</span>
+                            <span class="auth-section-heading">ข้อมูลสรีระและเป้าหมายการฝึก</span>
+                        </div>
+
+                        <div class="auth-form-group">
+                            <label class="auth-label">เพศ (สำหรับการตั้งค่า InBody 770)</label>
+                            <div class="auth-chip-grid">
+                                <input type="radio" name="Gender" id="genderMale" value="Male" class="auth-chip-input"
+                                       checked />
+                                <label for="genderMale" class="auth-chip-label">ชาย (Male)</label>
+
+                                <input type="radio" name="Gender" id="genderFemale" value="Female"
+                                       class="auth-chip-input" />
+                                <label for="genderFemale" class="auth-chip-label">หญิง (Female)</label>
+
+                                <input type="radio" name="Gender" id="genderOther" value="Other"
+                                       class="auth-chip-input" />
+                                <label for="genderOther" class="auth-chip-label">ไม่ระบุ</label>
+                            </div>
+                        </div>
+
+                        <!-- ส่วนสูง และ น้ำหนัก -->
+                        <div class="auth-form-row">
+                            <div class="auth-form-group">
+                                <div class="auth-label-row">
+                                    <label class="auth-label" for="regHeight">ส่วนสูง (เซนติเมตร)</label>
+                                </div>
+                                <div class="auth-input-wrapper">
+                                    <input type="number" class="auth-input" id="regHeight" name="Height"
+                                           placeholder="เช่น 175" min="100" max="250" />
+                                </div>
+                            </div>
+
+                            <div class="auth-form-group">
+                                <div class="auth-label-row">
+                                    <label class="auth-label" for="regWeight">น้ำหนัก (กิโลกรัม)</label>
+                                </div>
+                                <div class="auth-input-wrapper">
+                                    <input type="number" class="auth-input" id="regWeight" name="Weight"
+                                           placeholder="เช่น 70" min="30" max="250" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="auth-form-group">
+                            <label class="auth-label">ระดับประสบการณ์การฝึกยกน้ำหนัก</label>
+                            <div class="auth-chip-grid">
+                                <input type="radio" name="ExperienceLevel" id="expBeginner" value="Beginner"
+                                       class="auth-chip-input" />
+                                <label for="expBeginner" class="auth-chip-label">เริ่มต้น (&lt; 1 ปี)</label>
+
+                                <input type="radio" name="ExperienceLevel" id="expInter" value="Intermediate"
+                                       class="auth-chip-input" checked />
+                                <label for="expInter" class="auth-chip-label">ปานกลาง (1-3 ปี)</label>
+
+                                <input type="radio" name="ExperienceLevel" id="expAdv" value="Advanced"
+                                       class="auth-chip-input" />
+                                <label for="expAdv" class="auth-chip-label">แอดวานซ์ (&gt; 3 ปี)</label>
+                            </div>
+                        </div>
+
+                        <div class="auth-form-group">
+                            <label class="auth-label" for="regGoal">เป้าหมายหลักในการฝึก (Fitness Focus)</label>
+                            <div class="auth-input-wrapper">
+                                <select class="auth-input" id="regGoal" name="FitnessGoal" style="appearance: none;">
+                                    <option value="Hypertrophy">Hypertrophy &bull; สร้างและเพิ่มขนาดกล้ามเนื้อ</option>
+                                    <option value="Strength">Strength &bull; พัฒนาแรงขับ 1RM (Squat, Bench, Deadlift)
+                                    </option>
+                                    <option value="Rehab">Movement &amp; Rehab &bull; ฟื้นฟูการเคลื่อนไหวและอาการบาดเจ็บ
+                                    </option>
+                                    <option value="FatLoss">Conditioning &bull; ลดไขมันและพัฒนาสมรรถภาพหัวใจ (VO2 Max)
+                                    </option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="auth-step-actions">
+                            <button type="button" class="auth-btn-back" onclick="prevStep(2)">&larr; ย้อนกลับ</button>
+                            <button type="button" class="auth-btn-forward" onclick="nextStep(2)">
+                                <span>ถัดไป: สาขาและแพ็กเกจ</span>
+                                <span>&rarr;</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="auth-step-pane" id="stepPane3">
+                        <div class="auth-section-title-wrap">
+                            <span class="auth-section-step">STEP 03 / 04</span>
+                            <span class="auth-section-heading">สาขาและแพ็กเกจสมาชิก</span>
+                        </div>
+                        <div class="auth-form-group">
+                            <label class="auth-label">สาขาหลักที่ต้องการเข้าใช้</label>
+                            <div class="auth-chip-grid">
+                                @{ int bIdx = 0; }
+                                @foreach (var br in regBranches)
+                                {
+                                    bIdx++;
+                                    <input type="radio" name="HomeBranch" id="branch_@br.BranchId" value="@br.BranchName"
+                                           class="auth-chip-input" @(bIdx == 1 ? "checked" : "") />
+                                    <label for="branch_@br.BranchId" class="auth-chip-label">@br.BranchName</label>
+                                }
+                            </div>
+                        </div>
+                        <div class="auth-form-group">
+                            <label class="auth-label">เลือกแพ็กเกจสมาชิก (Membership Tier)</label>
+                            <div class="auth-pkg-grid">
+                                @foreach (var pkg in regPackages)
+                                {
+                                    bool isDefault = defaultPkg != null && pkg.PackageId == defaultPkg.PackageId;
+                                    bool isVip = pkg.IsVip ?? false;
+                                    string priceStr = pkg.Price.ToString("N0");
+                                    string quotaText = isVip
+                                        ? "Pod ไม่จำกัด • PT ไม่จำกัด"
+                                        : (pkg.PtQuota > 0
+                                            ? $"{pkg.PodQuota} ครั้ง Pod + {pkg.PtQuota} ครั้ง PT"
+                                            : $"{pkg.PodQuota} ครั้ง Pod • InBody {pkg.InBodyQuota} ครั้ง");
+
+                                    <input type="radio" name="MembershipPackage" id="pkg_@pkg.PackageId" value="@pkg.PackageName"
+                                           class="auth-pkg-input" @(isDefault ? "checked" : "")
+                                           onchange="updateSelectedPackage('@pkg.PackageName', '@priceStr')" />
+                                    <label for="pkg_@pkg.PackageId" class="auth-pkg-card">
+                                        @if (isDefault)
+                                        {
+                                            <span class="auth-pkg-badge-rec">RECOMMENDED</span>
+                                        }
+                                        <span class="auth-pkg-name">@pkg.PackageName</span>
+                                        <div class="auth-pkg-price">฿@priceStr <span>/@pkg.DurationDays วัน</span></div>
+                                        <span class="auth-pkg-quota">@quotaText</span>
+                                    </label>
+                                }
+                            </div>
+                        </div>
+                            <div class="auth-terms-group" style="margin-top: 14px;">
+                                <label class="auth-terms-label">
+                                    <input type="checkbox" class="auth-checkbox" id="chkHealthSafety"
+                                           name="HealthSafetyConfirmed" value="true" required checked />
+                                    <span><strong>การรับรองสุขภาพ (Health Safety Precaution):</strong>
+                                        ข้าพเจ้ายืนยันว่าไม่มีโรคประจำตัวหรือข้อจำกัดทางการแพทย์ที่เป็นอันตรายต่อการออกกำลังกายหนักโดยไม่มีผู้ดูแลส่วนตัวในห้อง
+                                        Autonomous Pod</span>
+                                    </label>
+                                </div>
+                                <div class="auth-step-actions">
+                                    <button type="button" class="auth-btn-back" onclick="prevStep(3)">&larr; ย้อนกลับ</button>
+                                    <button type="button" class="auth-btn-forward" onclick="nextStep(3)">
+                                        <span>ถัดไป: ช่องทางชำระเงิน</span>
+                                        <span>&rarr;</span>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="auth-step-pane" id="stepPane4">
+                                <div class="auth-section-title-wrap">
+                                    <span class="auth-section-step">STEP 04 / 04</span>
+                                    <span class="auth-section-heading">ช่องทางการชำระเงินและหลักฐานธุรกรรม</span>
+                                </div>
+                                <div class="auth-pay-tabs">
+                                    <input type="radio" name="PaymentMethod" id="payCreditCard" value="CreditCard"
+                                           class="auth-pay-input" checked onchange="switchPaymentMethod('CreditCard')" />
+                                    <label for="payCreditCard" class="auth-pay-tab-btn">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                             stroke-width="2">
+                                            <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+                                            <line x1="1" y1="10" x2="23" y2="10"></line>
+                                        </svg>
+                                        <span>บัตรเครดิต / เดบิต</span>
+                                    </label>
+
+                                    <input type="radio" name="PaymentMethod" id="payPromptPay" value="PromptPay"
+                                           class="auth-pay-input" onchange="switchPaymentMethod('PromptPay')" />
+                                    <label for="payPromptPay" class="auth-pay-tab-btn">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                             stroke-width="2">
+                                            <rect x="3" y="3" width="7" height="7"></rect>
+                                            <rect x="14" y="3" width="7" height="7"></rect>
+                                            <rect x="14" y="14" width="7" height="7"></rect>
+                                            <rect x="3" y="14" width="7" height="7"></rect>
+                                        </svg>
+                                        <span>PromptPay QR</span>
+                                    </label>
+
+                                    <input type="radio" name="PaymentMethod" id="payBank" value="BankTransfer"
+                                           class="auth-pay-input" onchange="switchPaymentMethod('BankTransfer')" />
+                                    <label for="payBank" class="auth-pay-tab-btn">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                             stroke-width="2">
+                                            <path d="M3 21h18M3 10h18M5 10v11M19 10v11M9 10v11M15 10v11M12 3L2 10h20L12 3z">
+                                            </path>
+                                        </svg>
+                                        <span>โอนเงินธนาคาร</span>
+                                    </label>
+                                </div>
+                                <div id="boxCreditCard" class="auth-pay-content-box">
+                                    <div class="auth-form-group">
+                                        <label class="auth-label" for="regCardNum">หมายเลขบัตรเครดิต / เดบิต</label>
+                                        <div class="auth-input-wrapper">
+                                            <input type="text" class="auth-input" id="regCardNum" name="CardNumber"
+                                                   placeholder="4XXX - XXXX - XXXX - 4491" maxlength="19"
+                                                   oninput="formatCreditCard(this)" />
+                                        </div>
+                                    </div>
+                                    <div class="auth-form-row">
+                                        <div class="auth-form-group">
+                                            <label class="auth-label" for="regCardExp">วันหมดอายุ (MM/YY)</label>
+                                            <div class="auth-input-wrapper">
+                                                <input type="text" class="auth-input" id="regCardExp" name="CardExpiry"
+                                                       placeholder="12/28" maxlength="5" />
+                                            </div>
+                                        </div>
+                                        <div class="auth-form-group">
+                                            <label class="auth-label" for="regCardCvv">CVV / CVC</label>
+                                            <div class="auth-input-wrapper">
+                                                <input type="password" class="auth-input" id="regCardCvv" name="CardCvv"
+                                                       placeholder="•••" maxlength="4" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="auth-form-group" style="margin-bottom: 0;">
+                                        <label class="auth-label" for="regCardName">ชื่อบนหน้าบัตร</label>
+                                        <div class="auth-input-wrapper">
+                                            <input type="text" class="auth-input" id="regCardName" name="CardHolderName"
+                                                   placeholder="PAWALIT THAMMAWONG" />
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="boxPromptPay" class="auth-pay-content-box" style="display: none;">
+                                    <div class="auth-qr-preview">
+                                        <div class="auth-qr-box">
+                                            <svg viewBox="0 0 100 100" fill="#000">
+                                                <rect x="10" y="10" width="30" height="30" fill="none" stroke="#000"
+                                                      stroke-width="6" />
+                                                <rect x="20" y="20" width="10" height="10" fill="#000" />
+                                                <rect x="60" y="10" width="30" height="30" fill="none" stroke="#000"
+                                                      stroke-width="6" />
+                                                <rect x="70" y="20" width="10" height="10" fill="#000" />
+                                                <rect x="10" y="60" width="30" height="30" fill="none" stroke="#000"
+                                                      stroke-width="6" />
+                                                <rect x="20" y="70" width="10" height="10" fill="#000" />
+                                                <rect x="50" y="50" width="10" height="10" />
+                                                <rect x="65" y="55" width="25" height="8" />
+                                                <rect x="55" y="70" width="10" height="20" />
+                                                <rect x="75" y="75" width="15" height="15" />
+                                            </svg>
+                                        </div>
+                                        <div class="auth-qr-info">
+                                            <strong>สแกน QR ผ่าน Mobile Banking</strong>
+                                            <span>ระบบจะผูกยอดอัตโนมัติ ยอดที่ต้องชำระ: <span id="promptPayAmount"
+                                                                                                  style="color: var(--auth-primary-red); font-weight: 700;">฿@defaultPriceText</span></span>
+                                                <div style="margin-top: 6px; font-size: 11px; color: #888;">PromptPay ID:
+                                                    0-1055-66023-99-1 (PrivateGym Club)</div>
+                                                </div>
+                                            </div>
+                                            <div class="auth-form-group" style="margin-top: 14px; margin-bottom: 0;">
+                                                <label class="auth-label" for="regPromptPayRef">รหัสอ้างอิงสลิป / Transaction Ref
+                                                    (ถ้ามี)</label>
+                                                    <div class="auth-input-wrapper">
+                                                        <input type="text" class="auth-input" id="regPromptPayRef" name="TransactionRef"
+                                                               placeholder="เช่น KBANK Ref: PP-889104" />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div id="boxBankTransfer" class="auth-pay-content-box" style="display: none;">
+                                                <div class="auth-qr-info" style="margin-bottom: 12px;">
+                                                    <strong>บัญชีธนาคารกรุงเทพ (BBL)</strong>
+                                                    <span>เลขที่บัญชี: <strong style="color: #fff; font-size: 14px;">123-4-56789-0</strong>
+                                                        &bull; บจก. ไพรเวท ยิม คอร์ปอเรชั่น</span>
+                                                    </div>
+                                                    <div class="auth-form-group" style="margin-bottom: 0;">
+                                                        <label class="auth-label" for="regBankRef">บันทึกเลขอ้างอิงการโอนเงิน
+                                                            หรือเวลาที่โอน</label>
+                                                            <div class="auth-input-wrapper">
+                                                                <input type="text" class="auth-input" id="regBankRef" name="BankTransferRef"
+                                                                       placeholder="เช่น โอนเวลา 14:30 น. วันนี้ (แอดมินจะตรวจสอบสลิป)" />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="auth-terms-group" style="margin-top: 12px; margin-bottom: 0;">
+                                                        <label class="auth-terms-label">
+                                                            <input type="checkbox" class="auth-checkbox" id="chkTaxInvoice"
+                                                                   onchange="toggleTaxInvoice(this)" />
+                                                            <span>ต้องการใบกำกับภาษีเต็มรูปแบบ / ใบเสร็จรับเงินอิเล็กทรอนิกส์ (e-Tax Invoice)</span>
+                                                        </label>
+                                                    </div>
+                                                    <div id="boxTaxInvoice" class="auth-pay-content-box" style="display: none; margin-top: 12px;">
+                                                        <div class="auth-form-group">
+                                                            <label class="auth-label" for="regTaxId">เลขประจำตัวผู้เสียภาษี 13 หลัก</label>
+                                                            <div class="auth-input-wrapper">
+                                                                <input type="text" class="auth-input" id="regTaxId" name="TaxId"
+                                                                       placeholder="1-1037-00293-81-0" maxlength="13" />
+                                                            </div>
+                                                        </div>
+                                                        <div class="auth-form-group" style="margin-bottom: 0;">
+                                                            <label class="auth-label" for="regBillingAddress">ที่อยู่สำหรับออกใบกำกับภาษี</label>
+                                                            <div class="auth-input-wrapper">
+                                                                <textarea class="auth-input" id="regBillingAddress" name="BillingAddress" rows="2"
+                                                                          style="height: auto; padding: 10px 14px;"
+                                                                          placeholder="88/1 อาคาร แอททรี วงศ์สว่าง กทม."></textarea>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="auth-terms-group" style="margin-top: 16px;">
+                                                        <label class="auth-terms-label">
+                                                            <input type="checkbox" class="auth-checkbox" name="acceptTerms" required checked />
+                                                            <span>ฉันยอมรับเงื่อนไขการให้บริการของ PrivateGym รับทราบนโยบายความเป็นส่วนตัว
+                                                                และระเบียบการผ่านประตูกลอัตโนมัติ (Autonomous Turnstile)</span>
+                                                            </label>
+                                                        </div>
+                                                        <div class="auth-step-actions">
+                                                            <button type="button" class="auth-btn-back" onclick="prevStep(4)">&larr; ย้อนกลับ</button>
+                                                            <button type="submit" class="auth-btn-forward">
+                                                                <span id="btnSubmitText">สร้างบัญชีและยืนยันการชำระเงิน (฿@defaultPriceText)</span>
+                                                                <span>&rarr;</span>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <footer class="auth-footer">
+                                        <div class="auth-footer-copy">
+                                            &copy; 2026 PRIVATEGYM CO., LTD. &bull; ALL RIGHTS RESERVED
+                                        </div>
+                                        <div class="auth-footer-links">
+                                            <span>ต้องการความช่วยเหลือ? ติดต่อ Private Concierge 02-712-9900</span>
+                                        </div>
+                                    </footer>
+                                    <script>
+                                            const stepSubtitles = {
+                                                1: "ขั้นตอนที่ 1 จาก 4 • กรอกข้อมูลบัญชีและความปลอดภัย",
+                                                2: "ขั้นตอนที่ 2 จาก 4 • ระบุสรีระและเป้าหมายการฝึก",
+                                                3: "ขั้นตอนที่ 3 จาก 4 • เลือกสาขาหลักและแพ็กเกจสมาชิก",
+                                                4: "ขั้นตอนที่ 4 จาก 4 • เลือกช่องทางการชำระเงินและหลักฐาน"
+                                            };
+                                            let currentStep = 1;
+                                            function goToStep(targetStep) {
+                                                for (let i = 1; i <= 4; i++) {
+                                                    const pane = document.getElementById('stepPane' + i);
+                                                    if (pane) pane.classList.remove('active');
+                                                }
+                                                const currentPane = document.getElementById('stepPane' + targetStep);
+                                                if (currentPane) currentPane.classList.add('active');
+                                                for (let i = 1; i <= 4; i++) {
+                                                    const node = document.getElementById('stepNode' + i);
+                                                    const circle = document.getElementById('circle' + i);
+                
+                                                    if (node) {
+                                                        node.classList.remove('active', 'completed');
+                                                        if (i === targetStep) {
+                                                            node.classList.add('active');
+                                                        } else if (i < targetStep) {
+                                                            node.classList.add('completed');
+                                                        }
+                                                    }
+                                                    if (i <= 3) {
+                                                        const line = document.getElementById('line' + i);
+                                                        if (line) {
+                                                            if (i < targetStep) {
+                                                                line.classList.add('completed');
+                                                            } else {
+                                                                line.classList.remove('completed');
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                                const subtitleEl = document.getElementById('stepSubtitle');
+                                                if (subtitleEl) subtitleEl.textContent = stepSubtitles[targetStep];
+
+                                                currentStep = targetStep;
+                                            }
+                                            function nextStep(step) {
+                                                if (step === 1) {
+                                                    const fullName = document.getElementById('regFullName')?.value.trim();
+                                                    const phone = document.getElementById('regPhone')?.value.trim();
+                                                    const email = document.getElementById('regEmail')?.value.trim();
+                                                    const pwd = document.getElementById('regPassword')?.value;
+                                                    const confirm = document.getElementById('regConfirmPassword')?.value;
+                                                    const errBox = document.getElementById('step1Error');
+
+                                                    if (!fullName || !phone || !email || !pwd || !confirm) {
+                                                        showError(errBox, "กรุณากรอกข้อมูลในขั้นตอนที่ 1 ให้ครบทุกช่องก่อนไปต่อ");
+                                                        return;
+                                                    }
+                                                    if (phone.length !== 10) {
+                                                        showError(errBox, "หมายเลขโทรศัพท์ต้องเป็นตัวเลข 10 หลัก");
+                                                        return;
+                                                    }
+                                                    if (pwd.length < 8) {
+                                                        showError(errBox, "รหัสผ่านต้องมีความยาวอย่างน้อย 8 ตัวอักษร");
+                                                        return;
+                                                    }
+                                                    if (pwd !== confirm) {
+                                                        showError(errBox, "รหัสผ่านและยืนยันรหัสผ่านไม่ตรงกัน");
+                                                        return;
+                                                    }
+                                                    if (errBox) errBox.style.display = 'none';
+                                                }
+                                                if (step === 3) {
+                                                    const chkHealth = document.getElementById('chkHealthSafety');
+                                                    if (chkHealth && !chkHealth.checked) {
+                                                        alert("กรุณาติ๊กยอมรับการรับรองสุขภาพ (Health Safety Precaution) ก่อนดำเนินการต่อ");
+                                                        return;
+                                                    }
+                                                }
+                                                goToStep(step + 1);
+                                            }
+                                            function prevStep(step) {
+                                                if (step > 1) {
+                                                    goToStep(step - 1);
+                                                }
+                                            }
+
+                                            function showError(box, msg) {
+                                                if (box) {
+                                                    box.textContent = msg;
+                                                    box.style.display = 'block';
+                                                }
+                                            }
+                                            function toggleRegPassword() {
+                                                const pwdInput = document.getElementById('regPassword');
+                                                const confirmInput = document.getElementById('regConfirmPassword');
+                                                const toggleBtn = document.getElementById('toggleRegPwdBtn');
+            
+                                                if (pwdInput.type === 'password') {
+                                                    pwdInput.type = 'text';
+                                                    confirmInput.type = 'text';
+                                                    toggleBtn.textContent = 'ซ่อน';
+                                                } else {
+                                                    pwdInput.type = 'password';
+                                                    confirmInput.type = 'password';
+                                                    toggleBtn.textContent = 'แสดง';
+                                                }
+                                            }
+                                            function switchPaymentMethod(method) {
+                                                document.getElementById('boxCreditCard').style.display = (method === 'CreditCard') ? 'block' : 'none';
+                                                document.getElementById('boxPromptPay').style.display = (method === 'PromptPay') ? 'block' : 'none';
+                                                document.getElementById('boxBankTransfer').style.display = (method === 'BankTransfer') ? 'block' : 'none';
+                                            }
+                                            function updateSelectedPackage(name, price) {
+                                                document.getElementById('btnSubmitText').textContent = `สร้างบัญชีและยืนยันการชำระเงิน (฿${price})`;
+                                                const ppAmount = document.getElementById('promptPayAmount');
+                                                if (ppAmount) ppAmount.textContent = `฿${price}`;
+                                            }
+                                            function toggleTaxInvoice(chk) {
+                                                document.getElementById('boxTaxInvoice').style.display = chk.checked ? 'block' : 'none';
+                                            }
+                                            function formatCreditCard(input) {
+                                                let val = input.value.replace(/\D/g, '');
+                                                val = val.substring(0, 16);
+                                                let formatted = val.match(/.{1,4}/g)?.join(' - ') || val;
+                                                input.value = formatted;
+                                            }
+                                    </script>
+                                </body>
+
+                            </html>

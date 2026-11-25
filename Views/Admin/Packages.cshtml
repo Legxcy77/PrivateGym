@@ -1,0 +1,218 @@
+@using PrivateGym.Models
+@{
+    ViewData["Title"] = "จัดการแพ็กเกจและสิทธิ์สมาชิก (Packages & Pods)";
+    Layout = "~/Views/Shared/Admin/_AdminLayout.cshtml";
+
+    var packages = ViewBag.Packages as List<Package> ?? new List<Package>();
+    var pods = ViewBag.Pods as List<Pod> ?? new List<Pod>();
+    var subCounts = ViewBag.SubCounts as Dictionary<int, int> ?? new Dictionary<int, int>();
+    int totalActiveSubs = ViewBag.TotalActiveSubs ?? 0;
+    decimal totalRev = ViewBag.TotalRevenue is decimal tr ? tr : 0m;
+    int availPods = pods.Count(p => p.Status == "Available");
+}
+
+<style>
+    .pkg-cards-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+    .pkg-card {
+        background: #09090b;
+        border: 1px solid #27272a;
+        border-radius: 14px;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+    .pkg-card.vip {
+        border-color: rgba(229, 9, 20, 0.55);
+        background: linear-gradient(180deg, rgba(229, 9, 20, 0.08) 0%, #09090b 100%);
+    }
+</style>
+
+<div class="adm-page">
+    <div class="adm-page-head">
+        <div>
+            <h1 class="adm-page-title">จัดการแพ็กเกจและห้องซ้อมส่วนตัว (Packages &amp; Private Pods)</h1>
+            <p class="adm-page-sub">กำหนดราคา โควต้าแพ็กเกจสมาชิก และสถานะความพร้อมของห้องซ้อม Private Pods ทุกสาขา</p>
+        </div>
+        <button type="button" class="st-btn-primary" onclick="document.getElementById('newPkgBox').classList.toggle('d-none')">
+            + สร้างแพ็กเกจใหม่
+        </button>
+    </div>
+
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success" style="background: rgba(16, 185, 129, 0.14); border: 1px solid rgba(16, 185, 129, 0.35); color: #fafafa; border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; font-size: 13px;">
+            @TempData["SuccessMessage"]
+        </div>
+    }
+
+    <div class="adm-kpi-4">
+        <div class="adm-stat-card">
+            <div class="adm-stat-lbl">ACTIVE PACKAGES</div>
+            <div class="adm-stat-val">@packages.Count <span style="font-size:13px; color:#71717a; font-weight:400;">แพ็กเกจ</span></div>
+            <div class="adm-stat-sub">เปิดจำหน่ายในระบบ</div>
+        </div>
+        <div class="adm-stat-card">
+            <div class="adm-stat-lbl">ACTIVE SUBSCRIPTIONS</div>
+            <div class="adm-stat-val" style="color:#10b981;">@totalActiveSubs <span style="font-size:13px; color:#71717a; font-weight:400;">สัญญา</span></div>
+            <div class="adm-stat-sub">สมาชิกที่ถือแพ็กเกจอยู่</div>
+        </div>
+        <div class="adm-stat-card">
+            <div class="adm-stat-lbl">PRIVATE PODS READY</div>
+            <div class="adm-stat-val">@availPods <span style="font-size:13px; color:#71717a; font-weight:400;">/ @pods.Count ห้อง</span></div>
+            <div class="adm-stat-sub">พร้อมเปิดรับการจอง</div>
+        </div>
+        <div class="adm-stat-card">
+            <div class="adm-stat-lbl">TOTAL PACKAGE REVENUE</div>
+            <div class="adm-stat-val">฿@totalRev.ToString("N0")</div>
+            <div class="adm-stat-sub">ยอดรับชำระสำเร็จรวม</div>
+        </div>
+    </div>
+
+    <!-- Form สร้างแพ็กเกจใหม่ -->
+    <div id="newPkgBox" class="st-table-card d-none mb-4" style="padding:18px 20px;">
+        <h3 style="font-size:14px; font-weight:600; color:#fafafa; margin:0 0 12px 0;">สร้างแพ็กเกจสมาชิกใหม่</h3>
+        <form asp-controller="Admin" asp-action="CreatePackage" method="post" class="row g-2 align-items-end">
+            @Html.AntiForgeryToken()
+            <div class="col-md-3">
+                <label style="font-size:11.5px; color:#a1a1aa;">ชื่อแพ็กเกจ</label>
+                <input type="text" name="packageName" class="st-input w-100" placeholder="เช่น Performance Pro" required />
+            </div>
+            <div class="col-md-2">
+                <label style="font-size:11.5px; color:#a1a1aa;">ราคา (บาท)</label>
+                <input type="number" name="price" value="8900" class="st-input w-100" required />
+            </div>
+            <div class="col-md-1">
+                <label style="font-size:11.5px; color:#a1a1aa;">จำนวนวัน</label>
+                <input type="number" name="durationDays" value="30" class="st-input w-100" required />
+            </div>
+            <div class="col-md-1">
+                <label style="font-size:11.5px; color:#a1a1aa;">โควต้า Pod</label>
+                <input type="number" name="podQuota" value="12" class="st-input w-100" required />
+            </div>
+            <div class="col-md-1">
+                <label style="font-size:11.5px; color:#a1a1aa;">โควต้า PT</label>
+                <input type="number" name="ptQuota" value="4" class="st-input w-100" required />
+            </div>
+            <div class="col-md-1">
+                <label style="font-size:11.5px; color:#a1a1aa;">InBody</label>
+                <input type="number" name="inBodyQuota" value="2" class="st-input w-100" required />
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="st-btn-primary w-100">บันทึกแพ็กเกจใหม่</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Package Tier Cards (Darf Style) -->
+    <div class="pkg-cards-grid">
+        @foreach (var pkg in packages)
+        {
+            int holderCount = subCounts.TryGetValue(pkg.PackageId, out int cnt) ? cnt : 0;
+            bool isVip = pkg.IsVip == true || pkg.PackageName.Contains("Elite", StringComparison.OrdinalIgnoreCase);
+
+            <div class="pkg-card @(isVip ? "vip" : "")">
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="st-badge @(isVip ? "st-badge-red" : "st-badge-green")">@(isVip ? "VIP TIER" : "ACTIVE TIER")</span>
+                    <span style="font-size:12px; color:#a1a1aa;">สมาชิกถืออยู่ <strong style="color:#fafafa;">@holderCount คน</strong></span>
+                </div>
+
+                <div>
+                    <div style="font-size:18px; font-weight:700; color:#fafafa;">@pkg.PackageName</div>
+                    <div style="font-size:26px; font-weight:800; color:#fafafa; margin-top:4px;">
+                        ฿@pkg.Price.ToString("N0") <span style="font-size:12.5px; font-weight:400; color:#71717a;">/ @pkg.DurationDays วัน</span>
+                    </div>
+                </div>
+
+                <form method="post" asp-controller="Admin" asp-action="UpdatePackage" class="d-flex flex-column gap-2 mt-auto pt-2" style="border-top:1px solid #18181b;"
+                      data-confirm-title="ยืนยันการแก้ไขแพ็กเกจ"
+                      data-confirm="ยืนยันบันทึกการเปลี่ยนแปลงราคาและโควต้าของแพ็กเกจ @pkg.PackageName หรือไม่?">
+                    <input type="hidden" name="packageId" value="@pkg.PackageId" />
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <label style="font-size:11px; color:#71717a;">ราคา (บาท)</label>
+                            <input type="number" name="price" value="@((int)pkg.Price)" class="st-input w-100" />
+                        </div>
+                        <div class="col-6">
+                            <label style="font-size:11px; color:#71717a;">อายุแพ็กเกจ (วัน)</label>
+                            <input type="number" name="durationDays" value="@pkg.DurationDays" class="st-input w-100" />
+                        </div>
+                        <div class="col-4">
+                            <label style="font-size:11px; color:#71717a;">Pod Quota</label>
+                            <input type="number" name="podQuota" value="@pkg.PodQuota" class="st-input w-100" />
+                        </div>
+                        <div class="col-4">
+                            <label style="font-size:11px; color:#71717a;">PT Quota</label>
+                            <input type="number" name="ptQuota" value="@pkg.PtQuota" class="st-input w-100" />
+                        </div>
+                        <div class="col-4">
+                            <label style="font-size:11px; color:#71717a;">InBody</label>
+                            <input type="number" name="inBodyQuota" value="@pkg.InBodyQuota" class="st-input w-100" />
+                        </div>
+                    </div>
+                    <button type="submit" class="st-btn-primary w-100 mt-1">บันทึกการแก้ไขแพ็กเกจ</button>
+                </form>
+            </div>
+        }
+    </div>
+
+    <!-- Private Pods Table -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h2 style="font-size:16px; font-weight:600; color:#fafafa; margin:0;">สถานะห้องซ้อมส่วนตัวทุกสาขา (Private Pods Directory)</h2>
+            <div style="font-size:12px; color:#71717a;">สลับสถานะพร้อมใช้งาน / ปิดปรับปรุง (ซิงค์กับหน้า Staff และหน้าจองของสมาชิกทันที)</div>
+        </div>
+    </div>
+
+    <div class="st-table-card">
+        <table class="st-shadcn-table">
+            <thead>
+                <tr>
+                    <th>รหัสห้อง</th>
+                    <th>ชื่อห้องซ้อม (Pod Name)</th>
+                    <th>ประเภท</th>
+                    <th>สาขา</th>
+                    <th>สถานะ</th>
+                    <th style="text-align:right;">การจัดการ</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var pod in pods)
+                {
+                    bool isAvail = pod.Status == "Available";
+                    <tr>
+                        <td style="font-family:monospace; color:#a1a1aa;">#POD-@pod.PodId.ToString("D2")</td>
+                        <td style="font-weight:600; color:#fafafa;">@pod.PodName</td>
+                        <td>@pod.PodType</td>
+                        <td><span class="st-badge st-badge-blue">@(pod.Branch?.BranchName ?? "-")</span></td>
+                        <td>
+                            @if (isAvail)
+                            {
+                                <span class="st-badge st-badge-green">พร้อมใช้งาน (Available)</span>
+                            }
+                            else
+                            {
+                                <span class="st-badge st-badge-amber">ปิดปรับปรุง (Maintenance)</span>
+                            }
+                        </td>
+                        <td style="text-align:right;">
+                            <form method="post" asp-controller="Admin" asp-action="TogglePodStatus" style="display:inline;"
+                                  data-confirm-title="ยืนยันเปลี่ยนสถานะห้องซ้อม"
+                                  data-confirm="ยืนยัน@(isAvail ? "ตั้งห้อง " + pod.PodName + " เป็นปิดปรับปรุง" : "เปิดให้บริการห้อง " + pod.PodName) หรือไม่?">
+                                <input type="hidden" name="podId" value="@pod.PodId" />
+                                <button type="submit" class="st-btn-outline" style="height:30px; padding:0 12px; font-size:12px; color:@(isAvail ? "#f59e0b" : "#10b981");">
+                                    @(isAvail ? "ตั้งเป็นปิดปรับปรุง" : "เปิดให้บริการ")
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

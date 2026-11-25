@@ -1,0 +1,135 @@
+@using PrivateGym.Models
+@{
+    var renewPackages = ViewBag.AllPackages as List<Package> ?? new List<Package>();
+}
+
+<!-- Counter Renewal & Payment Checkout Modal -->
+<div class="modal fade" id="renewPaymentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 480px;">
+        <div class="modal-content" style="background:#09090b; border:1px solid #27272a; border-radius:14px; color:#fafafa;">
+            <div class="modal-header" style="border-bottom:1px solid #18181b; padding:16px 20px;">
+                <div>
+                    <h5 class="modal-title" style="font-size:15px; font-weight:600; margin:0;">ชำระเงินและต่ออายุแพ็กเกจ (Counter POS)</h5>
+                    <div style="font-size:11.5px; color:#71717a; margin-top:2px;">บันทึกบิลลงตาราง Payments และต่อสิทธิ์อัตโนมัติหลังชำระสำเร็จ</div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form asp-controller="Admin" asp-action="RenewMemberSubscription" method="post" id="renewPaymentForm">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="userId" id="rpUserId" />
+                <input type="hidden" name="returnAction" id="rpReturnAction" value="UserList" />
+
+                <div class="modal-body d-flex flex-column gap-3" style="padding:18px 20px;">
+                    <div class="p-3" style="background:#111114; border:1px solid #27272a; border-radius:10px;">
+                        <div style="font-size:13.5px; font-weight:600; color:#fafafa;" id="rpMemberName">-</div>
+                        <div style="font-size:12px; color:#a1a1aa; margin-top:2px;" id="rpCurrentInfo">-</div>
+                    </div>
+
+                    <div>
+                        <label class="pg-form-label">เลือกแพ็กเกจที่ต่ออายุ / เปลี่ยนแพ็กเกจ</label>
+                        <select name="packageId" id="rpPackageSelect" class="st-input w-100" onchange="updateRenewSummary()" required>
+                            @foreach (var pkg in renewPackages)
+                            {
+                                <option value="@pkg.PackageId"
+                                        data-name="@pkg.PackageName"
+                                        data-price="@pkg.Price.ToString("N0")"
+                                        data-days="@pkg.DurationDays"
+                                        data-pods="@pkg.PodQuota"
+                                        data-pt="@pkg.PtQuota"
+                                        data-inbody="@pkg.InBodyQuota">
+                                    @pkg.PackageName — ฿@pkg.Price.ToString("N0") (@pkg.DurationDays วัน | Pod @pkg.PodQuota / PT @pkg.PtQuota)
+                                </option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <label class="pg-form-label">ช่องทางชำระเงิน</label>
+                            <select name="paymentMethod" id="rpMethodSelect" class="st-input w-100" onchange="toggleSlipRequirement()">
+                                <option value="Cash">เงินสดหน้าเคาน์เตอร์ (Cash)</option>
+                                <option value="PromptPay">PromptPay QR</option>
+                                <option value="CreditCard">บัตรเครดิต / เดบิต (EDC)</option>
+                                <option value="BankTransfer">โอนผ่านธนาคาร</option>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label class="pg-form-label">สถานะการรับเงิน</label>
+                            <select name="paymentMode" id="rpModeSelect" class="st-input w-100" onchange="toggleSlipRequirement()">
+                                <option value="instant">รับเงินเรียบร้อย (Success)</option>
+                                <option value="pending">ส่งรอตรวจสอบ (Pending)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="pg-form-label">เลขอ้างอิงสลิป / ใบเสร็จ POS <span id="rpSlipReqTag" style="color:#71717a;">(ไม่บังคับสำหรับเงินสด)</span></label>
+                        <input type="text" name="slipRef" id="rpSlipRef" class="st-input w-100" placeholder="เช่น SLIP-20261124-001 หรือ EDC-9912" />
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center p-3" style="background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.28); border-radius:10px;">
+                        <div>
+                            <div style="font-size:11px; color:#a1a1aa;">ยอดที่ต้องชำระสุทธิ</div>
+                            <div style="font-size:11.5px; color:#10b981;" id="rpQuotaNote">-</div>
+                        </div>
+                        <div style="font-size:20px; font-weight:700; color:#fafafa;" id="rpPriceText">฿0</div>
+                    </div>
+                </div>
+
+                <div class="modal-footer" style="border-top:1px solid #18181b; padding:12px 20px; gap:8px;">
+                    <button type="button" class="st-btn-outline" data-bs-dismiss="modal">ยกเลิก</button>
+                    <button type="submit" class="st-btn-primary" id="rpSubmitBtn">ยืนยันรับชำระเงินและต่ออายุ</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function openRenewPaymentModal(userId, memberName, currentPkg, expiryNote, returnAction) {
+        document.getElementById('rpUserId').value = userId;
+        document.getElementById('rpReturnAction').value = returnAction || 'UserList';
+        document.getElementById('rpMemberName').textContent = memberName;
+        document.getElementById('rpCurrentInfo').textContent = 'แพ็กเกจเดิม: ' + currentPkg + ' • ' + expiryNote;
+        document.getElementById('rpSlipRef').value = '';
+        document.getElementById('rpMethodSelect').value = 'Cash';
+        document.getElementById('rpModeSelect').value = 'instant';
+
+        const sel = document.getElementById('rpPackageSelect');
+        for (let i = 0; i < sel.options.length; i++) {
+            if ((sel.options[i].dataset.name || '').toLowerCase() === (currentPkg || '').toLowerCase()) {
+                sel.selectedIndex = i;
+                break;
+            }
+        }
+        updateRenewSummary();
+        toggleSlipRequirement();
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('renewPaymentModal')).show();
+    }
+
+    function updateRenewSummary() {
+        const sel = document.getElementById('rpPackageSelect');
+        const opt = sel.options[sel.selectedIndex];
+        if (!opt) return;
+        document.getElementById('rpPriceText').textContent = '฿' + (opt.dataset.price || '0');
+        document.getElementById('rpQuotaNote').textContent =
+            '+' + (opt.dataset.days || '30') + ' วัน | Pod +' + (opt.dataset.pods || '0') + ' • PT +' + (opt.dataset.pt || '0');
+    }
+
+    function toggleSlipRequirement() {
+        const method = document.getElementById('rpMethodSelect').value;
+        const mode = document.getElementById('rpModeSelect').value;
+        const slipInput = document.getElementById('rpSlipRef');
+        const reqTag = document.getElementById('rpSlipReqTag');
+        const submitBtn = document.getElementById('rpSubmitBtn');
+
+        const isCash = method === 'Cash';
+        slipInput.required = !isCash;
+        reqTag.textContent = isCash ? '(ไม่บังคับสำหรับเงินสด)' : '* บังคับกรอกเลขอ้างอิงสลิป/EDC';
+        reqTag.style.color = isCash ? '#71717a' : '#ef4444';
+        submitBtn.textContent = mode === 'pending'
+            ? 'สร้างบิล Pending (รอตรวจสอบก่อนเติมสิทธิ์)'
+            : 'ยืนยันรับชำระเงินและต่ออายุ';
+    }
+</script>
+

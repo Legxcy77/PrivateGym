@@ -1,0 +1,953 @@
+@model List<PrivateGym.Models.Booking>
+@using PrivateGym.Models
+@{
+    Layout = "~/Views/Shared/Trainer/_TrainerLayout.cshtml";
+    ViewData["Title"] = "แดชบอร์ดและบันทึกการฝึกสอน";
+
+    string trainerEmail = ViewBag.Email ?? "alex@privategym.club";
+    var todaySchedule = ViewBag.TodaySchedule as List<Booking> ?? new List<Booking>();
+    var activeBooking = ViewBag.ActiveBooking as Booking;
+    var workoutLogs = ViewBag.WorkoutLogs as List<Dictionary<string, string>> ?? new List<Dictionary<string, string>>();
+    var loggedBookingIds = ViewBag.LoggedBookingIds as HashSet<int> ?? new HashSet<int>();
+    var managedClients = ViewBag.ManagedClients as List<Booking> ?? new List<Booking>();
+
+    int todayTotal = ViewBag.TodayTotal ?? 0;
+    int todayCompleted = ViewBag.TodayCompleted ?? 0;
+    int upcomingCount = ViewBag.UpcomingCount ?? 0;
+    int pendingLogsCount = ViewBag.PendingLogsCount ?? 0;
+    int clientCount = ViewBag.ClientCount ?? 0;
+    var nextSlot = ViewBag.NextSlot as Booking;
+
+    Dictionary<string, string>? existingActiveLog = activeBooking != null
+        ? workoutLogs.FirstOrDefault(l => l.GetValueOrDefault("BookingId") == activeBooking.BookingId.ToString())
+        : null;
+}
+
+<style>
+    .tr-top-strip {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+        margin-bottom: 22px;
+    }
+    .tr-kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+    .tr-kpi-card {
+        background: #09090b;
+        border: 1px solid #27272a;
+        border-radius: 12px;
+        padding: 16px 18px;
+    }
+    .tr-kpi-label {
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: #a1a1aa;
+        margin-bottom: 8px;
+    }
+    .tr-kpi-val {
+        font-size: 24px;
+        font-weight: 700;
+        color: #fafafa;
+        line-height: 1.1;
+    }
+    .tr-kpi-sub {
+        font-size: 12px;
+        color: #71717a;
+        margin-top: 4px;
+    }
+
+    /* Main Split: Schedule + Logs (Left) & Active Coaching Panel (Right) */
+    .tr-main-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.3fr) minmax(320px, 1fr);
+        gap: 18px;
+        margin-bottom: 24px;
+        align-items: start;
+    }
+    .tr-panel {
+        background: #09090b;
+        border: 1px solid #27272a;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+    .tr-panel-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 14px 18px;
+        border-bottom: 1px solid #27272a;
+        background: #0c0c0f;
+    }
+    .tr-panel-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: #fafafa;
+        margin: 0;
+    }
+    .tr-session-list {
+        padding: 12px 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+    .tr-session-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 12px 14px;
+        border-radius: 10px;
+        border: 1px solid #27272a;
+        background: #111114;
+        transition: border-color 0.15s;
+    }
+    .tr-session-row.is-active {
+        border-color: rgba(229, 9, 20, 0.55);
+        background: linear-gradient(90deg, rgba(229, 9, 20, 0.08) 0%, #111114 100%);
+    }
+    .tr-session-time {
+        min-width: 92px;
+    }
+    .tr-session-time strong {
+        display: block;
+        font-size: 13px;
+        color: #fafafa;
+    }
+    .tr-session-time span {
+        font-size: 11.5px;
+        color: #71717a;
+    }
+    .tr-session-info {
+        flex: 1;
+        min-width: 0;
+    }
+    .tr-session-name {
+        font-size: 13.5px;
+        font-weight: 600;
+        color: #fafafa;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .tr-session-goal {
+        font-size: 12px;
+        color: #a1a1aa;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* Active Coaching Form */
+    .tr-coach-body {
+        padding: 18px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+    }
+    .tr-athlete-banner {
+        padding: 14px;
+        border-radius: 10px;
+        border: 1px solid #27272a;
+        background: #111114;
+    }
+    .tr-field-label {
+        display: block;
+        font-size: 11.5px;
+        font-weight: 600;
+        color: #a1a1aa;
+        margin-bottom: 6px;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
+    .tr-textarea {
+        width: 100%;
+        min-height: 82px;
+        background: #09090b;
+        border: 1px solid #27272a;
+        border-radius: 8px;
+        color: #fafafa;
+        font-size: 13px;
+        padding: 10px 12px;
+        outline: none;
+        resize: vertical;
+    }
+    .tr-textarea:focus {
+        border-color: #e50914;
+    }
+
+    /* Multi-Exercise & Set Builder */
+    .ex-chip-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+    .ex-preset-chip {
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 11.5px;
+        font-weight: 500;
+        background: #141418;
+        border: 1px solid #27272a;
+        color: #d4d4d8;
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+    .ex-preset-chip:hover {
+        border-color: #e50914;
+        color: #fafafa;
+        background: rgba(229, 9, 20, 0.12);
+    }
+    .ex-card {
+        background: #111114;
+        border: 1px solid #27272a;
+        border-radius: 10px;
+        padding: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+    .ex-card-head {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .ex-set-grid {
+        display: grid;
+        grid-template-columns: 34px 1fr 1fr 112px 26px;
+        gap: 6px;
+        align-items: center;
+    }
+    .ex-set-hdr {
+        font-size: 10px;
+        font-weight: 600;
+        color: #71717a;
+        text-transform: uppercase;
+        text-align: center;
+    }
+    .ex-mini-input {
+        height: 30px;
+        background: #09090b;
+        border: 1px solid #27272a;
+        border-radius: 6px;
+        color: #fafafa;
+        font-size: 12px;
+        padding: 0 8px;
+        width: 100%;
+        outline: none;
+    }
+    .ex-mini-input:focus {
+        border-color: #e50914;
+    }
+    .ex-summary-strip {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        flex-wrap: wrap;
+        padding: 9px 12px;
+        border-radius: 8px;
+        background: #0c0c0f;
+        border: 1px solid #27272a;
+        font-size: 11.5px;
+        color: #a1a1aa;
+    }
+    .rpe-btn-group {
+        display: grid;
+        grid-template-columns: repeat(8, 1fr);
+        gap: 4px;
+    }
+    .rpe-btn {
+        height: 32px;
+        border-radius: 6px;
+        border: 1px solid #27272a;
+        background: #141418;
+        color: #a1a1aa;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+    .rpe-btn.active {
+        background: #e50914;
+        border-color: #e50914;
+        color: #ffffff;
+    }
+
+    /* Managed Clients Grid (Auto-Fit to Actual Client Count) */
+    .tr-client-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 12px;
+    }
+    .tr-client-card {
+        background: #09090b;
+        border: 1px solid #27272a;
+        border-radius: 12px;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    @@media (max-width: 1120px) {
+        .tr-kpi-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+        .tr-main-grid {
+            grid-template-columns: 1fr;
+        }
+        .tr-client-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+    @@media (max-width: 640px) {
+        .tr-kpi-grid,
+        .tr-client-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<main class="cd-content">
+    <!-- Top Header -->
+    <div class="tr-top-strip">
+        <div>
+            <h1 class="cd-page-title">แดชบอร์ดและบันทึกการฝึกสอน</h1>
+            <p class="cd-page-subtext">ตรวจสอบคิวสอนวันนี้ บันทึกผลการฝึก (RPE / Load) และปิดรอบการสอนแบบเรียลไทม์</p>
+        </div>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <a asp-controller="Trainer" asp-action="Availability" asp-route-email="@trainerEmail" class="st-btn-outline">จัดการเวลาว่าง</a>
+            <a asp-controller="Trainer" asp-action="Schedule" asp-route-email="@trainerEmail" class="st-btn-primary">ตารางสอนสัปดาห์นี้</a>
+        </div>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success" style="background: rgba(16, 185, 129, 0.14); border: 1px solid rgba(16, 185, 129, 0.35); color: #fafafa; border-radius: 10px; padding: 12px 16px; margin-bottom: 18px; font-size: 13px;">
+            @TempData["Success"]
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger" style="background: rgba(239, 68, 68, 0.14); border: 1px solid rgba(239, 68, 68, 0.35); color: #fafafa; border-radius: 10px; padding: 12px 16px; margin-bottom: 18px; font-size: 13px;">
+            @TempData["Error"]
+        </div>
+    }
+
+    <!-- 4-Column KPI Row -->
+    <div class="tr-kpi-grid">
+        <div class="tr-kpi-card">
+            <div class="tr-kpi-label">วันนี้ (TODAY)</div>
+            <div class="tr-kpi-val" style="font-size:18px;">@DateTime.Today.ToString("dd MMM yyyy")</div>
+            <div class="tr-kpi-sub">คิวสอนวันนี้ @todayTotal เซสชัน</div>
+        </div>
+        <div class="tr-kpi-card">
+            <div class="tr-kpi-label">คิวรอสอนทั้งหมด (UPCOMING)</div>
+            <div class="tr-kpi-val">@upcomingCount</div>
+            <div class="tr-kpi-sub">สอนจบวันนี้ @todayCompleted เซสชัน</div>
+        </div>
+        <div class="tr-kpi-card">
+            <div class="tr-kpi-label">รอลงบันทึกฝึก (PENDING LOGS)</div>
+            <div class="tr-kpi-val" style="color:@(pendingLogsCount > 0 ? "#f59e0b" : "#10b981");">@pendingLogsCount รายการ</div>
+            <div class="tr-kpi-sub">ลูกค้าทั้งหมดในความดูแล @clientCount คน</div>
+        </div>
+        <div class="tr-kpi-card">
+            <div class="tr-kpi-label">สล็อตถัดไป (NEXT SLOT)</div>
+            @if (nextSlot != null)
+            {
+                <div class="tr-kpi-val" style="font-size:18px; color:#ef4444;">@nextSlot.StartTime.ToString("HH:mm") - @nextSlot.EndTime.ToString("HH:mm")</div>
+                <div class="tr-kpi-sub">@(nextSlot.Pod?.PodName ?? "Pod") • @(nextSlot.User?.FullName ?? "-")</div>
+            }
+            else
+            {
+                <div class="tr-kpi-val" style="font-size:18px; color:#71717a;">ไม่มีคิวรอสอน</div>
+                <div class="tr-kpi-sub">เปิดดูตารางสัปดาห์ได้ด้านบน</div>
+            }
+        </div>
+    </div>
+
+    <!-- Main 2-Column Workspace -->
+    <div class="tr-main-grid">
+        <!-- Left Column: Today's Schedule & Recent Workout Logs -->
+        <div class="d-flex flex-column gap-4">
+            <!-- Today's Training Schedule & Upcoming Queue -->
+            <div class="tr-panel">
+                <div class="tr-panel-head">
+                    <h2 class="tr-panel-title">ตารางฝึกสอนวันนี้และคิวที่รอ (Training Schedule)</h2>
+                    <span class="st-badge st-badge-blue">@Model.Count คิวที่รอ</span>
+                </div>
+
+                @if (!todaySchedule.Any() && !Model.Any())
+                {
+                    <div style="padding: 36px; text-align:center; color:#71717a; font-size:13px;">
+                        ยังไม่มีคิวสอนที่กำลังจะมาถึงในขณะนี้
+                    </div>
+                }
+                else
+                {
+                    var scheduleToShow = todaySchedule.Any() ? todaySchedule : Model.Take(6).ToList();
+                    <div class="tr-session-list">
+                        @foreach (var s in scheduleToShow)
+                        {
+                            bool isSelected = activeBooking != null && activeBooking.BookingId == s.BookingId;
+                            bool hasCheckedIn = s.CheckIns != null && s.CheckIns.Any();
+                            bool hasLog = loggedBookingIds.Contains(s.BookingId);
+
+                            <div class="tr-session-row @(isSelected ? "is-active" : "")">
+                                <div class="tr-session-time">
+                                    <strong>@s.StartTime.ToString("HH:mm") - @s.EndTime.ToString("HH:mm")</strong>
+                                    <span>@(s.Pod?.PodName ?? "Pod")</span>
+                                </div>
+                                <div class="tr-session-info">
+                                    <div class="tr-session-name">@(s.User?.FullName ?? "สมาชิก") <span style="font-size:11px; color:#71717a;">#PG-@s.BookingId.ToString("D5")</span></div>
+                                    <div class="tr-session-goal">@(s.User?.FitnessGoal ?? "Personal Training Session") • @s.BookingDate.ToString("dd/MM")</div>
+                                </div>
+                                <div class="d-flex align-items-center gap-2">
+                                    @if (s.Status == "Completed")
+                                    {
+                                        <span class="st-badge st-badge-green">@(hasLog ? "บันทึกแล้ว" : "เสร็จสิ้น")</span>
+                                    }
+                                    else if (hasCheckedIn)
+                                    {
+                                        <span class="st-badge st-badge-green">เช็กอินแล้ว</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="st-badge st-badge-amber">รอสอน</span>
+                                    }
+
+                                    <a asp-controller="Trainer" asp-action="Index" asp-route-email="@trainerEmail" asp-route-selectedBookingId="@s.BookingId"
+                                       class="st-btn-outline" style="height:30px; padding:0 10px; font-size:12px;">
+                                        @(isSelected ? "กำลังบันทึก" : "เลือกบันทึก")
+                                    </a>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+
+            <!-- Recent Training Logs Table -->
+            <div class="tr-panel">
+                <div class="tr-panel-head">
+                    <h2 class="tr-panel-title">บันทึกการฝึกซ้อมล่าสุด (Recent Training Logs)</h2>
+                    <a asp-controller="Trainer" asp-action="History" asp-route-email="@trainerEmail" style="font-size:12px; color:#ef4444; text-decoration:none; font-weight:600;">ดูประวัติทั้งหมด</a>
+                </div>
+                @if (!workoutLogs.Any())
+                {
+                    <div style="padding: 30px; text-align:center; color:#71717a; font-size:13px;">
+                        ยังไม่มีบันทึกผลการฝึก กรอกข้อมูลในแผงด้านขวาเพื่อบันทึกเซสชันแรก
+                    </div>
+                }
+                else
+                {
+                    <table class="st-shadcn-table">
+                        <thead>
+                            <tr>
+                                <th>วันที่ / เวลา</th>
+                                <th>สมาชิก</th>
+                                <th>ท่าหลัก / โฟกัส</th>
+                                <th>โหลดสูงสุด</th>
+                                <th>RPE</th>
+                                <th style="text-align:right;">รายละเอียด</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @{ int logIdx = 0; }
+                            @foreach (var log in workoutLogs.Take(5))
+                            {
+                                <tr>
+                                    <td>
+                                        <div style="font-weight:600; color:#fafafa;">@log.GetValueOrDefault("BookingDate", "-")</div>
+                                        <div style="font-size:11.5px; color:#71717a;">@log.GetValueOrDefault("TimeRange", "")</div>
+                                    </td>
+                                    <td>
+                                        <div style="font-weight:600; color:#fafafa;">@log.GetValueOrDefault("MemberName", "-")</div>
+                                        <div style="font-size:11.5px; color:#71717a;">@log.GetValueOrDefault("PodName", "-")</div>
+                                    </td>
+                                    <td>
+                                        <div>@log.GetValueOrDefault("PrimaryMovement", "-")</div>
+                                        <div style="font-size:11.5px; color:#71717a;">@log.GetValueOrDefault("SetsSummary", "")</div>
+                                    </td>
+                                    <td style="font-weight:600; color:#fafafa;">@log.GetValueOrDefault("TopLoad", "-")</td>
+                                    <td><span class="st-badge st-badge-red">@log.GetValueOrDefault("Rpe", "8.0")</span></td>
+                                    <td style="text-align:right;">
+                                        <button type="button" class="st-btn-outline" style="height:28px; padding:0 10px; font-size:11.5px;" onclick="openWorkoutDetailModal(@logIdx)">
+                                            ดูบันทึก
+                                        </button>
+                                    </td>
+                                </tr>
+                                logIdx++;
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+
+            <!-- Managed Clients (Inside Left Column for Balanced Layout) -->
+            <div class="tr-panel">
+                <div class="tr-panel-head">
+                    <h2 class="tr-panel-title">ลูกค้าในการดูแล (Managed Clients - @clientCount คน)</h2>
+                    <a asp-controller="Trainer" asp-action="Clients" asp-route-email="@trainerEmail" style="font-size:12px; color:#ef4444; text-decoration:none; font-weight:600;">จัดการรายชื่อทั้งหมด</a>
+                </div>
+                <div style="padding:14px;">
+                    @if (!managedClients.Any())
+                    {
+                        <div style="padding: 20px; text-align:center; color:#71717a; font-size:13px;">
+                            ยังไม่มีข้อมูลลูกค้าที่จองกับโค้ชในขณะนี้
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="tr-client-grid">
+                            @foreach (var mc in managedClients)
+                            {
+                                <div class="tr-client-card">
+                                    <div class="d-flex justify-content-between align-items-start gap-2">
+                                        <div style="font-size:14px; font-weight:600; color:#fafafa;">@(mc.User?.FullName ?? "-")</div>
+                                        <span class="st-badge st-badge-green">ACTIVE</span>
+                                    </div>
+                                    <div style="font-size:12px; color:#a1a1aa;">เป้าหมาย: @(mc.User?.FitnessGoal ?? "General Fitness")</div>
+                                    <div style="font-size:11.5px; color:#71717a; margin-top:auto; padding-top:8px; border-top:1px solid #18181b;">
+                                        ล่าสุด: @mc.BookingDate.ToString("dd/MM/yyyy") (@(mc.Pod?.PodName ?? "-"))
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Active Coaching Panel -->
+        <div class="tr-panel">
+            <div class="tr-panel-head">
+                <div>
+                    <h2 class="tr-panel-title" style="color:#ef4444;">ACTIVE COACHING PANEL</h2>
+                    <div style="font-size:11.5px; color:#71717a;">บันทึกผลการฝึกและปิดจบเซสชัน</div>
+                </div>
+                @if (activeBooking != null)
+                {
+                    <span class="st-badge st-badge-red">#PG-@activeBooking.BookingId.ToString("D5")</span>
+                }
+            </div>
+
+            @if (activeBooking == null)
+            {
+                <div style="padding: 40px 20px; text-align:center; color:#71717a; font-size:13px;">
+                    ยังไม่มีเซสชันให้บันทึกในขณะนี้
+                </div>
+            }
+            else
+            {
+                var sub = activeBooking.User?.MemberSubscriptions?
+                    .Where(ms => ms.Status == "Active")
+                    .OrderByDescending(ms => ms.EndDate)
+                    .FirstOrDefault();
+
+                <div class="tr-coach-body">
+                    <div class="tr-athlete-banner">
+                        <div class="d-flex justify-content-between align-items-start gap-2">
+                            <div>
+                                <div style="font-size:16px; font-weight:700; color:#fafafa;">@(activeBooking.User?.FullName ?? "สมาชิก")</div>
+                                <div style="font-size:12px; color:#a1a1aa; margin-top:2px;">
+                                    @(sub?.Package?.PackageName ?? "Personal Training")
+                                    @(sub != null ? $"• เหลือโควต้า PT {sub.RemainingPt} ครั้ง" : "")
+                                </div>
+                            </div>
+                            <span class="st-badge @(activeBooking.Status == "Completed" ? "st-badge-green" : "st-badge-amber")">@activeBooking.Status</span>
+                        </div>
+                        <div style="font-size:12px; color:#d4d4d8; margin-top:8px; padding-top:8px; border-top:1px solid #27272a;">
+                            เป้าหมาย: @(activeBooking.User?.FitnessGoal ?? "Strength & Conditioning") • @(activeBooking.Pod?.PodName ?? "Pod") (@activeBooking.StartTime.ToString("HH:mm")-@activeBooking.EndTime.ToString("HH:mm"))
+                        </div>
+                    </div>
+
+                    <form asp-controller="Trainer" asp-action="SaveWorkoutLog" method="post" id="workoutLogForm" class="d-flex flex-column gap-3" onsubmit="syncExercisesPayload()">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="bookingId" value="@activeBooking.BookingId" />
+                        <input type="hidden" name="email" value="@trainerEmail" />
+                        <input type="hidden" name="exercisesJson" id="exercisesJsonInput" value="@(existingActiveLog?.GetValueOrDefault("ExercisesJson") ?? "[]")" />
+                        <input type="hidden" name="rpe" id="rpeHiddenInput" value="@(existingActiveLog?.GetValueOrDefault("Rpe") ?? "8.0")" />
+
+                        <datalist id="exerciseSuggestions">
+                            <option value="Barbell Back Squat"></option>
+                            <option value="Conventional Deadlift"></option>
+                            <option value="Barbell Bench Press"></option>
+                            <option value="Overhead Press"></option>
+                            <option value="Romanian Deadlift (RDL)"></option>
+                            <option value="Lat Pulldown"></option>
+                            <option value="Bulgarian Split Squat"></option>
+                            <option value="Incline Dumbbell Press"></option>
+                            <option value="Seated Cable Row"></option>
+                            <option value="Plank / Core Stability"></option>
+                        </datalist>
+
+                        <div>
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <label class="tr-field-label mb-0">เลือก/เพิ่มท่าฝึกในเซสชัน (Quick Add)</label>
+                                <button type="button" class="ex-preset-chip" style="border-color: rgba(229,9,20,0.5); color:#fafafa;" onclick="addExerciseCard('')">+ เพิ่มท่ากำหนดเอง</button>
+                            </div>
+                            <div class="ex-chip-row">
+                                <button type="button" class="ex-preset-chip" onclick="addExerciseCard('Barbell Back Squat')">+ Back Squat</button>
+                                <button type="button" class="ex-preset-chip" onclick="addExerciseCard('Conventional Deadlift')">+ Deadlift</button>
+                                <button type="button" class="ex-preset-chip" onclick="addExerciseCard('Barbell Bench Press')">+ Bench Press</button>
+                                <button type="button" class="ex-preset-chip" onclick="addExerciseCard('Romanian Deadlift (RDL)')">+ RDL</button>
+                                <button type="button" class="ex-preset-chip" onclick="addExerciseCard('Overhead Press')">+ OHP</button>
+                                <button type="button" class="ex-preset-chip" onclick="addExerciseCard('Lat Pulldown')">+ Lat Pulldown</button>
+                            </div>
+                        </div>
+
+                        <!-- Dynamic Exercise Cards Container -->
+                        <div id="exerciseBuilderList" class="d-flex flex-column gap-2"></div>
+
+                        <!-- Auto-Calculated Summary -->
+                        <div class="ex-summary-strip" id="exAutoSummary">
+                            <span>สรุปอัตโนมัติ: <strong style="color:#fafafa;">0 ท่า • 0 เซ็ต</strong></span>
+                            <span>Top Load: <strong style="color:#ef4444;">-</strong></span>
+                        </div>
+
+                        <div>
+                            <label class="tr-field-label">ระดับความเหนื่อยสะสม (Session RPE)</label>
+                            @{
+                                string currentRpe = existingActiveLog?.GetValueOrDefault("Rpe") ?? "8.0";
+                                string[] rpes = new[] { "6.0", "7.0", "7.5", "8.0", "8.5", "9.0", "9.5", "10.0" };
+                            }
+                            <div class="rpe-btn-group">
+                                @foreach (var r in rpes)
+                                {
+                                    <button type="button" class="rpe-btn @(currentRpe == r ? "active" : "")" onclick="selectRpe('@r', this)">@r</button>
+                                }
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="tr-field-label">บันทึกคำแนะนำหลังฝึก (Coach's Feedback &amp; Homework)</label>
+                            <div class="ex-chip-row mb-2">
+                                <button type="button" class="ex-preset-chip" onclick="appendFeedback('ฟอร์มดีมาก รอบหน้าเพิ่มโหลด 2.5-5kg')">+ ฟอร์มดี เพิ่มโหลดรอบหน้า</button>
+                                <button type="button" class="ex-preset-chip" onclick="appendFeedback('เน้นจังหวะลงช้า (Tempo 3-1-0)')">+ เน้น Tempo</button>
+                                <button type="button" class="ex-preset-chip" onclick="appendFeedback('ดื่มน้ำให้เพียงพอและทานโปรตีน 1.6g/kg')">+ โภชนาการ/โปรตีน</button>
+                            </div>
+                            <textarea name="feedbackNote" id="feedbackTextarea" class="tr-textarea" placeholder="บันทึกฟอร์มการฝึก จุดที่ต้องปรับปรุง และการบ้านสำหรับเซสชันถัดไป...">@(existingActiveLog?.GetValueOrDefault("FeedbackNote") ?? "")</textarea>
+                        </div>
+
+                        <div class="d-flex gap-2 pt-1">
+                            <button type="submit" name="completeNow" value="false" class="st-btn-outline flex-fill">
+                                บันทึกผลฝึก (Save Log)
+                            </button>
+                            @if (activeBooking.Status != "Completed")
+                            {
+                                <button type="submit" name="completeNow" value="true" class="st-btn-primary flex-fill">
+                                    บันทึกและจบการสอน
+                                </button>
+                            }
+                        </div>
+                    </form>
+                </div>
+            }
+        </div>
+    </div>
+</main>
+
+<!-- Workout Log Detail Modal -->
+<div id="workoutDetailModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.78); backdrop-filter:blur(4px); z-index:10060; align-items:center; justify-content:center; padding:16px;">
+    <div style="background:#09090b; border:1px solid #27272a; border-radius:14px; width:100%; max-width:620px; max-height:88vh; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 24px 60px rgba(0,0,0,0.85);">
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:16px 20px; border-bottom:1px solid #27272a; background:#0c0c0f;">
+            <div>
+                <h3 id="wdModalTitle" style="font-size:15px; font-weight:700; color:#fafafa; margin:0;">รายละเอียดบันทึกการฝึก</h3>
+                <div id="wdModalSub" style="font-size:12px; color:#a1a1aa; margin-top:2px;">-</div>
+            </div>
+            <button type="button" onclick="closeWorkoutDetailModal()" style="background:none; border:none; color:#a1a1aa; font-size:22px; cursor:pointer; line-height:1;">&times;</button>
+        </div>
+        <div id="wdModalBody" style="padding:18px 20px; overflow-y:auto; display:flex; flex-direction:column; gap:14px;"></div>
+        <div style="display:flex; justify-content:flex-end; gap:8px; padding:14px 20px; border-top:1px solid #27272a; background:#0c0c0f;">
+            <a id="wdModalEditLink" href="#" class="st-btn-outline">โหลดเข้าแผงขวาเพื่อแก้ไข</a>
+            <button type="button" onclick="closeWorkoutDetailModal()" class="st-btn-primary">ปิดหน้าต่าง</button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    let exerciseState = [];
+
+    (function initExerciseBuilder() {
+        const raw = document.getElementById('exercisesJsonInput')?.value;
+        try {
+            const parsed = raw ? JSON.parse(raw) : [];
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                exerciseState = parsed;
+            }
+        } catch {
+            exerciseState = [];
+        }
+
+        if (exerciseState.length === 0) {
+            exerciseState = [{
+                name: 'Barbell Back Squat',
+                sets: [
+                    { weight: 60, reps: 10, type: 'Warm-up' },
+                    { weight: 80, reps: 8, type: 'Working' }
+                ]
+            }];
+        }
+        renderExerciseBuilder();
+    })();
+
+    function renderExerciseBuilder() {
+        const container = document.getElementById('exerciseBuilderList');
+        if (!container) return;
+
+        container.innerHTML = '';
+        exerciseState.forEach((ex, exIdx) => {
+            const card = document.createElement('div');
+            card.className = 'ex-card';
+
+            const head = document.createElement('div');
+            head.className = 'ex-card-head';
+            head.innerHTML = `
+                <span style="font-size:11px; font-weight:700; color:#ef4444; min-width:22px;">#${exIdx + 1}</span>
+                <input type="text" list="exerciseSuggestions" class="ex-mini-input" style="font-weight:600; flex:1;"
+                       value="${escapeAttr(ex.name)}" placeholder="ระบุชื่อท่าฝึก..."
+                       oninput="updateExName(${exIdx}, this.value)" />
+                <button type="button" class="av-slot-remove" style="background:none; border:none; color:#71717a; font-size:16px; cursor:pointer;"
+                        onclick="removeExerciseCard(${exIdx})" title="ลบท่านี้">&times;</button>
+            `;
+            card.appendChild(head);
+
+            const hdrRow = document.createElement('div');
+            hdrRow.className = 'ex-set-grid';
+            hdrRow.innerHTML = `
+                <div class="ex-set-hdr">Set</div>
+                <div class="ex-set-hdr">น้ำหนัก (kg)</div>
+                <div class="ex-set-hdr">ครั้ง (Reps)</div>
+                <div class="ex-set-hdr">ประเภท</div>
+                <div></div>
+            `;
+            card.appendChild(hdrRow);
+
+            (ex.sets || []).forEach((st, sIdx) => {
+                const row = document.createElement('div');
+                row.className = 'ex-set-grid';
+                row.innerHTML = `
+                    <div style="text-align:center; font-size:11.5px; color:#a1a1aa; font-weight:600;">${sIdx + 1}</div>
+                    <input type="number" step="0.5" min="0" class="ex-mini-input" value="${st.weight ?? 0}"
+                           oninput="updateSetField(${exIdx}, ${sIdx}, 'weight', parseFloat(this.value) || 0)" />
+                    <input type="number" step="1" min="1" class="ex-mini-input" value="${st.reps ?? 1}"
+                           oninput="updateSetField(${exIdx}, ${sIdx}, 'reps', parseInt(this.value, 10) || 1)" />
+                    <select class="ex-mini-input" onchange="updateSetField(${exIdx}, ${sIdx}, 'type', this.value)">
+                        <option value="Warm-up" ${st.type === 'Warm-up' ? 'selected' : ''}>Warm-up</option>
+                        <option value="Working" ${st.type === 'Working' ? 'selected' : ''}>Working</option>
+                        <option value="Top Set" ${st.type === 'Top Set' ? 'selected' : ''}>Top Set</option>
+                    </select>
+                    <button type="button" style="background:none; border:none; color:#71717a; cursor:pointer; font-size:14px;"
+                            onclick="removeSetRow(${exIdx}, ${sIdx})" title="ลบเซ็ต">&times;</button>
+                `;
+                card.appendChild(row);
+            });
+
+            const addSetBtn = document.createElement('button');
+            addSetBtn.type = 'button';
+            addSetBtn.className = 'ex-preset-chip';
+            addSetBtn.style.alignSelf = 'flex-start';
+            addSetBtn.textContent = '+ เพิ่มเซ็ต (Copy เซ็ตก่อนหน้า)';
+            addSetBtn.onclick = () => addSetRow(exIdx);
+            card.appendChild(addSetBtn);
+
+            container.appendChild(card);
+        });
+
+        updateAutoSummary();
+    }
+
+    function addExerciseCard(name) {
+        exerciseState.push({
+            name: name || '',
+            sets: [
+                { weight: 40, reps: 10, type: 'Working' }
+            ]
+        });
+        renderExerciseBuilder();
+    }
+
+    function removeExerciseCard(exIdx) {
+        exerciseState.splice(exIdx, 1);
+        renderExerciseBuilder();
+    }
+
+    function updateExName(exIdx, val) {
+        if (exerciseState[exIdx]) {
+            exerciseState[exIdx].name = val;
+            updateAutoSummary();
+        }
+    }
+
+    function addSetRow(exIdx) {
+        const sets = exerciseState[exIdx]?.sets;
+        if (!sets) return;
+        const prev = sets[sets.length - 1] || { weight: 40, reps: 10, type: 'Working' };
+        sets.push({ weight: prev.weight, reps: prev.reps, type: prev.type });
+        renderExerciseBuilder();
+    }
+
+    function removeSetRow(exIdx, sIdx) {
+        const sets = exerciseState[exIdx]?.sets;
+        if (!sets || sets.length <= 1) return;
+        sets.splice(sIdx, 1);
+        renderExerciseBuilder();
+    }
+
+    function updateSetField(exIdx, sIdx, field, val) {
+        if (exerciseState[exIdx]?.sets?.[sIdx]) {
+            exerciseState[exIdx].sets[sIdx][field] = val;
+            updateAutoSummary();
+        }
+    }
+
+    function updateAutoSummary() {
+        let totalSets = 0;
+        let totalVol = 0;
+        let maxW = -1;
+        let topLabel = '-';
+
+        exerciseState.forEach(ex => {
+            (ex.sets || []).forEach(st => {
+                totalSets++;
+                const w = Number(st.weight) || 0;
+                const r = Number(st.reps) || 0;
+                totalVol += w * r;
+                if (w > maxW) {
+                    maxW = w;
+                    topLabel = `${ex.name || 'ท่าฝึก'} ${w}kg × ${r}`;
+                }
+            });
+        });
+
+        const strip = document.getElementById('exAutoSummary');
+        if (strip) {
+            strip.innerHTML = `
+                <span>สรุปอัตโนมัติ: <strong style="color:#fafafa;">${exerciseState.length} ท่า • ${totalSets} เซ็ต • Vol ${totalVol.toLocaleString()} kg</strong></span>
+                <span>Top Load: <strong style="color:#ef4444;">${escapeHtml(topLabel)}</strong></span>
+            `;
+        }
+    }
+
+    function syncExercisesPayload() {
+        const hidden = document.getElementById('exercisesJsonInput');
+        if (hidden) {
+            hidden.value = JSON.stringify(exerciseState);
+        }
+    }
+
+    function selectRpe(val, btn) {
+        document.getElementById('rpeHiddenInput').value = val;
+        document.querySelectorAll('.rpe-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+    }
+
+    function appendFeedback(text) {
+        const ta = document.getElementById('feedbackTextarea');
+        if (!ta) return;
+        ta.value = ta.value.trim() ? `${ta.value.trim()}\n• ${text}` : `• ${text}`;
+    }
+
+    function escapeAttr(s) {
+        return String(s || '').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+    }
+    function escapeHtml(s) {
+        return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    const recentWorkoutLogs = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(workoutLogs.Take(5).ToList()));
+    const trainerEmailVal = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(trainerEmail));
+
+    function openWorkoutDetailModal(idx) {
+        const log = recentWorkoutLogs[idx];
+        if (!log) return;
+
+        document.getElementById('wdModalTitle').textContent = `${log.MemberName || 'สมาชิก'} • ${log.PrimaryMovement || '-'}`;
+        document.getElementById('wdModalSub').textContent = `วันที่ ${log.BookingDate || '-'} (${log.TimeRange || ''}) • ${log.PodName || '-'} • RPE ${log.Rpe || '8.0'}`;
+
+        const editLink = document.getElementById('wdModalEditLink');
+        if (editLink) {
+            editLink.href = `/Trainer?email=${encodeURIComponent(trainerEmailVal)}&selectedBookingId=${encodeURIComponent(log.BookingId || '')}`;
+        }
+
+        const body = document.getElementById('wdModalBody');
+        let html = `
+            <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:10px;">
+                <div style="background:#111114; border:1px solid #27272a; border-radius:8px; padding:10px 12px;">
+                    <div style="font-size:10.5px; color:#71717a;">สรุปการฝึก</div>
+                    <div style="font-size:13px; font-weight:600; color:#fafafa; margin-top:2px;">${escapeHtml(log.SetsSummary || '-')}</div>
+                </div>
+                <div style="background:#111114; border:1px solid #27272a; border-radius:8px; padding:10px 12px;">
+                    <div style="font-size:10.5px; color:#71717a;">โหลดสูงสุด (Top Load)</div>
+                    <div style="font-size:13px; font-weight:600; color:#ef4444; margin-top:2px;">${escapeHtml(log.TopLoad || '-')}</div>
+                </div>
+                <div style="background:#111114; border:1px solid #27272a; border-radius:8px; padding:10px 12px;">
+                    <div style="font-size:10.5px; color:#71717a;">Session RPE</div>
+                    <div style="font-size:13px; font-weight:600; color:#fafafa; margin-top:2px;">RPE ${escapeHtml(log.Rpe || '8.0')}</div>
+                </div>
+            </div>
+        `;
+
+        let exercises = [];
+        try {
+            if (log.ExercisesJson) exercises = JSON.parse(log.ExercisesJson);
+        } catch { exercises = []; }
+
+        if (Array.isArray(exercises) && exercises.length > 0) {
+            exercises.forEach((ex, i) => {
+                html += `<div style="background:#111114; border:1px solid #27272a; border-radius:10px; overflow:hidden;">
+                    <div style="padding:10px 14px; border-bottom:1px solid #18181b; font-size:13px; font-weight:600; color:#fafafa;">#${i + 1} ${escapeHtml(ex.name || 'ท่าฝึก')}</div>
+                    <table style="width:100%; border-collapse:collapse; font-size:12.5px;">
+                        <thead>
+                            <tr style="color:#71717a; border-bottom:1px solid #18181b;">
+                                <th style="padding:7px 14px; text-align:left;">Set</th>
+                                <th style="padding:7px 14px; text-align:left;">น้ำหนัก (kg)</th>
+                                <th style="padding:7px 14px; text-align:left;">ครั้ง (Reps)</th>
+                                <th style="padding:7px 14px; text-align:left;">ประเภท</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+                (ex.sets || []).forEach((st, sIdx) => {
+                    html += `<tr style="border-bottom:1px solid #18181b; color:#e4e4e7;">
+                        <td style="padding:7px 14px; color:#a1a1aa;">${sIdx + 1}</td>
+                        <td style="padding:7px 14px; font-weight:600;">${escapeHtml(st.weight ?? 0)} kg</td>
+                        <td style="padding:7px 14px;">${escapeHtml(st.reps ?? 0)} reps</td>
+                        <td style="padding:7px 14px;"><span style="padding:2px 8px; border-radius:999px; font-size:11px; background:#18181b; border:1px solid #27272a;">${escapeHtml(st.type || 'Working')}</span></td>
+                    </tr>`;
+                });
+                html += `</tbody></table></div>`;
+            });
+        }
+
+        html += `
+            <div style="background:#111114; border:1px solid #27272a; border-radius:10px; padding:12px 14px;">
+                <div style="font-size:11px; font-weight:600; color:#a1a1aa; margin-bottom:4px;">คำแนะนำหลังฝึก (Coach's Feedback &amp; Homework)</div>
+                <div style="font-size:13px; color:#e4e4e7; white-space:pre-line; line-height:1.5;">${escapeHtml(log.FeedbackNote || '-')}</div>
+            </div>
+        `;
+
+        body.innerHTML = html;
+        document.getElementById('workoutDetailModal').style.display = 'flex';
+    }
+
+    function closeWorkoutDetailModal() {
+        const m = document.getElementById('workoutDetailModal');
+        if (m) m.style.display = 'none';
+    }
+
+    document.getElementById('workoutDetailModal')?.addEventListener('click', function (e) {
+        if (e.target === this) closeWorkoutDetailModal();
+    });
+</script>
+}

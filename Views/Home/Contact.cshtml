@@ -1,0 +1,319 @@
+@model List<PrivateGym.Models.Branch>
+
+@{
+    ViewData["Title"] = "ติดต่อเราและนัดหมายเข้าชมสถานที่";
+    Layout = "_Nav_HomeLayout";
+    var branches = Model ?? new List<PrivateGym.Models.Branch>();
+    var firstBranch = branches.FirstOrDefault();
+}
+
+<style>
+    .dc-wrap {
+        padding-top: 120px;
+        padding-bottom: 96px;
+    }
+
+    .dc-h1 {
+        font-size: 40px;
+        font-weight: 900;
+        color: #ffffff;
+        margin: 0 0 10px 0;
+    }
+
+    .dc-main-grid {
+        display: grid;
+        grid-template-columns: 0.95fr 1.05fr;
+        gap: 28px;
+        margin-top: 40px;
+        margin-bottom: 76px;
+        align-items: start;
+    }
+
+    .dc-card {
+        background: #121216;
+        border: 1px solid #24242c;
+        border-radius: 18px;
+        padding: 28px;
+        margin-bottom: 24px;
+    }
+
+    .dc-info-2col {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin: 16px 0;
+    }
+
+    .dc-mini-box {
+        background: #17171d;
+        border: 1px solid #262631;
+        border-radius: 10px;
+        padding: 12px 14px;
+    }
+
+    .dc-slot-grid-3 {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        margin-bottom: 16px;
+    }
+
+    .dc-choice-btn {
+        background: #17171e;
+        border: 1px solid #2a2a36;
+        color: #d4d4d8;
+        font-size: 12px;
+        font-weight: 700;
+        padding: 10px 8px;
+        border-radius: 9px;
+        cursor: pointer;
+        text-align: center;
+    }
+
+    .dc-choice-btn.active {
+        background: #e50914;
+        border-color: #e50914;
+        color: #ffffff;
+    }
+
+    .dc-interest-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        margin-bottom: 16px;
+    }
+
+    .dc-interest-card {
+        background: #17171e;
+        border: 1px solid #2a2a36;
+        border-radius: 10px;
+        padding: 12px;
+        cursor: pointer;
+        text-align: left;
+    }
+
+    .dc-interest-card.active {
+        border-color: #e50914;
+        background: rgba(229, 9, 20, 0.12);
+    }
+
+    .dc-env-3col {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+    }
+
+    .dc-env-card {
+        background: #121216;
+        border: 1px solid #24242c;
+        border-radius: 14px;
+        overflow: hidden;
+    }
+
+    .dc-env-img {
+        height: 165px;
+        background: linear-gradient(180deg, rgba(0,0,0,0.15) 0%, rgba(12,12,16,0.9) 100%), url('/images/hero-bg.jpg') center/cover no-repeat;
+        padding: 12px;
+        display: flex;
+        align-items: flex-end;
+    }
+
+    .dc-card .form-control::placeholder,
+    .dc-card .form-select::placeholder {
+        color: #8e8e9e !important;
+        opacity: 1 !important;
+    }
+
+    .dc-card .form-control:focus,
+    .dc-card .form-select:focus {
+        border-color: #e50914 !important;
+        box-shadow: 0 0 0 0.2rem rgba(229, 9, 20, 0.2) !important;
+        background: #17171e;
+        color: #ffffff;
+    }
+
+    @@media (max-width: 991.98px) {
+        .dc-h1 { font-size: 28px; }
+        .dc-main-grid, .dc-env-3col, .dc-info-2col, .dc-slot-grid-3, .dc-interest-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<div class="dc-wrap">
+    <div class="pg-container">
+        <div class="pg-tag-red mb-2">OFFICIAL INQUIRY &amp; TOURS</div>
+        <h1 class="dc-h1">ติดต่อเราและนัดหมายเข้าชมสถานที่</h1>
+        <p style="font-size: 14px; color: #a1a1aa; max-width: 680px; margin: 0;">
+            สัมผัสมาตรฐานใหม่ของการฝึกซ้อมส่วนตัวแบบ Autonomous Private Pods ปราศจากการรบกวน นัดหมายเข้าชมพื้นที่จริงและรับคำปรึกษาจากทีมผู้ดูแลคลับ
+        </p>
+
+        <div class="dc-main-grid">
+            <!-- Left Column: Branch Info + Map + Emergency Hotline -->
+            <div>
+                <div class="dc-card">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span style="font-size: 11px; color: #e50914; font-weight: 700;">FLAGSHIP CLUB</span>
+                        <span style="font-family: monospace; font-size: 11px; color: #71717a;">POD 01 - 06</span>
+                    </div>
+                    <h3 class="text-white fw-bold mb-2">@(firstBranch?.BranchName ?? "สาขาทองหล่อ")</h3>
+                    <p style="font-size: 13px; color: #a1a1aa; line-height: 1.6; margin: 0;">
+                        @(firstBranch?.Location ?? "ซอยสุขุมวิท 55 (ทองหล่อ) แขวงคลองตันเหนือ เขตวัฒนา กรุงเทพฯ 10110")
+                    </p>
+
+                    <div class="dc-info-2col">
+                        <div class="dc-mini-box">
+                            <div style="font-size: 10.5px; color: #71717a; font-weight: 700;">OPERATING HOURS</div>
+                            <div style="font-size: 13px; font-weight: 700; color: #ffffff;">จันทร์ - อาทิตย์ 06:00 - 24:00 น.</div>
+                            <div style="font-size: 11px; color: #71717a;">ระบบประตู QR เปิด 24 ชม.</div>
+                        </div>
+                        <div class="dc-mini-box">
+                            <div style="font-size: 10.5px; color: #71717a; font-weight: 700;">DIRECT CONTACT</div>
+                            <div style="font-size: 13px; font-weight: 700; color: #ffffff;">@(firstBranch?.Phone ?? "02-123-4567")</div>
+                            <div style="font-size: 11px; color: #71717a;">concierge@privategymclub.com</div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center p-3 rounded" style="background: #17171d; border: 1px solid #262631;">
+                        <div>
+                            <div style="font-size: 13px; font-weight: 700; color: #ffffff;">Official LINE ID: @@privategym</div>
+                            <div style="font-size: 11.5px; color: #71717a;">ทีม Concierge พร้อมตอบคำถามภายใน 15 นาที</div>
+                        </div>
+                        <span class="btn btn-sm btn-outline-light" style="border-color: #343442;">แอดไลน์</span>
+                    </div>
+                </div>
+
+                <!-- Map Card -->
+                <div class="dc-card" style="padding: 18px;">
+                    <div class="d-flex justify-content-between align-items-center mb-2" style="font-size: 11.5px; color: #a1a1aa;">
+                        <span>แผนที่ตำแหน่งและพิกัดสาขา (@branches.Count สาขา)</span>
+                        <span style="font-family: monospace; color: #71717a;">13.7231&deg; N, 100.5794&deg; E</span>
+                    </div>
+                    <div class="rounded overflow-hidden mb-3" style="height: 220px; border: 1px solid #262631;">
+                        <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3875.922116245037!2d100.5794828759082!3d13.723171897985442!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x30e29fa43564e9a3%3A0x6a0a2f91e847c2c1!2sSoi%20Sukhumvit%2038%2C%20Khwaeng%20Phra%20Khanong%2C%20Khet%20Khlong%20Toei%2C%20Krung%20Thep%20Maha%20Nakhon!5e0!3m2!1sth!2sth!4v1700000000000"
+                                width="100%" height="100%" style="border: 0;" allowfullscreen="" loading="lazy"></iframe>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span style="font-size: 11.5px; color: #71717a;">ที่จอดรถส่วนตัว &bull; สถานี EV Fast Charge</span>
+                        <a href="https://maps.google.com" target="_blank" class="btn btn-sm btn-outline-light" style="border-color: #343442;">เปิดใน Google Maps</a>
+                    </div>
+                </div>
+
+                <!-- Emergency Hotline -->
+                <div class="dc-card mb-0" style="border-color: rgba(229,9,20,0.35);">
+                    <h6 class="text-white fw-bold mb-1">สายด่วนเคาน์เตอร์และประสานงานฉุกเฉิน (CURRENT MEMBER DISPATCH)</h6>
+                    <p style="font-size: 12px; color: #a1a1aa; margin-bottom: 12px;">สำหรับสมาชิกที่อยู่ในห้อง Pod หากต้องการความช่วยเหลือเร่งด่วน</p>
+                    <a href="tel:@(firstBranch?.Phone?.Replace("-", "") ?? "021234567")" class="btn btn-sm btn-outline-danger fw-bold px-3">Direct Hotline: @(firstBranch?.Phone ?? "02-123-4567") (กด 1)</a>
+                </div>
+            </div>
+
+            <!-- Right Column: Book a Private Tour Form -->
+            <div class="dc-card mb-0">
+                <div style="font-size: 11px; color: #e50914; font-weight: 700;">SCHEDULE PRIVATE SESSION</div>
+                <h2 class="text-white fw-bold mb-2" style="font-size: 24px;">นัดหมายเข้าชมสถานที่ (Book a Private Tour)</h2>
+                <p style="font-size: 12.5px; color: #a1a1aa; margin-bottom: 18px;">
+                    กรอกข้อมูลเพื่อรับสิทธิ์ Private Guided Walkthrough สัมผัสระบบ Private Pod พร้อมเจ้าหน้าที่ให้คำปรึกษา
+                </p>
+
+                @if (TempData["TrialSuccess"] != null)
+                {
+                    <div class="alert alert-success mb-3" style="background: rgba(34, 197, 94, 0.16); border: 1px solid #22c55e; color: #fff; border-radius: 10px; font-size: 13px;">
+                        @TempData["TrialSuccess"]
+                    </div>
+                }
+
+                <form asp-controller="Home" asp-action="BookTrial" method="post">
+                    <input type="hidden" name="returnAction" value="Contact" />
+
+                    <div class="mb-3">
+                        <label class="form-label text-white" style="font-size: 12.5px;">ชื่อ - นามสกุล <span class="text-danger">*</span></label>
+                        <input type="text" name="fullName" class="form-control" placeholder="เช่น ภัทรพล สุทธิวานิช" required style="background: #17171e; border: 1px solid #2a2a36; color: #fff;" />
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-sm-6">
+                            <label class="form-label text-white" style="font-size: 12.5px;">เบอร์โทรศัพท์มือถือ <span class="text-danger">*</span></label>
+                            <input type="tel" name="phone" class="form-control" placeholder="08X-XXX-XXXX" required style="background: #17171e; border: 1px solid #2a2a36; color: #fff;" />
+                        </div>
+                        <div class="col-sm-6">
+                            <label class="form-label text-white" style="font-size: 12.5px;">อีเมลติดต่อ <span class="text-danger">*</span></label>
+                            <input type="email" name="email" class="form-control" placeholder="name@example.com" required style="background: #17171e; border: 1px solid #2a2a36; color: #fff;" />
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label text-white" style="font-size: 12.5px;">สาขาที่ต้องการเข้าชม <span class="text-danger">*</span></label>
+                        <select name="branch" class="form-select" style="background: #17171e; border: 1px solid #2a2a36; color: #fff;">
+                            @foreach (var b in branches)
+                            {
+                                <option value="@b.BranchName">@b.BranchName (@b.Location)</option>
+                            }
+                        </select>
+                    </div>
+
+                    <label class="form-label text-white" style="font-size: 12.5px;">ช่วงเวลาที่ต้องการ (TIME SLOT)</label>
+                    <div class="dc-slot-grid-3">
+                        <button type="button" class="dc-choice-btn" onclick="pickTourSlot(this)">10:00 - 12:00</button>
+                        <button type="button" class="dc-choice-btn active" onclick="pickTourSlot(this)">14:00 - 17:00</button>
+                        <button type="button" class="dc-choice-btn" onclick="pickTourSlot(this)">18:00 - 21:00</button>
+                    </div>
+
+                    <label class="form-label text-white" style="font-size: 12.5px;">บริการที่สนใจเป็นพิเศษ (AREA OF INTEREST)</label>
+                    <div class="dc-interest-grid">
+                        <div class="dc-interest-card active" onclick="pickInterest(this)">
+                            <div class="text-white fw-bold" style="font-size: 12px;">Private Pod Solo</div>
+                            <div style="font-size: 10.5px; color: #a1a1aa;">ฝึกเดี่ยวพร้อมอุปกรณ์ Eleiko</div>
+                        </div>
+                        <div class="dc-interest-card" onclick="pickInterest(this)">
+                            <div class="text-white fw-bold" style="font-size: 12px;">Personal Training</div>
+                            <div style="font-size: 10.5px; color: #a1a1aa;">โปรแกรม 1-on-1 โดยโค้ช</div>
+                        </div>
+                        <div class="dc-interest-card" onclick="pickInterest(this)">
+                            <div class="text-white fw-bold" style="font-size: 12px;">Recovery Suite</div>
+                            <div style="font-size: 10.5px; color: #a1a1aa;">Sauna &amp; Cold Plunge</div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-danger w-100 fw-bold py-3" style="border-radius: 10px;">
+                        ยืนยันการนัดหมายเข้าชม (CONFIRM TOUR REQUEST)
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Bottom Environment Gallery -->
+        <div class="d-flex justify-content-between align-items-end mb-3 flex-wrap gap-2">
+            <div>
+                <div class="pg-tag-red">PRIVATE ENVIRONMENT</div>
+                <h2 class="text-white fw-bold mb-0" style="font-size: 24px;">บรรยากาศจริงในพื้นที่ PrivateGym</h2>
+            </div>
+            <span style="font-size: 11.5px; color: #71717a;">100% Acoustic Isolation &bull; Air Quality PM 0.0</span>
+        </div>
+
+        <div class="dc-env-3col">
+            <div class="dc-env-card">
+                <div class="dc-env-img" style="background-image: linear-gradient(180deg, rgba(0,0,0,0.12) 0%, rgba(12,12,16,0.9) 100%), url('/images/pod-01.jpg');"><span class="badge bg-dark">POD SUITE 01</span></div>
+                <div class="p-4"><h6 class="text-white fw-bold mb-2">ห้องฝึกส่วนบุคคล Private Pod Solo</h6><p style="font-size: 13px; color: #a1a1aa; margin: 0; line-height: 1.65;">อุปกรณ์ยกน้ำหนักมาตรฐานสากลพร้อมระบบเก็บเสียง</p></div>
+            </div>
+            <div class="dc-env-card">
+                <div class="dc-env-img" style="background-image: linear-gradient(180deg, rgba(0,0,0,0.12) 0%, rgba(12,12,16,0.9) 100%), url('/images/pod-02.jpg');"><span class="badge bg-dark">POWER RIG SUITE</span></div>
+                <div class="p-4"><h6 class="text-white fw-bold mb-2">ห้องฝึก Powerlifting และประตู QR</h6><p style="font-size: 13px; color: #a1a1aa; margin: 0; line-height: 1.65;">ระบบทางเข้าอัตโนมัติด้วย Dynamic QR Pass</p></div>
+            </div>
+            <div class="dc-env-card">
+                <div class="dc-env-img" style="background-image: linear-gradient(180deg, rgba(0,0,0,0.12) 0%, rgba(12,12,16,0.9) 100%), url('/images/pod-04.jpg');"><span class="badge bg-dark">RECOVERY SUITE</span></div>
+                <div class="p-4"><h6 class="text-white fw-bold mb-2">ห้องฟื้นฟู Infrared Sauna &amp; Cold Plunge</h6><p style="font-size: 13px; color: #a1a1aa; margin: 0; line-height: 1.65;">ห้องอาบน้ำส่วนตัวและโซนฟื้นฟูมาตรฐานโรงพยาบาล</p></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function pickTourSlot(btn) {
+        document.querySelectorAll('.dc-choice-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+    }
+    function pickInterest(card) {
+        document.querySelectorAll('.dc-interest-card').forEach(c => c.classList.remove('active'));
+        card.classList.add('active');
+    }
+</script>

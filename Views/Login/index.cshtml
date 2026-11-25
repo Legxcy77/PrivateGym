@@ -1,0 +1,163 @@
+@model PrivateGym.ViewModels.LoginViewModel
+
+
+@{
+    ViewData["Title"] = "เข้าสู่ระบบสมาชิก";
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - PRIVATEGYM</title>
+    <link rel="icon" type="image/png" href="~/IconPrivate.png" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/Auth.css" asp-append-version="true" />
+</head>
+
+<body class="auth-page auth-page-login">
+    <header class="auth-header">
+        <a asp-controller="Home" asp-action="Index" class="auth-brand">
+            <img src="~/images/logo.png" alt="PrivateGym" class="auth-brand-logo-img" />
+        </a>
+
+        <div class="auth-header-nav">
+            <a asp-controller="Home" asp-action="Index" class="auth-header-link">
+                &larr; กลับสู่หน้าแรก
+            </a>
+        </div>
+    </header>
+    <div class="auth-wrapper">
+        <div class="auth-hero-panel">
+            <div class="auth-hero-bg"></div>
+            <div class="auth-hero-overlay"></div>
+            <div class="auth-hero-content">
+                <div class="auth-hero-tag">PRIVATE ACCESS TERMINAL</div>
+                <h1 class="auth-hero-title">TRAIN IN PRIVATE<br>WITH CONFIDENCE</h1>
+                <p class="auth-hero-desc">
+                    เข้าสู่พื้นที่ฝึกส่วนตัวที่ออกแบบเพื่อสมาธิ ความปลอดภัย และผลลัพธ์ของคุณโดยเฉพาะ
+                </p>
+                <div class="auth-hero-features">
+                    <div class="auth-hero-feature-item">
+                        24/7 CONTROLLED ACCESS
+                    </div>
+                    <div class="auth-hero-feature-item">
+                        ENCRYPTED IDENTITY
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="auth-form-panel">
+            <div class="auth-card">
+                <div class="auth-card-tag">MEMBER AUTHENTICATION</div>
+                <h2 class="auth-card-title">เข้าสู่ระบบ</h2>
+                <p class="auth-card-subtitle">ระบบจะนำคุณไปยังบัญชีที่ถูกต้องโดยอัตโนมัติ</p>
+
+                <form asp-controller="Login" asp-action="Login" method="post">
+                    @if (!string.IsNullOrEmpty(ViewBag.Error))
+                    {
+                        <div style="background: rgba(239, 68, 68, 0.15); border: 1px solid #ef4444; color: #fca5a5; padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; font-size: 14px; display: flex; align-items: center; gap: 8px;">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                            </svg>
+                            <span>@ViewBag.Error</span>
+                        </div>
+                    }
+                    <input type="hidden" asp-for="FullName" />
+                    <input type="hidden" asp-for="MembershipPackage" />
+                    <input type="hidden" asp-for="HomeBranch" />
+                    <div class="auth-form-group">
+                        <div class="auth-label-row">
+                            <label class="auth-label" for="loginEmail">อีเมลหรือหมายเลขโทรศัพท์</label>
+                        </div>
+                        <div class="auth-input-wrapper">
+                            <span class="auth-input-icon">
+                                <svg viewBox="0 0 24 24">
+                                    <path
+                                    d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z" />
+                                </svg>
+                            </span>
+                            <input type="text" class="auth-input" id="loginEmail" asp-for="Email"
+                                   placeholder="name@email.com หรือ 08X-XXX-XXXX" required autocomplete="username" />
+                        </div>
+                    </div>
+
+                    <div class="auth-form-group">
+                        <div class="auth-label-row">
+                            <label class="auth-label" for="loginPassword">รหัสผ่าน</label>
+                            <button type="button" class="auth-label-link" id="togglePasswordBtn"
+                                    onclick="togglePasswordVisibility()">แสดง</button>
+                        </div>
+                        <div class="auth-input-wrapper">
+                            <span class="auth-input-icon">
+                                <svg viewBox="0 0 24 24">
+                                    <path
+                                    d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z" />
+                                </svg>
+                            </span>
+                            <input type="password" class="auth-input" id="loginPassword" asp-for="Password"
+                                   placeholder="กรอกรหัสผ่าน" required autocomplete="current-password" />
+                        </div>
+                    </div>
+
+                    <div class="auth-checkbox-row">
+                        <label class="auth-checkbox-label">
+                            <input type="checkbox" class="auth-checkbox" name="rememberMe" id="rememberMe" />
+                            <span>จดจำฉันไว้ในอุปกรณ์นี้</span>
+                        </label>
+                        <a href="#" class="auth-forgot-link">ลืมรหัสผ่าน?</a>
+                    </div>
+
+                    <button type="submit" class="auth-btn-primary">
+                        <span>เข้าสู่ระบบอย่างปลอดภัย</span>
+                        <span class="auth-btn-subtext">SIGN IN &rarr;</span>
+                    </button>
+
+                    <div class="auth-divider">
+                        <span>OR</span>
+                    </div>
+                    <button type="button" class="auth-btn-secondary">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                            <path
+                            d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z" />
+                        </svg>
+                        <span>เข้าสู่ระบบด้วยรหัส OTP</span>
+                    </button>
+
+                    <div class="auth-footer-prompt">
+                        <span>ยังไม่มีบัญชี?</span>
+                        <a asp-controller="Register" asp-action="Index">สมัครสมาชิก</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <footer class="auth-footer">
+        <div class="auth-footer-copy">
+            &copy; 2026 PRIVATEGYM CO., LTD.
+        </div>
+        <div class="auth-footer-links">
+            <a href="#">นโยบายความเป็นส่วนตัว</a>
+            <span>&bull;</span>
+            <a href="#">เงื่อนไขการให้บริการ</a>
+        </div>
+    </footer>
+    <script>
+            function togglePasswordVisibility() {
+                const pwdInput = document.getElementById('loginPassword');
+                const toggleBtn = document.getElementById('togglePasswordBtn');
+                if (pwdInput.type === 'password') {
+                    pwdInput.type = 'text';
+                    toggleBtn.textContent = 'ซ่อน';
+                } else {
+                    pwdInput.type = 'password';
+                    toggleBtn.textContent = 'แสดง';
+                }
+            }
+    </script>
+</body>
+
+</html>

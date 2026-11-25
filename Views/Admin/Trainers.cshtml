@@ -1,0 +1,223 @@
+@model List<PrivateGym.Models.Trainer>
+@using PrivateGym.Models
+@{
+    ViewData["Title"] = "บริหารจัดการเทรนเนอร์และโค้ช (Trainers & Coaches)";
+    Layout = "~/Views/Shared/Admin/_AdminLayout.cshtml";
+
+    var trainers = Model ?? new List<Trainer>();
+    var branches = ViewBag.Branches as List<Branch> ?? new List<Branch>();
+    string search = ViewBag.Search ?? "";
+
+    int totalCompletedSessions = trainers.Sum(t => t.Bookings?.Count(b => b.Status == "Completed") ?? 0);
+    int totalActiveBookings = trainers.Sum(t => t.Bookings?.Count(b => b.Status == "Confirmed") ?? 0);
+    decimal totalEstimatedPayout = trainers.Sum(t => (t.Bookings?.Count(b => b.Status == "Completed") ?? 0) * (t.HourlyRate ?? 1500m));
+}
+
+<div class="adm-page">
+    <div class="adm-page-head">
+        <div>
+            <h1 class="adm-page-title">บริหารจัดการเทรนเนอร์และโค้ช (Trainers &amp; Coaches)</h1>
+            <p class="adm-page-sub">ทำเนียบโค้ช ตรวจสอบจำนวนเซสชันที่สอนสำเร็จ และปรับเรทค่าสอนจริง (ซิงค์กับหน้า Trainer ทันที)</p>
+        </div>
+        <button type="button" class="st-btn-primary" data-bs-toggle="modal" data-bs-target="#addTrainerModal">+ ลงทะเบียนโค้ชใหม่ (Add Coach)</button>
+    </div>
+
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success" style="background: rgba(16, 185, 129, 0.14); border: 1px solid rgba(16, 185, 129, 0.35); color: #fafafa; border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; font-size: 13px;">
+            @TempData["SuccessMessage"]
+        </div>
+    }
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger" style="background: rgba(239, 68, 68, 0.14); border: 1px solid rgba(239, 68, 68, 0.35); color: #fafafa; border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; font-size: 13px;">
+            @TempData["ErrorMessage"]
+        </div>
+    }
+
+    <div class="adm-kpi-4">
+        <div class="adm-stat-card">
+            <div class="adm-stat-lbl">TOTAL ROSTER</div>
+            <div class="adm-stat-val">@trainers.Count <span style="font-size:13px; color:#71717a; font-weight:400;">ท่าน</span></div>
+            <div class="adm-stat-sub">โค้ชประจำคลับทั้งหมด</div>
+        </div>
+        <div class="adm-stat-card">
+            <div class="adm-stat-lbl">CONFIRMED QUEUE</div>
+            <div class="adm-stat-val" style="color:#60a5fa;">@totalActiveBookings <span style="font-size:13px; color:#71717a; font-weight:400;">คิวรอสอน</span></div>
+            <div class="adm-stat-sub">คิวที่ยืนยันแล้วในระบบ</div>
+        </div>
+        <div class="adm-stat-card">
+            <div class="adm-stat-lbl">COMPLETED SESSIONS</div>
+            <div class="adm-stat-val" style="color:#10b981;">@totalCompletedSessions <span style="font-size:13px; color:#71717a; font-weight:400;">เซสชัน</span></div>
+            <div class="adm-stat-sub">สอนเสร็จสมบูรณ์ทั้งหมด</div>
+        </div>
+        <div class="adm-stat-card">
+            <div class="adm-stat-lbl">ESTIMATED PAYOUT</div>
+            <div class="adm-stat-val">฿@totalEstimatedPayout.ToString("N0")</div>
+            <div class="adm-stat-sub">คำนวณตามเรทค่าสอนจริง</div>
+        </div>
+    </div>
+
+    <div class="st-filter-bar">
+        <div style="font-size:14px; font-weight:600; color:#fafafa;">ทำเนียบโค้ชผู้ฝึกสอน (@trainers.Count ท่าน)</div>
+        <form asp-controller="Admin" asp-action="Trainers" method="get" class="d-flex gap-2">
+            <input type="text" name="search" value="@search" class="st-input" style="min-width:250px;" placeholder="ค้นหาชื่อโค้ช, ความเชี่ยวชาญ, สาขา..." />
+            <button type="submit" class="st-btn-primary">ค้นหา</button>
+        </form>
+    </div>
+
+    <div class="st-table-card">
+        @if (!trainers.Any())
+        {
+            <div style="padding:40px; text-align:center; color:#71717a; font-size:13px;">ไม่พบข้อมูลเทรนเนอร์</div>
+        }
+        else
+        {
+            <table class="st-shadcn-table">
+                <thead>
+                    <tr>
+                        <th>โค้ช &amp; สาขาประจำ</th>
+                        <th>ความเชี่ยวชาญหลัก (Specialty)</th>
+                        <th>เรทค่าสอน / เซสชัน (บาท)</th>
+                        <th>ลูกค้าที่ดูแล</th>
+                        <th>สอนสำเร็จ</th>
+                        <th>ค่าตอบแทนสะสม</th>
+                        <th style="text-align:right;">บันทึกการแก้ไข</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var t in trainers)
+                    {
+                        int clientCount = t.Bookings?.Select(b => b.UserId).Distinct().Count() ?? 0;
+                        int doneCount = t.Bookings?.Count(b => b.Status == "Completed") ?? 0;
+                        decimal rate = t.HourlyRate ?? 1500m;
+                        decimal payout = doneCount * rate;
+
+                        <tr>
+                            <form asp-controller="Admin" asp-action="UpdateTrainerRate" method="post"
+                                  data-confirm-title="ยืนยันปรับเรทค่าสอน"
+                                  data-confirm="ยืนยันบันทึกเรทค่าสอนและความเชี่ยวชาญของ @(t.User?.FullName ?? "-") หรือไม่? ข้อมูลจะซิงค์ไปยังหน้า Trainer ทันที">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="trainerId" value="@t.TrainerId" />
+                                <td>
+                                    <div style="font-weight:600; color:#fafafa;">@(t.User?.FullName ?? "-") <span style="font-size:11px; color:#71717a;">#TR-@t.TrainerId.ToString("D3")</span></div>
+                                    <div style="font-size:12px; color:#a1a1aa;">@(t.User?.HomeBranch?.BranchName ?? "สาขาทองหล่อ") • @(t.User?.Email ?? "-")</div>
+                                </td>
+                                <td>
+                                    <input type="text" name="specialty" value="@t.Specialty" class="st-input" style="width:210px;" />
+                                </td>
+                                <td>
+                                    <input type="number" step="50" name="hourlyRate" value="@((int)rate)" class="st-input" style="width:110px;" />
+                                </td>
+                                <td>
+                                    <span class="st-badge st-badge-blue">@clientCount คน</span>
+                                </td>
+                                <td>
+                                    <span class="st-badge st-badge-green">@doneCount เซสชัน</span>
+                                </td>
+                                <td style="font-weight:700; color:#fafafa;">฿@payout.ToString("N0")</td>
+                                <td style="text-align:right; white-space:nowrap;">
+                                    <button type="submit" class="st-btn-primary" style="height:32px; padding:0 12px; font-size:12px;">บันทึกเรท</button>
+                                    @if (t.User != null)
+                                    {
+                                        <a asp-controller="Admin" asp-action="EditUser" asp-route-id="@t.UserId" class="st-btn-outline" style="height:32px; padding:0 10px; font-size:12px;">ข้อมูลบัญชี</a>
+                                    }
+                                </td>
+                            </form>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+
+    <!-- Payout Projection Summary -->
+    <div class="st-table-card mt-4" style="padding:18px 20px;">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+            <div>
+                <div style="font-size:11px; font-weight:700; color:#ef4444; letter-spacing:0.05em;">TRAINER PAYOUT PROJECTION</div>
+                <h2 style="font-size:15px; font-weight:600; color:#fafafa; margin:2px 0 0 0;">สรุปประมาณการจ่ายค่าตอบแทนโค้ชจากเซสชันที่สอนสำเร็จจริง</h2>
+            </div>
+            <span class="st-badge st-badge-green">CALCULATED FROM DB</span>
+        </div>
+        <div class="row g-3">
+            <div class="col-md-4">
+                <div class="adm-stat-card">
+                    <div class="adm-stat-lbl">ยอดจ่ายค่าตอบแทนรวม (NET PAYOUT)</div>
+                    <div class="adm-stat-val" style="color:#10b981;">฿@totalEstimatedPayout.ToString("N0")</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="adm-stat-card">
+                    <div class="adm-stat-lbl">จำนวนเซสชันที่ยืนยันเสร็จสิ้น</div>
+                    <div class="adm-stat-val">@totalCompletedSessions <span style="font-size:13px; color:#71717a;">เซสชัน</span></div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="adm-stat-card">
+                    <div class="adm-stat-lbl">เฉลี่ยค่าสอนต่อเซสชัน</div>
+                    <div class="adm-stat-val">฿@(totalCompletedSessions > 0 ? Math.Round(totalEstimatedPayout / totalCompletedSessions, 0).ToString("N0") : "0")</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Add Trainer -->
+<div class="modal fade" id="addTrainerModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="background:#09090b; border:1px solid #27272a; color:#fafafa; border-radius:14px;">
+            <div class="modal-header" style="border-bottom:1px solid #18181b;">
+                <h5 class="modal-title" style="font-size:15px; font-weight:600;">ลงทะเบียนโค้ชใหม่ (Add Coach)</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form asp-controller="Admin" asp-action="AddTrainer" method="post">
+                @Html.AntiForgeryToken()
+                <div class="modal-body d-flex flex-column gap-3">
+                    <div>
+                        <label style="font-size:12px; color:#a1a1aa; margin-bottom:4px; display:block;">ชื่อ-นามสกุลโค้ช</label>
+                        <input type="text" name="fullName" class="st-input w-100" required placeholder="เช่น Coach Mike" />
+                    </div>
+                    <div>
+                        <label style="font-size:12px; color:#a1a1aa; margin-bottom:4px; display:block;">อีเมลเข้าใช้งาน</label>
+                        <input type="email" name="email" class="st-input w-100" required placeholder="coach.new@privategym.club" />
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <label style="font-size:12px; color:#a1a1aa; margin-bottom:4px; display:block;">เบอร์โทรศัพท์</label>
+                            <input type="text" name="phone" class="st-input w-100" value="0890000000" required />
+                        </div>
+                        <div class="col-6">
+                            <label style="font-size:12px; color:#a1a1aa; margin-bottom:4px; display:block;">สาขาประจำ</label>
+                            <select name="branchId" class="st-input w-100">
+                                @foreach (var br in branches)
+                                {
+                                    <option value="@br.BranchId">@br.BranchName</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-7">
+                            <label style="font-size:12px; color:#a1a1aa; margin-bottom:4px; display:block;">ความเชี่ยวชาญ (Specialty)</label>
+                            <input type="text" name="specialty" class="st-input w-100" value="Strength & Conditioning" required />
+                        </div>
+                        <div class="col-5">
+                            <label style="font-size:12px; color:#a1a1aa; margin-bottom:4px; display:block;">เรทค่าสอน (บาท)</label>
+                            <input type="number" step="50" name="hourlyRate" class="st-input w-100" value="1500" required />
+                        </div>
+                    </div>
+                    <div>
+                        <label style="font-size:12px; color:#a1a1aa; margin-bottom:4px; display:block;">รหัสผ่านเริ่มต้น</label>
+                        <input type="password" name="password" class="st-input w-100" value="123456" required />
+                    </div>
+                </div>
+                <div class="modal-footer" style="border-top:1px solid #18181b;">
+                    <button type="button" class="st-btn-outline" data-bs-dismiss="modal">ยกเลิก</button>
+                    <button type="submit" class="st-btn-primary">ลงทะเบียนโค้ช</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+

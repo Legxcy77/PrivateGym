@@ -1,0 +1,333 @@
+@model List<PrivateGym.Models.Payment>
+
+@{
+    ViewData["Title"] = "ภาพรวมรายรับและการเงิน";
+    Layout = "~/Views/Shared/Accountant/_AccountantLayout.cshtml";
+
+    decimal totalRevenue = ViewBag.TotalRevenue is decimal tr ? tr : 0m;
+    decimal thisMonthRevenue = ViewBag.ThisMonthRevenue is decimal tm ? tm : 0m;
+    decimal pendingAmount = ViewBag.PendingAmount is decimal pa ? pa : 0m;
+    int pendingCount = ViewBag.PendingCount is int pc ? pc : 0;
+    int successCount = ViewBag.SuccessCount is int sc ? sc : 0;
+    int activeSubCount = ViewBag.ActiveSubCount is int asc ? asc : 0;
+
+    decimal promptPayTotal = ViewBag.PromptPayTotal is decimal pp ? pp : 0m;
+    decimal creditCardTotal = ViewBag.CreditCardTotal is decimal cc ? cc : 0m;
+    decimal bankTransferTotal = ViewBag.BankTransferTotal is decimal bt ? bt : 0m;
+
+    decimal safeTotal = totalRevenue > 0 ? totalRevenue : 1m;
+    int ppPct = (int)Math.Round(promptPayTotal * 100m / safeTotal);
+    int ccPct = (int)Math.Round(creditCardTotal * 100m / safeTotal);
+    int btPct = (int)Math.Round(bankTransferTotal * 100m / safeTotal);
+
+    var recentPayments = Model ?? new List<PrivateGym.Models.Payment>();
+
+    string FormatMethod(string? m) => m switch
+    {
+        "CreditCard" => "บัตรเครดิต/เดบิต",
+        "BankTransfer" => "โอนผ่านธนาคาร",
+        _ => "QR PromptPay"
+    };
+}
+
+<style>
+    .acc-kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+        margin-bottom: 22px;
+        width: 100%;
+    }
+
+    .acc-kpi-card {
+        background: #121216;
+        border: 1px solid #24242c;
+        border-radius: 14px;
+        padding: 20px 22px;
+    }
+
+    .acc-kpi-label {
+        font-size: 12.5px;
+        color: #a1a1aa;
+        font-weight: 600;
+        margin-bottom: 6px;
+    }
+
+    .acc-kpi-value {
+        font-size: 28px;
+        font-weight: 800;
+        color: #ffffff;
+        line-height: 1.15;
+    }
+
+    .acc-kpi-sub {
+        font-size: 11.5px;
+        color: #71717a;
+        margin-top: 6px;
+    }
+
+    .acc-two-col {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 18px;
+        margin-bottom: 22px;
+    }
+
+    .acc-panel {
+        background: #121216;
+        border: 1px solid #24242c;
+        border-radius: 14px;
+        padding: 22px 24px;
+    }
+
+    .acc-panel-title {
+        font-size: 15.5px;
+        font-weight: 800;
+        color: #ffffff;
+        margin: 0 0 16px 0;
+    }
+
+    .acc-bar-row {
+        margin-bottom: 14px;
+    }
+
+    .acc-bar-top {
+        display: flex;
+        justify-content: space-between;
+        font-size: 13px;
+        margin-bottom: 6px;
+    }
+
+    .acc-bar-track {
+        height: 8px;
+        background: #1e1e26;
+        border-radius: 6px;
+        overflow: hidden;
+    }
+
+    .acc-bar-fill {
+        height: 100%;
+        border-radius: 6px;
+    }
+
+    .acc-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 11.5px;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    .acc-badge-green {
+        background: rgba(34, 197, 94, 0.14);
+        border: 1px solid rgba(34, 197, 94, 0.35);
+        color: #4ade80;
+    }
+
+    .acc-badge-amber {
+        background: rgba(245, 158, 11, 0.14);
+        border: 1px solid rgba(245, 158, 11, 0.38);
+        color: #fcd34d;
+    }
+
+    .acc-badge-red {
+        background: rgba(239, 68, 68, 0.14);
+        border: 1px solid rgba(239, 68, 68, 0.35);
+        color: #f87171;
+    }
+
+    @@media (max-width: 991.98px) {
+        .acc-kpi-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .acc-two-col {
+            grid-template-columns: 1fr;
+        }
+
+        .acc-kpi-value {
+            font-size: 22px;
+        }
+    }
+</style>
+
+<main class="cd-content">
+    <div class="cd-page-header" style="margin-bottom: 18px;">
+        <div>
+            <h1 class="cd-page-title">ภาพรวมรายรับและการเงิน</h1>
+            <p class="cd-page-subtext">
+                สรุปยอดรับชำระจริง, รายการบิลรอตรวจสอบ และโครงสร้างรายได้แยกตามช่องทางชำระเงินจากฐานข้อมูลจริง
+            </p>
+        </div>
+        <div class="cd-header-actions">
+            <a asp-controller="Accountant" asp-action="TaxInvoices" asp-route-email="@ViewBag.Email" class="cd-btn-secondary">
+                <span>ใบเสร็จ / ใบกำกับภาษี</span>
+            </a>
+            <a asp-controller="Accountant" asp-action="Payments" asp-route-email="@ViewBag.Email" asp-route-status="Pending" class="cd-btn-primary">
+                <span>ตรวจบิลค้างชำระ (@pendingCount)</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- 4 KPI Cards -->
+    <div class="acc-kpi-grid">
+        <div class="acc-kpi-card">
+            <div class="acc-kpi-label">รายรับสะสมทั้งหมด (ชำระสำเร็จ)</div>
+            <div class="acc-kpi-value">฿@totalRevenue.ToString("N0")</div>
+            <div class="acc-kpi-sub" style="color: #4ade80;">ทั้งหมด @successCount รายการ</div>
+        </div>
+        <div class="acc-kpi-card">
+            <div class="acc-kpi-label">รายรับเดือนปัจจุบัน</div>
+            <div class="acc-kpi-value">฿@thisMonthRevenue.ToString("N0")</div>
+            <div class="acc-kpi-sub">ประจำเดือน @DateTime.Now.ToString("MM/yyyy")</div>
+        </div>
+        <div class="acc-kpi-card">
+            <div class="acc-kpi-label">ยอดบิลรอตรวจสอบ / ค้างชำระ</div>
+            <div class="acc-kpi-value" style="color: #fcd34d;">฿@pendingAmount.ToString("N0")</div>
+            <div class="acc-kpi-sub" style="color: #fcd34d;">รอตรวจสอบ @pendingCount รายการ</div>
+        </div>
+        <div class="acc-kpi-card">
+            <div class="acc-kpi-label">สัญญาสมาชิกที่ใช้งานอยู่</div>
+            <div class="acc-kpi-value">@activeSubCount <span style="font-size: 14px; font-weight: 500; color: #71717a;">สัญญา</span></div>
+            <div class="acc-kpi-sub">สถานะ Active ในรอบปัจจุบัน</div>
+        </div>
+    </div>
+
+    <!-- Breakdown Row -->
+    <div class="acc-two-col">
+        <div class="acc-panel">
+            <h2 class="acc-panel-title">สัดส่วนรายรับตามช่องทางชำระเงิน</h2>
+
+            <div class="acc-bar-row">
+                <div class="acc-bar-top">
+                    <span style="color: #e4e4e7; font-weight: 600;">QR PromptPay</span>
+                    <span style="color: #ffffff; font-weight: 700;">฿@promptPayTotal.ToString("N0") (@ppPct%)</span>
+                </div>
+                <div class="acc-bar-track">
+                    <div class="acc-bar-fill" style="width: @ppPct%; background: #22c55e;"></div>
+                </div>
+            </div>
+
+            <div class="acc-bar-row">
+                <div class="acc-bar-top">
+                    <span style="color: #e4e4e7; font-weight: 600;">บัตรเครดิต / เดบิต</span>
+                    <span style="color: #ffffff; font-weight: 700;">฿@creditCardTotal.ToString("N0") (@ccPct%)</span>
+                </div>
+                <div class="acc-bar-track">
+                    <div class="acc-bar-fill" style="width: @ccPct%; background: #e50914;"></div>
+                </div>
+            </div>
+
+            <div class="acc-bar-row mb-0">
+                <div class="acc-bar-top">
+                    <span style="color: #e4e4e7; font-weight: 600;">โอนผ่านบัญชีธนาคาร</span>
+                    <span style="color: #ffffff; font-weight: 700;">฿@bankTransferTotal.ToString("N0") (@btPct%)</span>
+                </div>
+                <div class="acc-bar-track">
+                    <div class="acc-bar-fill" style="width: @btPct%; background: #3b82f6;"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="acc-panel">
+            <h2 class="acc-panel-title">สรุปยอดขายแยกตามแพ็กเกจ</h2>
+            @{
+                var pkgList = ViewBag.PackageBreakdown as IEnumerable<dynamic>;
+            }
+            @if (pkgList != null && pkgList.Any())
+            {
+                <div class="d-flex flex-column gap-2">
+                    @foreach (var pkg in pkgList)
+                    {
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: #18181f; border: 1px solid #262631; border-radius: 10px;">
+                            <div>
+                                <div style="font-size: 13.5px; font-weight: 700; color: #ffffff;">@pkg.PackageName</div>
+                                <div style="font-size: 11.5px; color: #71717a;">ชำระสำเร็จ @pkg.Count รายการ</div>
+                            </div>
+                            <div style="font-size: 15px; font-weight: 800; color: #4ade80;">
+                                ฿@(((decimal)pkg.TotalAmount).ToString("N0"))
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div style="color: #71717a; font-size: 13px;">ยังไม่มีข้อมูลยอดขายแพ็กเกจในระบบ</div>
+            }
+        </div>
+    </div>
+
+    <!-- Recent Transactions Table -->
+    <div class="acc-panel" style="padding: 0; overflow: hidden;">
+        <div style="padding: 18px 22px; border-bottom: 1px solid #24242c; display: flex; justify-content: space-between; align-items: center;">
+            <h2 class="acc-panel-title mb-0">รายการธุรกรรมล่าสุด 10 รายการ</h2>
+            <a asp-controller="Accountant" asp-action="Payments" asp-route-email="@ViewBag.Email" style="font-size: 12.5px; font-weight: 700; color: #e50914; text-decoration: none;">
+                ดูทั้งหมด &rarr;
+            </a>
+        </div>
+
+        <div style="overflow-x: auto;">
+            <table class="acc-shadcn-table">
+                <thead>
+                    <tr>
+                        <th>เลขที่รายการ</th>
+                        <th>สมาชิก</th>
+                        <th>แพ็กเกจ</th>
+                        <th>ช่องทาง</th>
+                        <th>จำนวนเงิน</th>
+                        <th>วันที่ทำรายการ</th>
+                        <th>สถานะ</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!recentPayments.Any())
+                    {
+                        <tr>
+                            <td colspan="7" class="text-center py-4" style="color: #71717a;">ยังไม่มีรายการชำระเงินในระบบ</td>
+                        </tr>
+                    }
+                    else
+                    {
+                        foreach (var item in recentPayments)
+                        {
+                            <tr>
+                                <td style="color: #a1a1aa; font-weight: 600;">
+                                    #PAY-@item.PaymentId.ToString("D5")
+                                </td>
+                                <td class="py-3">
+                                    <div style="font-weight: 700; color: #ffffff;">@(item.User?.FullName ?? "-")</div>
+                                    <div style="font-size: 11px; color: #71717a;">@(item.User?.Email ?? "")</div>
+                                </td>
+                                <td class="py-3 text-white">@(item.Package?.PackageName ?? "-")</td>
+                                <td class="py-3 text-white-50">@FormatMethod(item.PaymentMethod)</td>
+                                <td class="py-3 fw-bold text-white">฿@item.Amount.ToString("N0")</td>
+                                <td class="py-3 text-white-50">
+                                    @(item.PaymentDate.HasValue ? item.PaymentDate.Value.ToString("dd/MM/yyyy HH:mm") : "-")
+                                </td>
+                                <td class="py-3 px-4">
+                                    @if (item.Status == "Success")
+                                    {
+                                        <span class="acc-badge acc-badge-green">ชำระสำเร็จ</span>
+                                    }
+                                    else if (item.Status == "Pending")
+                                    {
+                                        <span class="acc-badge acc-badge-amber">รอตรวจสอบ</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="acc-badge acc-badge-red">ยกเลิก/ไม่สำเร็จ</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</main>
+

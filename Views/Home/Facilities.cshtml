@@ -1,0 +1,454 @@
+@model List<PrivateGym.Models.Pod>
+
+@{
+    ViewData["Title"] = "สิ่งอำนวยความสะดวกและเทคโนโลยีห้องฝึก";
+    Layout = "_Nav_HomeLayout";
+    var pods = Model ?? new List<PrivateGym.Models.Pod>();
+}
+
+<style>
+    .df-wrap {
+        padding-top: 120px;
+        padding-bottom: 96px;
+    }
+
+    .df-hero {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        gap: 24px;
+        flex-wrap: wrap;
+        margin-bottom: 56px;
+    }
+
+    .df-h1 {
+        font-size: 42px;
+        font-weight: 900;
+        color: #ffffff;
+        line-height: 1.12;
+        margin: 10px 0 14px 0;
+    }
+
+    .df-section-gap {
+        margin-top: 76px;
+        padding-top: 56px;
+        border-top: 1px solid #1b1b22;
+    }
+
+    .df-status-group {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .df-status-box {
+        background: #121216;
+        border: 1px solid #262632;
+        border-radius: 10px;
+        padding: 12px 16px;
+        min-width: 145px;
+    }
+
+    .df-status-k {
+        font-size: 10.5px;
+        color: #71717a;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+
+    .df-status-v {
+        font-size: 14px;
+        font-weight: 800;
+        color: #ffffff;
+        margin-top: 2px;
+    }
+
+    /* Section 01: 4 Architectural Core Specs */
+    .df-spec4 {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 20px;
+        margin-top: 20px;
+    }
+
+    .df-spec-card {
+        background: #121216;
+        border: 1px solid #23232c;
+        border-radius: 16px;
+        padding: 26px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        gap: 20px;
+    }
+
+    .df-spec-icon {
+        width: 38px;
+        height: 38px;
+        border-radius: 10px;
+        background: rgba(229, 9, 20, 0.14);
+        border: 1px solid rgba(229, 9, 20, 0.3);
+        color: #f87171;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 16px;
+    }
+
+    /* Section 02: Pod Showcase 2-Column Grid */
+    .df-pod-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 26px;
+        margin-top: 24px;
+    }
+
+    .df-pod-card {
+        background: #121216;
+        border: 1px solid #25252f;
+        border-radius: 18px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .df-pod-banner {
+        height: 230px;
+        background-position: center;
+        background-size: cover;
+        background-repeat: no-repeat;
+        padding: 18px;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+    }
+
+    .df-pod-pill {
+        background: rgba(12, 12, 16, 0.85);
+        border: 1px solid #2e2e3a;
+        color: #ffffff;
+        font-family: monospace;
+        font-size: 11px;
+        font-weight: 700;
+        padding: 5px 11px;
+        border-radius: 6px;
+    }
+
+    .df-pod-body {
+        padding: 26px 28px;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        gap: 18px;
+    }
+
+    .df-pod-mini-specs {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+        margin: 14px 0;
+    }
+
+    .df-pod-mini-cell {
+        background: #18181f;
+        border: 1px solid #262631;
+        border-radius: 8px;
+        padding: 8px 10px;
+    }
+
+    .df-pod-mini-cell .k {
+        font-size: 10px;
+        color: #71717a;
+        text-transform: uppercase;
+    }
+
+    .df-pod-mini-cell .v {
+        font-size: 11.5px;
+        font-weight: 700;
+        color: #ffffff;
+    }
+
+    /* Section 03: Hygiene 5-Phase Timeline + Live Telemetry */
+    .df-phase-grid {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 10px;
+        margin-bottom: 16px;
+    }
+
+    .df-phase-card {
+        background: #121216;
+        border: 1px solid #23232c;
+        border-radius: 12px;
+        padding: 16px;
+    }
+
+    .df-telemetry-bar {
+        background: #121216;
+        border: 1px solid #23232c;
+        border-radius: 14px;
+        padding: 20px 24px;
+        display: grid;
+        grid-template-columns: 1.2fr repeat(4, 1fr);
+        gap: 14px;
+        align-items: center;
+        margin-bottom: 48px;
+    }
+
+    /* Section 04: Floorplan Schematic */
+    .df-floor-grid {
+        display: grid;
+        grid-template-columns: 1.35fr 0.65fr;
+        gap: 18px;
+        margin-bottom: 48px;
+    }
+
+    .df-blueprint-box {
+        background: #0e0e12;
+        border: 1px solid #262632;
+        border-radius: 14px;
+        padding: 22px;
+    }
+
+    .df-zone-card {
+        background: #121216;
+        border: 1px solid #24242c;
+        border-radius: 14px;
+        padding: 22px;
+    }
+
+    .df-zone-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 11px 13px;
+        background: #17171d;
+        border: 1px solid #252530;
+        border-radius: 9px;
+        margin-bottom: 8px;
+        font-size: 12.5px;
+        color: #ffffff;
+        font-weight: 600;
+    }
+
+    @@media (max-width: 991.98px) {
+        .df-h1 { font-size: 28px; }
+        .df-spec4, .df-pod-grid, .df-phase-grid, .df-telemetry-bar, .df-floor-grid {
+            grid-template-columns: 1fr;
+        }
+        .df-pod-mini-specs {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+</style>
+
+<div class="df-wrap">
+    <div class="pg-container">
+        <!-- Hero -->
+        <div class="df-hero">
+            <div>
+                <div class="pg-tag-red">SPECIFICATION DIRECTIVE - PRIVATE ARCHITECTURE</div>
+                <h1 class="df-h1">สิ่งอำนวยความสะดวกและเทคโนโลยีห้องฝึก</h1>
+                <p style="font-size: 14px; color: #a1a1aa; max-width: 600px; margin: 0; line-height: 1.65;">
+                    World-Class Private Facilities &amp; Autonomous Pod Architecture — สัมผัสประสบการณ์การฝึกซ้อมแบบปิด มอบสมาธิสูงสุด ปราศจากการรอเครื่องเล่นและระบบหมุนเวียนอากาศเฉพาะบุคคล
+                </p>
+            </div>
+            <div class="df-status-group">
+                <div class="df-status-box">
+                    <div class="df-status-k">SYSTEM STATUS</div>
+                    <div class="df-status-v" style="color: #4ade80;">ALL PODS LIVE</div>
+                </div>
+                <div class="df-status-box">
+                    <div class="df-status-k">AIR PURITY RATING</div>
+                    <div class="df-status-v">PM 0.0 <span style="font-size: 11px; color: #e50914;">HEPA H14</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 01 / Architectural Core Specs -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <span style="font-size: 12px; font-weight: 700; color: #a1a1aa; letter-spacing: 0.6px;">01 / ARCHITECTURAL CORE SPECIFICATIONS</span>
+            <span style="font-size: 11px; font-weight: 700; color: #e50914;">OPERATIONAL BENCHMARK</span>
+        </div>
+
+        <div class="df-spec4">
+            <div class="df-spec-card">
+                <div>
+                    <div class="df-spec-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5L6 9H2v6h4l5 4V5z"></path><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg></div>
+                    <div style="font-size: 10.5px; color: #71717a; font-weight: 700;">ACOUSTICS &amp; OPTICS</div>
+                    <h4 class="text-white fw-bold my-2" style="font-size: 16px;">100% Acoustic &amp; Visual Isolation</h4>
+                    <p style="font-size: 12px; color: #a1a1aa; line-height: 1.6;">ผนังเก็บเสียงฉนวนสองชั้นมาตรฐาน 55dB พร้อมกระจก Smart Switchable Glass ควบคุมแสงและสมาธิสูงสุด</p>
+                </div>
+                <div class="d-flex justify-content-between pt-2 border-top border-secondary border-opacity-25" style="font-size: 11px;">
+                    <span class="text-secondary">SOUND ISOLATION</span><strong class="text-white">STC 55 DB</strong>
+                </div>
+            </div>
+
+            <div class="df-spec-card">
+                <div>
+                    <div class="df-spec-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9.59 4.59A2 2 0 1 1 11 8H2m10.59 11.41A2 2 0 1 0 14 16H2"></path></svg></div>
+                    <div style="font-size: 10.5px; color: #71717a; font-weight: 700;">CLINICAL HYGIENE</div>
+                    <h4 class="text-white fw-bold my-2" style="font-size: 16px;">Medical Ozone &amp; HEPA Filtration</h4>
+                    <p style="font-size: 12px; color: #a1a1aa; line-height: 1.6;">หมุนเวียนอากาศบริสุทธิ์ผ่านแผ่นกรอง HEPA H14 และอบฆ่าเชื้อด้วย UV-C &amp; โอโซนอัตโนมัติ 15 นาทีทุกรอบ</p>
+                </div>
+                <div class="d-flex justify-content-between pt-2 border-top border-secondary border-opacity-25" style="font-size: 11px;">
+                    <span class="text-secondary">AIR EXCHANGE</span><strong class="text-white">12 CYCLES/HR</strong>
+                </div>
+            </div>
+
+            <div class="df-spec-card">
+                <div>
+                    <div class="df-spec-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33"></path></svg></div>
+                    <div style="font-size: 10.5px; color: #71717a; font-weight: 700;">ENVIRONMENT ENGINE</div>
+                    <h4 class="text-white fw-bold my-2" style="font-size: 16px;">IoT Smart Room Control</h4>
+                    <p style="font-size: 12px; color: #a1a1aa; line-height: 1.6;">ปรับอุณหภูมิห้องซ้อมได้ 20-22°C พร้อมระบบไฟ Dynamic Lumens และเชื่อมต่อเสียงเพลงส่วนตัวอิสระ</p>
+                </div>
+                <div class="d-flex justify-content-between pt-2 border-top border-secondary border-opacity-25" style="font-size: 11px;">
+                    <span class="text-secondary">TEMPERATURE</span><strong class="text-white">20.0°C - 22.0°C</strong>
+                </div>
+            </div>
+
+            <div class="df-spec-card">
+                <div>
+                    <div class="df-spec-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></div>
+                    <div style="font-size: 10.5px; color: #71717a; font-weight: 700;">AUTONOMOUS GATE</div>
+                    <h4 class="text-white fw-bold my-2" style="font-size: 16px;">Biometric &amp; QR Turnstile</h4>
+                    <p style="font-size: 12px; color: #a1a1aa; line-height: 1.6;">เข้าพื้นที่คลับและห้องซ้อมผ่าน Dynamic QR Code ในหน้าสมาชิก ไม่ต้องรอเช็กอินซ้ำซ้อน</p>
+                </div>
+                <div class="d-flex justify-content-between pt-2 border-top border-secondary border-opacity-25" style="font-size: 11px;">
+                    <span class="text-secondary">GATE LATENCY</span><strong class="text-white">&lt; 0.28 SEC</strong>
+                </div>
+            </div>
+        </div>
+
+        <!-- 02 / Pod Showcase (Real DB Pods) -->
+        <div class="df-section-gap">
+        <div class="d-flex justify-content-between align-items-end flex-wrap gap-2">
+            <div>
+                <div class="pg-tag-red">02 / PRIVATE SUITE FLEET</div>
+                <h2 class="text-white fw-bold mb-0" style="font-size: 28px;">POD SHOWCASE SPECIFICATION (@pods.Count ห้องในระบบ)</h2>
+            </div>
+        </div>
+
+        <div class="df-pod-grid">
+            @{ int podImgIdx = 0; }
+            @foreach (var pod in pods)
+            {
+                podImgIdx++;
+                int imgNum = ((podImgIdx - 1) % 6) + 1;
+                string podImg = $"/images/pod-{imgNum:D2}.jpg";
+                bool isAvail = pod.Status == "Available";
+                <div class="df-pod-card">
+                    <div class="df-pod-banner" style="background-image: linear-gradient(180deg, rgba(0,0,0,0.14) 0%, rgba(12,12,16,0.9) 100%), url('@podImg');">
+                        <span class="df-pod-pill">POD @pod.PodId.ToString("D2") &bull; @(pod.Branch?.BranchName ?? "สาขาทองหล่อ")</span>
+                        <span class="badge @(isAvail ? "bg-success" : "bg-warning text-dark")" style="font-size: 11px;">
+                            @(isAvail ? "AVAILABLE NOW" : "MAINTENANCE")
+                        </span>
+                    </div>
+                    <div class="df-pod-body">
+                        <div>
+                            <div style="font-size: 11px; color: #e50914; font-weight: 700; text-transform: uppercase;">@pod.PodType</div>
+                            <h3 class="text-white fw-bold my-1" style="font-size: 20px;">@pod.PodName</h3>
+                            <p style="font-size: 13.5px; color: #a1a1aa; margin: 0; line-height: 1.65;">
+                                ห้องฝึกส่วนตัวเก็บเสียง 55dB พร้อมอุปกรณ์มาตรฐานแข่งขันและระบบฟอกอากาศอัตโนมัติ
+                            </p>
+
+                            <div class="df-pod-mini-specs">
+                                <div class="df-pod-mini-cell"><div class="k">CAPACITY</div><div class="v">1-2 ท่าน</div></div>
+                                <div class="df-pod-mini-cell"><div class="k">ACOUSTIC</div><div class="v">55 dB Seal</div></div>
+                                <div class="df-pod-mini-cell"><div class="k">AIR PURITY</div><div class="v">HEPA H14</div></div>
+                                <div class="df-pod-mini-cell"><div class="k">ACCESS</div><div class="v">QR Pass</div></div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center pt-3 border-top border-secondary border-opacity-25">
+                            <span style="font-size: 12.5px; color: #71717a;">เซสชันละ 75 นาที + พักฆ่าเชื้อ 15 นาที</span>
+                            <a asp-controller="Register" asp-action="Index" class="btn btn-sm btn-danger fw-semibold px-3">จองห้องนี้</a>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+        </div>
+
+        <!-- 03 / Hygiene & Turnaround Protocol -->
+        <div class="df-section-gap">
+        <div class="d-flex justify-content-between align-items-end flex-wrap gap-2 mb-4">
+            <div>
+                <div class="pg-tag-red">03 / CLINICAL STANDARDS</div>
+                <h2 class="text-white fw-bold mb-0" style="font-size: 26px;">HYGIENE &amp; TURNAROUND PROTOCOL</h2>
+                <p style="font-size: 13px; color: #71717a; margin: 0;">กระบวนการทำความสะอาดและตรวจสอบ 5 ขั้นตอนอัตโนมัติระหว่างพักรอบ 15 นาที</p>
+            </div>
+            <span class="badge bg-success bg-opacity-25 text-success border border-success px-3 py-2">ISO 14644-1 AIR CLASS 6</span>
+        </div>
+
+        <div class="df-phase-grid">
+            <div class="df-phase-card"><div style="font-size: 11px; color: #e50914; font-weight: 700;">PHASE 01 &bull; T+00:00</div><h6 class="text-white fw-bold my-2">Session Egress &amp; Auto-Lock</h6><p style="font-size: 11.5px; color: #a1a1aa; margin: 0;">ประตูล็อกอัตโนมัติเมื่อจบเซสชัน ตัดสัญญาณเชื่อมต่อเพื่อเริ่มฆ่าเชื้อ</p></div>
+            <div class="df-phase-card"><div style="font-size: 11px; color: #e50914; font-weight: 700;">PHASE 02 &bull; T+02:00</div><h6 class="text-white fw-bold my-2">Micro-Fogging Ozone</h6><p style="font-size: 11.5px; color: #a1a1aa; margin: 0;">พ่นละอองฝอยฆ่าเชื้อระดับไมครอนทั่วพื้นที่สัมผัส 360 องศา</p></div>
+            <div class="df-phase-card"><div style="font-size: 11px; color: #e50914; font-weight: 700;">PHASE 03 &bull; T+06:00</div><h6 class="text-white fw-bold my-2">UV-C Light Sterilization</h6><p style="font-size: 11.5px; color: #a1a1aa; margin: 0;">หลอดรังสี UV-C 254nm ส่องฆ่าเชื้อทุกอุปกรณ์และบาร์เบล 99.99%</p></div>
+            <div class="df-phase-card"><div style="font-size: 11px; color: #e50914; font-weight: 700;">PHASE 04 &bull; T+11:00</div><h6 class="text-white fw-bold my-2">High-Speed HEPA Flush</h6><p style="font-size: 11.5px; color: #a1a1aa; margin: 0;">ระบายอากาศใหม่ผ่าน HEPA H14 เพื่อลดระดับ PM0.1 ให้เป็นศูนย์</p></div>
+            <div class="df-phase-card"><div style="font-size: 11px; color: #4ade80; font-weight: 700;">PHASE 05 &bull; T+15:00</div><h6 class="text-white fw-bold my-2">Sensor Audit &amp; Ready</h6><p style="font-size: 11.5px; color: #a1a1aa; margin: 0;">เซ็นเซอร์ตรวจค่าอากาศผ่านเกณฑ์ พร้อมออก QR Code ให้สมาชิกท่านถัดไป</p></div>
+        </div>
+
+        <div class="df-telemetry-bar">
+            <div>
+                <div style="font-size: 11px; color: #4ade80; font-weight: 700;">REAL-TIME TELEMETRY</div>
+                <h5 class="text-white fw-bold mb-1">LIVE POD ATMOSPHERE SENSORS</h5>
+                <div style="font-size: 11.5px; color: #71717a;">ข้อมูลตรวจวัดคุณภาพอากาศจริงภายในคลับ</div>
+            </div>
+            <div><div style="font-size: 11px; color: #71717a;">AIR PURITY (PM2.5)</div><div class="fs-4 fw-bold text-white">0.0 <span class="fs-6 text-secondary">&micro;g/m&sup3;</span></div><div style="font-size: 11px; color: #4ade80;">Optimum Clean</div></div>
+            <div><div style="font-size: 11px; color: #71717a;">CO2 LEVEL</div><div class="fs-4 fw-bold text-white">412 <span class="fs-6 text-secondary">PPM</span></div><div style="font-size: 11px; color: #4ade80;">Outdoor Fresh</div></div>
+            <div><div style="font-size: 11px; color: #71717a;">TEMPERATURE</div><div class="fs-4 fw-bold text-white">21.4 <span class="fs-6 text-secondary">&deg;C</span></div><div style="font-size: 11px; color: #a1a1aa;">Calibrated Range</div></div>
+            <div><div style="font-size: 11px; color: #71717a;">STERILITY</div><div class="fs-4 fw-bold text-white">99.9 <span class="fs-6 text-secondary">%</span></div><div style="font-size: 11px; color: #4ade80;">Zero Pathogen</div></div>
+        </div>
+        </div>
+
+        <!-- 04 / Facility Floor Plan & Zone Directory -->
+        <div class="df-section-gap">
+        <div class="mb-4">
+            <div class="pg-tag-red">04 / SCHEMATIC LAYOUT</div>
+            <h2 class="text-white fw-bold mb-0" style="font-size: 26px;">FACILITY FLOOR PLAN &amp; SPATIAL MAP</h2>
+        </div>
+
+        <div class="df-floor-grid">
+            <div class="df-blueprint-box">
+                <div class="d-flex justify-content-between align-items-center mb-3" style="font-family: monospace; font-size: 11.5px; color: #71717a;">
+                    <span>BLUEPRINT ARCHIVE: FLAGSHIP POD FLOOR 01</span>
+                    <span style="color: #e50914;">SCALE 1:100 METRIC</span>
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-sm-6"><div class="p-3 rounded" style="background: #15151b; border: 1px dashed #e50914;"><div class="text-danger fw-bold" style="font-size: 11px;">SECURE TURNSTILE GATE</div><div class="text-secondary" style="font-size: 11.5px;">จุดคัดกรอง QR Access</div></div></div>
+                    <div class="col-sm-6"><div class="p-3 rounded" style="background: #15151b; border: 1px solid #2b2b36;"><div class="text-white fw-bold" style="font-size: 11px;">QUIET CONCIERGE DESK</div><div class="text-secondary" style="font-size: 11.5px;">เคาน์เตอร์ต้อนรับและตรวจอุปกรณ์</div></div></div>
+                </div>
+                <div class="row g-3">
+                    <div class="col-sm-6"><div class="p-3 rounded" style="background: #15151b; border: 1px solid #2b2b36;"><div class="text-white fw-bold" style="font-size: 13px;">POD 01-03: PRECISION &amp; POWER</div><div class="text-secondary" style="font-size: 11.5px;">Acoustic Shield 55dB &bull; Eleiko Rack</div></div></div>
+                    <div class="col-sm-6"><div class="p-3 rounded" style="background: #15151b; border: 1px solid #2b2b36;"><div class="text-white fw-bold" style="font-size: 13px;">POD 04-06: RECOVERY &amp; COMBAT</div><div class="text-secondary" style="font-size: 11.5px;">Sauna &bull; Cold Plunge &bull; Pilates</div></div></div>
+                </div>
+            </div>
+
+            <div class="df-zone-card">
+                <div style="font-size: 11px; color: #e50914; font-weight: 700;">ZONE DIRECTORY</div>
+                <h5 class="text-white fw-bold mb-3">ความปลอดภัยและสุขอนามัยแบบไร้สัมผัส</h5>
+                <div class="df-zone-row"><span>Automated Turnstile Gate</span><span class="text-secondary">FL 1</span></div>
+                <div class="df-zone-row"><span>Private Pods 01 - 03</span><span class="text-secondary">FL 1</span></div>
+                <div class="df-zone-row"><span>Recovery Pod &amp; Sauna</span><span class="text-secondary">FL 2</span></div>
+                <div class="df-zone-row mb-0"><span>Private Shower &amp; Suites</span><span class="text-secondary">FL 2</span></div>
+            </div>
+        </div>
+        </div>
+
+        <!-- Bottom CTA -->
+        <div class="p-4 rounded-4 d-flex justify-content-between align-items-center flex-wrap gap-3" style="background: linear-gradient(135deg, #171215 0%, #111115 100%); border: 1px solid rgba(229,9,20,0.35);">
+            <div>
+                <div style="font-size: 11px; color: #e50914; font-weight: 700;">COMPLIMENTARY ON-SITE INSPECTION</div>
+                <h3 class="text-white fw-bold mb-1" style="font-size: 22px;">สัมผัสห้องจริงด้วยตัวเอง</h3>
+                <p style="font-size: 13px; color: #a1a1aa; margin: 0;">นัดหมาย Private Tour ตรวจระบบเสียง รับฟังบรรยากาศ และทดลองระบบประตูอัตโนมัติฟรี</p>
+            </div>
+            <div class="d-flex gap-2 flex-wrap">
+                <a asp-controller="Home" asp-action="Contact" class="btn btn-danger fw-bold px-4 py-2">นัดหมาย PRIVATE TOUR ฟรี</a>
+                <a asp-controller="Home" asp-action="Packages" class="btn btn-outline-light px-4 py-2" style="border-color: #343442;">ดูอัตราค่าบริการและแพ็กเกจ</a>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - PrivateGym Luxury Athletic</title>
+    <link rel="icon" type="image/png" href="~/IconPrivate.png" asp-append-version="true" />
+
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/Home.css" asp-append-version="true" />
+</head>
+<body class="home-page-body">
+
+    <!-- ================= NAVBAR (HEADER) ================= -->
+    <header>
+        <nav class="pg-navbar">
+            <div class="pg-navbar-container">
+                <!-- Brand Logo -->
+                <a class="pg-nav-brand" asp-controller="Home" asp-action="Index">
+                    <img src="~/images/logo.png" alt="PrivateGym" class="pg-nav-logo-img" />
+                </a>
+
+                <!-- Nav Menu Links -->
+                @{
+                    string homeAct = ViewContext.RouteData.Values["Action"]?.ToString() ?? "Index";
+                }
+                <ul class="pg-nav-menu">
+                    <li><a asp-controller="Home" asp-action="Index" class="@(homeAct == "Index" ? "active" : "")">หน้าแรก</a></li>
+                    <li><a asp-controller="Home" asp-action="Packages" class="@(homeAct == "Packages" ? "active" : "")">แพ็กเกจ</a></li>
+                    <li><a asp-controller="Home" asp-action="Facilities" class="@(homeAct == "Facilities" ? "active" : "")">สิ่งอำนวยความสะดวก</a></li>
+                    <li><a asp-controller="Home" asp-action="Trainers" class="@(homeAct == "Trainers" ? "active" : "")">โค้ชผู้ฝึกสอน</a></li>
+                    <li><a asp-controller="Home" asp-action="Contact" class="@(homeAct == "Contact" ? "active" : "")">สถานที่และติดต่อ</a></li>
+                </ul>
+
+                <!-- Nav Right Actions -->
+                <div class="pg-nav-actions">
+                    <a asp-controller="Login" asp-action="Index" class="pg-nav-login-link">เข้าสู่ระบบ</a>
+                    <a asp-controller="Register" asp-action="Index" class="pg-nav-register-btn">
+                        <span>สมัครสมาชิก</span>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <line x1="7" y1="17" x2="17" y2="7"></line>
+                            <polyline points="7 7 17 7 17 17"></polyline>
+                        </svg>
+                    </a>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <!-- ================= MAIN CONTENT ================= -->
+    <main>
+        @RenderBody()
+    </main>
+
+    <!-- ================= FOOTER ================= -->
+    <footer class="pg-footer" id="contact">
+        <div class="pg-container">
+            <div class="pg-footer-grid">
+                <!-- Col 1: Brand & Desc -->
+                <div class="pg-footer-col">
+                    <div class="footer-brand-row">
+                        <img src="~/images/logo.png" alt="PrivateGym" style="height: 32px; width: auto;" />
+                        <span class="pg-footer-badge">PRO</span>
+                    </div>
+                    <p class="footer-desc">
+                        PrivateGym พัฒนาและดำเนินงานโดย Private Fitness Co., Ltd. ผู้นำด้านนวัตกรรมฟิตเนสส่วนตัวระดับพรีเมียม เพื่อผลลัพธ์และสมาธิการฝึกที่ดีที่สุด
+                    </p>
+                </div>
+
+                <!-- Col 2: Services & Facilities -->
+                <div class="pg-footer-col">
+                    <h5 class="pg-footer-title">บริการและสิ่งอำนวยความสะดวก</h5>
+                    <ul class="pg-footer-links">
+                        <li><a asp-controller="Home" asp-action="Facilities">Private Pod Suites</a></li>
+                        <li><a asp-controller="Home" asp-action="Trainers">1-on-1 Elite Coaching</a></li>
+                        <li><a asp-controller="Home" asp-action="Facilities">Recovery &amp; Cold Plunge</a></li>
+                        <li><a asp-controller="Home" asp-action="Packages">แพ็กเกจสมาชิกทั้งหมด</a></li>
+                    </ul>
+                </div>
+
+                <!-- Col 3: About & Safety -->
+                <div class="pg-footer-col">
+                    <h5 class="pg-footer-title">เกี่ยวกับเราและความปลอดภัย</h5>
+                    <ul class="pg-footer-links">
+                        <li><a asp-controller="Home" asp-action="Facilities">มาตรฐานความสะอาด HEPA H14</a></li>
+                        <li><a asp-controller="Home" asp-action="Packages">สิทธิประโยชน์และเงื่อนไขสมาชิก</a></li>
+                        <li><a asp-controller="Home" asp-action="Trainers">โค้ชและผู้ฝึกสอน</a></li>
+                        <li><a asp-controller="Home" asp-action="Contact">ติดต่อสอบถามและนัดหมายเข้าชม</a></li>
+                    </ul>
+                </div>
+
+                <!-- Col 4: Contact Info -->
+                <div class="pg-footer-col">
+                    <h5 class="pg-footer-title">ข้อมูลติดต่อ</h5>
+                    <ul class="pg-footer-contact-list">
+                        <li><strong>ที่ตั้ง:</strong> ซอยสุขุมวิท 39 แขวงคลองตันเหนือ กรุงเทพฯ</li>
+                        <li><strong>โทรศัพท์:</strong> 02-123-4567</li>
+                        <li><strong>Line Official:</strong> @@privategym</li>
+                        <li><strong>Email:</strong> info@privategymclub.com</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Footer Bottom Bar -->
+            <div class="pg-footer-bottom-bar">
+                <div>
+                    &copy; 2026 PrivateGym Co., Ltd. All Rights Reserved.
+                </div>
+                <div class="pg-footer-policy-links">
+                    <a href="#">นโยบายความเป็นส่วนตัว</a>
+                    <span>&bull;</span>
+                    <a href="#">เงื่อนไขการใช้บริการ</a>
+                    <span>&bull;</span>
+                    <a href="#">นโยบายคุกกี้</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        (function() {
+            var navbar = document.querySelector('.pg-navbar');
+            if (!navbar) return;
+
+            var lastScrollY = window.pageYOffset || document.documentElement.scrollTop;
+            var scrollThreshold = 15; // ต้องเลื่อนอย่างมีนัยสำคัญ ป้องกันการกระตุก
+
+            window.addEventListener('scroll', function() {
+                var currentScrollY = window.pageYOffset || document.documentElement.scrollTop;
+                var delta = currentScrollY - lastScrollY;
+
+                // อยู่ใกล้บนสุดของหน้าเว็บ ให้แสดง nav เสมอ
+                if (currentScrollY <= 40) {
+                    navbar.classList.remove('nav-hidden');
+                } else if (delta > scrollThreshold) {
+                    // เลื่อนลง (Scroll Down) -> ตามมาด้วย (แสดง Nav)
+                    navbar.classList.remove('nav-hidden');
+                } else if (delta < -scrollThreshold) {
+                    // เลื่อนขึ้น (Scroll Up) -> ค่อยๆ หุบขึ้นไปนุ่มๆ
+                    navbar.classList.add('nav-hidden');
+                }
+
+                lastScrollY = currentScrollY;
+            }, { passive: true });
+        })();
+    </script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

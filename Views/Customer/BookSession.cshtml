@@ -1,0 +1,2097 @@
+@model PrivateGym.ViewModels.BookSessionViewModel
+
+@{
+    ViewData["Title"] = "จองบริการรอบฝึกส่วนตัว (Book a Session)";
+    Layout = "~/Views/Shared/Customer/_CustomerLayout.cshtml";
+
+    var today = DateTime.Today;
+    var thaiCulture = new System.Globalization.CultureInfo("th-TH");
+    
+    // หาวันจันทร์ของสัปดาห์ปัจจุบัน (Monday of this week)
+    int diffFromMonday = (7 + (int)today.DayOfWeek - (int)DayOfWeek.Monday) % 7;
+    var mondayThisWeek = today.AddDays(-diffFromMonday);
+
+    // สร้างลิสต์ 7 วันของสัปดาห์ (จันทร์ - อาทิตย์)
+    var weekDays = new List<dynamic>();
+    for (int i = 0; i < 7; i++)
+    {
+        var dayDate = mondayThisWeek.AddDays(i);
+        string shortDayName = dayDate.DayOfWeek switch
+        {
+            DayOfWeek.Monday => "จ.",
+            DayOfWeek.Tuesday => "อ.",
+            DayOfWeek.Wednesday => "พ.",
+            DayOfWeek.Thursday => "พฤ.",
+            DayOfWeek.Friday => "ศ.",
+            DayOfWeek.Saturday => "ส.",
+            DayOfWeek.Sunday => "อา.",
+            _ => dayDate.ToString("ddd", thaiCulture)
+        };
+        weekDays.Add(new
+        {
+            DayName = shortDayName,
+            DayNumber = dayDate.Day,
+            Date = DateOnly.FromDateTime(dayDate),
+            IsPast = dayDate < today,
+            IsToday = dayDate == today,
+            FormattedDate = dayDate.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture),
+            LabelText = (dayDate == today ? "วันนี้ " : "") + dayDate.Day + " " + dayDate.ToString("MMM", thaiCulture)
+        });
+    }
+
+    int currentThaiYear = today.Year > 2400 ? today.Year : today.Year + 543;
+    string thaiMonthYear = today.ToString("MMMM", thaiCulture) + " " + currentThaiYear;
+}
+
+<style>
+    /* Styling ตรงตาม UI Draft ของ Book a Session */
+    .pg-book-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 24px;
+    }
+    .pg-book-title {
+        font-size: 24px;
+        font-weight: 700;
+        color: #fff;
+        margin-bottom: 6px;
+    }
+    .pg-book-sub {
+        font-size: 13px;
+        color: #8c8c8c;
+    }
+    .pg-quota-badge-top {
+        display: inline-flex;
+        align-items: center;
+        gap: 16px;
+        background: #141416;
+        border: 1px solid #26262b;
+        border-radius: 8px;
+        padding: 8px 16px;
+        font-size: 12.5px;
+    }
+    .pg-quota-badge-top .item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #b5b5b5;
+    }
+    .pg-quota-badge-top strong {
+        color: #fff;
+    }
+
+    /* Stepper Header Bar */
+    .pg-stepper-bar {
+        display: flex;
+        background: #121214;
+        border: 1px solid #202024;
+        border-radius: 8px;
+        overflow: hidden;
+        margin-bottom: 28px;
+    }
+    .pg-stepper-item {
+        flex: 1;
+        padding: 10px 14px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 12.5px;
+        color: #71717a;
+        border-right: 1px solid #202024;
+    }
+    .pg-stepper-item:last-child {
+        border-right: none;
+    }
+    .pg-stepper-item.active {
+        background: #18181b;
+        color: #fff;
+        font-weight: 600;
+    }
+    .pg-stepper-num {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: #27272a;
+        color: #a1a1aa;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+    }
+    .pg-stepper-item.active .pg-stepper-num {
+        background: #e50914;
+        color: #fff;
+    }
+
+    /* Section Headings */
+    .pg-section-label {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 14px;
+    }
+    .pg-section-label .title {
+        font-size: 14px;
+        font-weight: 700;
+        color: #fff;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .pg-section-label .num-red {
+        color: #e50914;
+    }
+    .pg-section-label .sub {
+        font-size: 12px;
+        color: #71717a;
+    }
+
+    /* Service Cards (Step 1) */
+    .pg-service-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+        margin-bottom: 30px;
+    }
+    .pg-service-card {
+        background: #121214;
+        border: 1px solid #202024;
+        border-radius: 10px;
+        padding: 16px;
+        cursor: pointer;
+        position: relative;
+        transition: all 0.2s ease;
+    }
+    .pg-service-card:hover {
+        border-color: #3f3f46;
+    }
+    .pg-service-card.selected {
+        border-color: #e50914;
+        background: rgba(229, 9, 20, 0.03);
+    }
+    .pg-service-radio {
+        position: absolute;
+        top: 14px;
+        right: 14px;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        border: 1.5px solid #3f3f46;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .pg-service-card.selected .pg-service-radio {
+        border-color: #e50914;
+        background: #e50914;
+    }
+    .pg-service-card.selected .pg-service-radio::after {
+        content: "";
+        width: 6px;
+        height: 6px;
+        background: #fff;
+        border-radius: 50%;
+    }
+    .pg-service-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: #fff;
+        margin-bottom: 2px;
+    }
+    .pg-service-quota-tag {
+        font-size: 11px;
+        color: #e50914;
+        margin-bottom: 6px;
+        font-weight: 500;
+    }
+    .pg-service-desc {
+        font-size: 11.5px;
+        color: #71717a;
+        line-height: 1.5;
+        margin: 0;
+    }
+
+    /* Pod Selection Grid (Step 2) */
+    .pg-pod-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 14px;
+        margin-bottom: 30px;
+    }
+    .pg-pod-card {
+        background: #121214;
+        border: 1px solid #202024;
+        border-radius: 10px;
+        overflow: hidden;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        position: relative;
+    }
+    .pg-pod-card:hover {
+        border-color: #3f3f46;
+    }
+    .pg-pod-card.selected {
+        border-color: #e50914;
+        box-shadow: 0 0 0 1px #e50914;
+    }
+    .pg-pod-card.disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+    }
+    .pg-pod-thumb {
+        height: 130px;
+        background-color: #1a1a1e;
+        background-size: cover;
+        background-position: center;
+        position: relative;
+    }
+    .pg-pod-badge-tag {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        background: rgba(0, 0, 0, 0.75);
+        backdrop-filter: blur(4px);
+        color: #fff;
+        font-size: 10.5px;
+        font-weight: 600;
+        padding: 2px 8px;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+    .pg-pod-info-trigger {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        background: rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(6px);
+        color: #e4e4e7;
+        font-size: 10.5px;
+        font-weight: 600;
+        padding: 3px 8px;
+        border-radius: 6px;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        z-index: 5;
+        transition: all 0.15s ease;
+    }
+    .pg-pod-info-trigger:hover {
+        background: rgba(229, 9, 20, 0.85);
+        color: #fff;
+        border-color: #e50914;
+    }
+    .pg-pod-radio-circle {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        border: 1.5px solid rgba(255, 255, 255, 0.4);
+        background: rgba(0, 0, 0, 0.6);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+        z-index: 5;
+    }
+    .pg-pod-card.selected .pg-pod-radio-circle {
+        border-color: #e50914;
+        background: #e50914;
+    }
+    .pg-pod-card.selected .pg-pod-radio-circle svg {
+        display: block !important;
+    }
+    .pg-pod-radio-circle svg {
+        display: none;
+        width: 12px;
+        height: 12px;
+        stroke: #fff;
+        stroke-width: 3;
+    }
+    .pg-pod-body {
+        padding: 12px 14px;
+    }
+    .pg-pod-name {
+        font-size: 14px;
+        font-weight: 700;
+        color: #fff;
+        margin-bottom: 3px;
+    }
+    .pg-pod-specs {
+        font-size: 11px;
+        color: #71717a;
+        margin-bottom: 8px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .pg-pod-status-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 11px;
+    }
+    .pg-pod-avail {
+        color: #22c55e;
+        font-weight: 500;
+    }
+    .pg-pod-size {
+        color: #52525b;
+    }
+
+    /* Weekly Calendar Bar Styling (ปรับใช้สีธีมแดง PrivateGym) */
+    .pg-week-calendar-box {
+        background: #141416;
+        border: 1px solid #26262b;
+        border-radius: 20px;
+        padding: 20px 24px;
+        margin-bottom: 24px;
+    }
+    .pg-week-cal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+    .pg-week-cal-nav {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+    }
+    .pg-cal-arrow-btn {
+        background: transparent;
+        border: none;
+        color: #71717a;
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: color 0.2s;
+    }
+    .pg-cal-arrow-btn:hover {
+        color: #fff;
+        background: #1f1f23;
+    }
+    .pg-cal-month-title {
+        font-size: 18px;
+        font-weight: 700;
+        color: #fff;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .pg-cal-today-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 14px;
+        border-radius: 30px;
+        border: 1.5px solid #e50914;
+        color: #e50914;
+        font-size: 13px;
+        font-weight: 600;
+        background: rgba(229, 9, 20, 0.08);
+        cursor: pointer;
+    }
+    .pg-cal-today-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #e50914;
+    }
+    .pg-week-days-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 10px;
+    }
+    .pg-wday-card {
+        background: #18181b;
+        border: 1.5px solid #27272a;
+        border-radius: 18px;
+        padding: 16px 8px 12px;
+        text-align: center;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 96px;
+        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        position: relative;
+    }
+    .pg-wday-card:hover:not(.past) {
+        border-color: #3f3f46;
+        transform: translateY(-2px);
+    }
+    .pg-wday-card.past {
+        opacity: 0.35;
+        cursor: not-allowed;
+        background: #0f0f11;
+        border-color: #1a1a1e;
+    }
+    .pg-wday-name {
+        font-size: 13.5px;
+        font-weight: 500;
+        color: #71717a;
+        margin-bottom: 2px;
+    }
+    .pg-wday-num {
+        font-size: 24px;
+        font-weight: 700;
+        color: #fff;
+        line-height: 1.1;
+    }
+    .pg-wday-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #52525b;
+        margin-top: 6px;
+    }
+    .pg-wday-card.past .pg-wday-dot {
+        background: #27272a;
+    }
+    /* การ์ดวันที่ถูกเลือก (ธีมแดง PrivateGym) */
+    .pg-wday-card.selected {
+        background: #1a0f11;
+        border: 2px solid #e50914;
+        box-shadow: 0 0 16px rgba(229, 9, 20, 0.25);
+    }
+    .pg-wday-card.selected .pg-wday-name {
+        color: #fca5a5;
+    }
+    .pg-wday-card.selected .pg-wday-num {
+        color: #fff;
+    }
+    .pg-wday-card.selected .pg-wday-dot {
+        background: #e50914;
+        box-shadow: 0 0 8px #e50914;
+    }
+
+    @@media (max-width: 575px) {
+        .pg-week-calendar-box {
+            padding: 14px 12px;
+            border-radius: 16px;
+        }
+        .pg-week-days-grid {
+            gap: 6px;
+        }
+        .pg-wday-card {
+            border-radius: 12px;
+            padding: 10px 4px 8px;
+            min-height: 78px;
+        }
+        .pg-wday-name {
+            font-size: 11px;
+        }
+        .pg-wday-num {
+            font-size: 18px;
+        }
+        .pg-cal-month-title {
+            font-size: 15px;
+        }
+        .pg-cal-today-badge {
+            font-size: 11.5px;
+            padding: 4px 10px;
+        }
+    }
+
+    /* Time Slot Row (Step 4) */
+    .pg-slot-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+        margin-bottom: 30px;
+    }
+    .pg-slot-card {
+        background: #121214;
+        border: 1px solid #202024;
+        border-radius: 8px;
+        padding: 12px;
+        cursor: pointer;
+        position: relative;
+        transition: all 0.2s ease;
+    }
+    .pg-slot-card:hover {
+        border-color: #3f3f46;
+    }
+    .pg-slot-card.selected {
+        border-color: #e50914;
+        background: rgba(229, 9, 20, 0.04);
+    }
+    .pg-slot-card.disabled {
+        opacity: 0.45;
+        cursor: not-allowed !important;
+        background: #09090b !important;
+        border: 1px dashed #27272a !important;
+        pointer-events: none;
+        box-shadow: inset 0 0 10px rgba(0,0,0,0.8);
+    }
+    .pg-slot-card.disabled .pg-slot-time {
+        color: #52525b !important;
+        text-decoration: line-through;
+    }
+    .pg-slot-card.disabled .pg-slot-desc {
+        color: #ef4444 !important;
+        font-weight: 500;
+    }
+    .pg-slot-desc {
+        font-size: 11px;
+        color: #22c55e;
+    }
+    .pg-slot-desc.busy {
+        color: #ef4444;
+    }
+    .pg-slot-desc.prime {
+        color: #e50914;
+        font-weight: 600;
+    }
+    .pg-slot-radio {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        border: 1px solid #3f3f46;
+    }
+    .pg-slot-card.selected .pg-slot-radio {
+        border-color: #e50914;
+        background: #e50914;
+    }
+
+    /* Right Column: Quota Ledger Card (Step 5) */
+    .pg-summary-card {
+        background: #121214;
+        border: 1px solid #202024;
+        border-radius: 12px;
+        padding: 24px;
+        position: sticky;
+        top: 90px;
+    }
+    .pg-summary-title-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+    .pg-summary-title {
+        font-size: 15px;
+        font-weight: 700;
+        color: #fff;
+    }
+    .pg-summary-step {
+        font-size: 11px;
+        color: #71717a;
+    }
+    .pg-summary-info-table {
+        margin-bottom: 20px;
+        font-size: 12.5px;
+    }
+    .pg-summary-info-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 7px 0;
+        border-bottom: 1px solid #1a1a1e;
+    }
+    .pg-summary-info-label {
+        color: #71717a;
+    }
+    .pg-summary-info-val {
+        color: #fff;
+        font-weight: 500;
+        text-align: right;
+    }
+    .pg-quota-ledger-box {
+        background: #0d0d0f;
+        border: 1px solid #1e1e24;
+        border-radius: 8px;
+        padding: 14px;
+        margin-bottom: 20px;
+        font-size: 12px;
+    }
+    .pg-ledger-header {
+        font-size: 10.5px;
+        color: #52525b;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        margin-bottom: 10px;
+        font-weight: 600;
+    }
+    .pg-ledger-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 6px;
+    }
+    .pg-ledger-row.deduct {
+        color: #ef4444;
+    }
+    .pg-ledger-row.total {
+        color: #22c55e;
+        font-weight: 700;
+        border-top: 1px dashed #27272a;
+        padding-top: 8px;
+        margin-top: 8px;
+    }
+
+    /* Benefits Perks Box */
+    .pg-perks-list {
+        list-style: none;
+        padding: 0;
+        margin: 0 0 20px 0;
+        font-size: 11.5px;
+        color: #a1a1aa;
+        line-height: 1.8;
+    }
+    .pg-perks-list li {
+        display: flex;
+        gap: 8px;
+        align-items: flex-start;
+    }
+
+    /* Confirm Button */
+    .pg-btn-confirm-booking {
+        background: #e50914;
+        color: #fff;
+        border: none;
+        width: 100%;
+        padding: 14px;
+        font-size: 14px;
+        font-weight: 600;
+        border-radius: 8px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        transition: background 0.2s ease;
+    }
+    .pg-btn-confirm-booking:hover {
+        background: #c70812;
+    }
+    .pg-cancel-note {
+        font-size: 11px;
+        color: #52525b;
+        text-align: center;
+        margin-top: 10px;
+    }
+
+    /* Location Mini Card */
+    .pg-location-mini-card {
+        background: #121214;
+        border: 1px solid #202024;
+        border-radius: 10px;
+        padding: 14px 18px;
+        margin-top: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    .pg-location-mini-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    .pg-location-mini-icon {
+        color: #e50914;
+    }
+    .pg-location-mini-name {
+        font-size: 13px;
+        font-weight: 600;
+        color: #fff;
+    }
+    .pg-location-mini-desc {
+        font-size: 11px;
+        color: #71717a;
+    }
+    .pg-location-mini-link {
+        color: #71717a;
+        font-size: 11.5px;
+        text-decoration: none;
+    }
+
+    @@media (max-width: 991px) {
+        /* Fullscreen Focused App Flow */
+        #customerBottomNav {
+            display: none !important;
+        }
+
+        .cd-content {
+            padding: 0 14px 90px 14px !important;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 1. Mobile Header */
+        .pg-mobile-step-header {
+            display: flex !important;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 14px;
+            background: #0d0d0e;
+            border-bottom: 1px solid #1a1a1e;
+            margin: 0 -14px 12px -14px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .pg-mobile-progress-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 2.5px;
+            background: #e50914;
+            transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            width: 25%;
+            box-shadow: 0 0 8px rgba(229, 9, 20, 0.6);
+        }
+        .pg-mobile-nav-btn {
+            background: #18181b;
+            border: 1px solid #27272a;
+            color: #fff;
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            padding: 0;
+        }
+        .pg-mobile-nav-btn:disabled {
+            opacity: 0.2;
+            cursor: not-allowed;
+        }
+        .pg-mobile-logo-center {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        .pg-mobile-logo-center img {
+            height: 22px;
+            width: auto;
+            object-fit: contain;
+        }
+
+        /* 2. Step Panes Container (Fit Screen) */
+        .pg-mobile-pane {
+            display: none;
+            flex: 1;
+        }
+        .pg-mobile-pane.active {
+            display: flex;
+            flex-direction: column;
+            animation: fadeInStep 0.24s ease-out;
+        }
+        @@keyframes fadeInStep {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Step 1: 4 Services Vertical List Compact */
+        .pg-service-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .pg-service-card {
+            padding: 12px 14px;
+            border-radius: 12px;
+            background: #141416;
+            border: 1px solid #222226;
+            min-height: auto;
+        }
+        .pg-service-card.selected {
+            border-color: #e50914;
+            background: rgba(229, 9, 20, 0.05);
+        }
+        .pg-service-title {
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 2px;
+        }
+        .pg-service-quota-tag {
+            font-size: 11.5px;
+            margin-bottom: 4px;
+        }
+        .pg-service-desc {
+            font-size: 11px;
+            line-height: 1.4;
+            color: #8c8c8e;
+            margin-bottom: 0;
+        }
+
+        /* Step 2: 6 Pods Grid (2 คอลัมน์ x 3 แถว) */
+        #mPane2 {
+            overflow-y: auto;
+            max-height: calc(100vh - 165px);
+            padding-bottom: 24px;
+        }
+        .pg-pod-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            padding: 0;
+            margin: 0;
+        }
+        .pg-pod-card {
+            border-radius: 12px;
+            background: #141416;
+            border: 1.5px solid #222226;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .pg-pod-card.selected {
+            border-color: #e50914;
+            box-shadow: 0 0 14px rgba(229, 9, 20, 0.25);
+        }
+        .pg-pod-thumb {
+            height: 90px;
+            position: relative;
+        }
+        .pg-pod-info-trigger {
+            top: 6px;
+            left: 6px;
+            font-size: 9.5px;
+            padding: 2px 6px;
+        }
+        .pg-pod-radio-circle {
+            top: 6px;
+            right: 6px;
+            width: 16px;
+            height: 16px;
+        }
+        .pg-pod-radio-circle svg {
+            width: 10px;
+            height: 10px;
+        }
+        .pg-pod-body {
+            padding: 8px 10px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .pg-pod-name {
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 2px;
+            color: #fff;
+        }
+        .pg-pod-specs {
+            font-size: 10px;
+            color: #71717a;
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .pg-pod-status-row {
+            font-size: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* Step 3: Shadcn Compact Calendar & 6 Grid Time Slots (2 คอลัมน์ x 3 แถว) */
+        .pg-week-calendar-box {
+            padding: 12px 14px;
+            border-radius: 14px;
+            margin-bottom: 12px;
+            background: #121214;
+            border: 1px solid #222226;
+        }
+        .pg-week-cal-header {
+            margin-bottom: 10px;
+        }
+        .pg-cal-month-title {
+            font-size: 14px;
+            font-weight: 700;
+        }
+        .pg-cal-today-badge {
+            font-size: 11px;
+            padding: 3px 8px;
+        }
+        .pg-week-days-grid {
+            gap: 4px;
+        }
+        .pg-wday-card {
+            border-radius: 10px;
+            padding: 8px 2px 6px;
+            min-height: 68px;
+        }
+        .pg-wday-name {
+            font-size: 10.5px;
+        }
+        .pg-wday-num {
+            font-size: 16px;
+        }
+        .pg-wday-dot {
+            width: 4px;
+            height: 4px;
+            margin-top: 4px;
+        }
+
+        /* 6 Grid Slots (แถวละ 2 อัน x 3 แถว) */
+        .pg-slot-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 8px;
+            margin-bottom: 0;
+        }
+        .pg-slot-card {
+            padding: 8px 10px;
+            border-radius: 10px;
+        }
+        .pg-slot-time {
+            font-size: 12.5px;
+            font-weight: 700;
+        }
+        .pg-slot-desc {
+            font-size: 10.5px;
+        }
+
+        /* Step 4: Summary Card Scrollable & Clean */
+        #mPane4 {
+            overflow-y: auto;
+            max-height: calc(100vh - 170px);
+            padding-bottom: 20px;
+        }
+        .pg-summary-card {
+            background: #121214;
+            border: 1px solid #222226;
+            border-radius: 14px;
+            padding: 16px;
+        }
+        .pg-summary-info-table {
+            font-size: 12.5px;
+            margin-bottom: 12px;
+        }
+        .pg-summary-info-row {
+            padding: 6px 0;
+        }
+        .pg-quota-ledger-box {
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 12px;
+        }
+        .pg-perks-list li {
+            padding: 8px 0;
+            font-size: 11.5px;
+        }
+
+        /* 3. Sticky Bottom Bar ป้องกันการซ้อน 100% */
+        .pg-mobile-sticky-footer {
+            display: flex !important;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #0d0d0e;
+            border-top: 1px solid #1f1f23;
+            padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 10px));
+            z-index: 9999;
+            gap: 10px;
+            align-items: center;
+        }
+        .pg-mobile-btn-prev {
+            height: 44px;
+            padding: 0 14px;
+            background: #18181b;
+            color: #d4d4d8;
+            border: 1px solid #2e2e33;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .pg-mobile-btn-next {
+            flex: 1;
+            height: 44px;
+            background: #e50914;
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            font-size: 13.5px;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            box-shadow: 0 4px 14px rgba(229, 9, 20, 0.35);
+        }
+
+        /* ซ่อนปุ่มเดิมใน Card ป้องกันปุ่มซ้อนปุ่ม */
+        .pg-summary-card .pg-btn-confirm-booking,
+        .pg-cancel-note {
+            display: none !important;
+        }
+    }
+    @@media (min-width: 992px) {
+        .pg-mobile-step-header,
+        .pg-mobile-sticky-footer {
+            display: none !important;
+        }
+        .pg-mobile-pane {
+            display: block !important;
+        }
+    }
+    @@media (max-width: 575px) {
+        .pg-date-row {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        .pg-slot-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<main class="cd-content">
+    <!-- Mobile Step Header (ซ้ายเป็นโลโก้ ตรงกลางเป็นชื่อหน้า พร้อมเส้น Progress Bar สีแดง) -->
+    <div class="pg-mobile-step-header">
+        <a asp-controller="Customer" asp-action="Index" asp-route-email="@Model.Email" class="pg-m-topbar-logo-left">
+            <img src="~/images/logo.png" alt="PrivateGym" />
+        </a>
+
+        <span class="pg-m-topbar-center">จองบริการ</span>
+
+        <div class="pg-m-topbar-right"></div>
+
+        <!-- Luxury Progress Line ใต้ Header -->
+        <div class="pg-mobile-progress-bar" id="mProgressBar"></div>
+    </div>
+
+    <!-- Top Header (Desktop View) -->
+    <div class="pg-book-header d-none d-lg-flex">
+        <div>
+            <h1 class="pg-book-title">จองบริการรอบฝึกส่วนตัว</h1>
+            <p class="pg-book-sub">สาขาประจำตัวของคุณ: <strong style="color: #fff;">@(Model.Branches?.FirstOrDefault(b => b.BranchId == Model.SelectedBranchId)?.BranchName ?? "สาขาหลัก")</strong> &bull; เซสชัน 75 นาที/รอบ</p>
+        </div>
+        <div class="pg-quota-badge-top">
+            <div class="item">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+                <span>คงเหลือ Pod <strong>@(Model.IsVip ? "ไม่จำกัด" : $"{Model.RemainingPods} ครั้ง")</strong></span>
+            </div>
+            <div class="item">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                <span>คงเหลือ PT <strong>@(Model.IsVip ? "ไม่จำกัด" : $"{Model.RemainingPt} ครั้ง")</strong></span>
+            </div>
+        </div>
+    </div>
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger" style="background: rgba(229, 9, 20, 0.2); border: 1px solid #e50914; color: #fff; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px;">
+            @TempData["Error"]
+        </div>
+    }
+
+    <!-- FORM START -->
+    <form asp-controller="Customer" asp-action="BookSession" method="post" id="bookingForm" onsubmit="return handleBookingSubmit(event)">
+        <input type="hidden" asp-for="UserId" />
+        <input type="hidden" asp-for="Email" id="inputUserEmail" />
+        <input type="hidden" asp-for="SelectedBranchId" id="inputSelectedBranchId" value="@Model.SelectedBranchId" />
+        <input type="hidden" asp-for="SelectedPodId" id="inputSelectedPodId" value="@Model.SelectedPodId" />
+        <input type="hidden" asp-for="SelectedTrainerId" id="inputSelectedTrainerId" value="" />
+        <input type="hidden" asp-for="BookingDate" id="inputBookingDate" value="@Model.BookingDate.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)" />
+        <input type="hidden" asp-for="SelectedTimeSlot" id="inputSelectedTimeSlot" value="@Model.SelectedTimeSlot" />
+        <input type="hidden" asp-for="ServiceType" id="inputServiceType" value="pod_single" />
+
+        <!-- Branch Filter Bar -->
+        @if (Model.Branches != null && Model.Branches.Any())
+        {
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3 p-3 rounded-3" style="background: #121216; border: 1px solid #24242c;">
+                <span style="font-size: 13px; font-weight: 600; color: #e4e4e7;">เลือกสาขาที่ต้องการเข้าฝึก (แสดงห้อง Pod และโค้ชประจำสาขา)</span>
+                <select id="branchSwitcherSelect" onchange="filterByBranch(this.value)" style="background: #09090b; border: 1px solid #27272a; color: #fff; font-size: 13px; padding: 7px 14px; border-radius: 8px; min-width: 210px;">
+                    @foreach (var br in Model.Branches)
+                    {
+                        <option value="@br.BranchId" selected="@(br.BranchId == Model.SelectedBranchId)">@br.BranchName</option>
+                    }
+                </select>
+            </div>
+        }
+
+        <div class="row g-4">
+            <!-- Left Column: 4 Booking Steps -->
+            <div class="col-lg-8">
+                
+                <!-- MOBILE STEP 1: ประเภทบริการ (01. ประเภทบริการ) -->
+                <div class="pg-mobile-pane active" id="mPane1">
+                    <!-- 01. เลือกบริการ -->
+                    <div class="pg-section-label">
+                        <div class="title">
+                            <span class="num-red">01.</span>
+                            <span>เลือกบริการ</span>
+                        </div>
+                        <div class="sub">ความยาวเซสชันมาตรฐาน 75 นาที</div>
+                    </div>
+
+                    <div class="pg-service-grid">
+                        <!-- Service 1: Private Pod เดี่ยว -->
+                        <div class="pg-service-card selected" onclick="selectService('pod_single', this, 1, null)">
+                            <div class="pg-service-radio"></div>
+                            <div class="pg-service-title">Private Pod เดี่ยว</div>
+                            <div class="pg-service-quota-tag">หักโควต้า Pod 1 ครั้ง</div>
+                            <p class="pg-service-desc">ใช้ห้องส่วนตัวเต็มรูปแบบไม่มีผู้รบกวน 75 นาที รวมระบบแอร์ ออดิโอ และสมาร์ทเซฟ</p>
+                        </div>
+
+                        <!-- Service 2: Private Pod + เทรนเนอร์ -->
+                        <div class="pg-service-card" onclick="selectService('pod_trainer', this, 1, @(Model.Trainers.FirstOrDefault()?.TrainerId ?? 1))">
+                            <div class="pg-service-radio"></div>
+                            <div class="pg-service-title">Private Pod + เทรนเนอร์ 1-on-1</div>
+                            <div class="pg-service-quota-tag">หัก Pod 1 + PT 1 ครั้ง</div>
+                            <p class="pg-service-desc">การสอนเทคนิคและโปรแกรมเฉพาะบุคคลใน Pod ปิดสนิท พร้อมโค้ชระดับ Certified</p>
+                        </div>
+
+                        <!-- Service 3: Pod 04 Recovery & Sauna -->
+                        <div class="pg-service-card" onclick="selectService('recovery', this, 4, null)">
+                            <div class="pg-service-radio"></div>
+                            <div class="pg-service-title">Pod 04 Recovery &amp; Sauna</div>
+                            <div class="pg-service-quota-tag" style="color: #22c55e;">Cold Plunge 3°C + Sauna (60 นาที)</div>
+                            <p class="pg-service-desc">ฟื้นฟูกล้ามเนื้อด้วยการตัดสลับอุณหภูมิ Contrast Therapy และอินฟราเรดซาวน่า</p>
+                        </div>
+
+                        <!-- Service 4: Duo Pod -->
+                        <div class="pg-service-card" onclick="selectService('duo', this, 2, null)">
+                            <div class="pg-service-radio"></div>
+                            <div class="pg-service-title">Duo Pod (สมาชิกร่วม 2 ท่าน)</div>
+                            <div class="pg-service-quota-tag" style="color: #eab308;">พาผู้ติดตามเข้าฝึก 2 ท่าน</div>
+                            <p class="pg-service-desc">สิทธิ์เข้าใช้งานพร้อมผู้ติดตาม 1 ท่าน ใช้โควต้าเจ้าของบัญชีหลักตามสิทธิ์</p>
+                        </div>
+                    </div>
+
+                    <!-- ส่วนเลือกโค้ชผู้ฝึกสอน (แสดงเฉพาะเมื่อเลือก Private Pod + เทรนเนอร์ 1-on-1) -->
+                    <div id="trainerSelectionBox" style="display: none; margin-top: 20px; padding: 18px; background: rgba(229, 9, 20, 0.05); border: 1px solid rgba(229, 9, 20, 0.3); border-radius: 12px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <div>
+                                <div style="font-size: 14px; font-weight: 700; color: #fff;">เลือกโค้ชผู้ฝึกสอนส่วนตัว (Certified 1-on-1 Coach)</div>
+                                <div style="font-size: 12px; color: #a1a1aa;">ข้อมูลโค้ชดึงจากฐานข้อมูลตาราง Trainers โดยตรง</div>
+                            </div>
+                            <span style="font-size: 11px; background: rgba(229, 9, 20, 0.2); color: #ef4444; padding: 3px 10px; border-radius: 20px; font-weight: 600;">1:1 STRICT</span>
+                        </div>
+                        <div class="pg-service-grid" style="margin-bottom: 0;">
+                            @if (Model.Trainers != null && Model.Trainers.Any())
+                            {
+                                bool isFirstCoach = true;
+                                foreach (var t in Model.Trainers)
+                                {
+                                    string coachName = t.User?.FullName ?? $"Coach #{t.TrainerId}";
+                                    string specialty = t.Specialty ?? "Certified Strength Coach";
+                                    <div class="pg-service-card pg-trainer-card @(isFirstCoach ? "selected" : "")"
+                                         data-trainer-id="@t.TrainerId"
+                                         data-branch-id="@(t.User?.HomeBranchId ?? Model.SelectedBranchId)"
+                                         data-trainer-name="@coachName (@specialty)"
+                                         onclick="selectTrainer(@t.TrainerId, '@coachName (@specialty)', this)"
+                                         style="padding: 14px 16px;">
+                                        <div class="pg-service-radio"></div>
+                                        <div style="font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 2px;">@coachName</div>
+                                        <div style="font-size: 11.5px; color: #22c55e; font-weight: 600; margin-bottom: 4px;">@specialty</div>
+                                        <p style="font-size: 11.5px; color: #a1a1aa; margin: 0; line-height: 1.4;">@(t.Bio ?? "โค้ชประจำคลับ PrivateGym ดูแลโปรแกรมซ้อมเฉพาะบุคคล")</p>
+                                    </div>
+                                    isFirstCoach = false;
+                                }
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MOBILE STEP 2: เลือกห้องฝึก (02. เลือกห้องฝึก) -->
+                <div class="pg-mobile-pane" id="mPane2">
+                    <!-- 02. เลือกห้องฝึก -->
+                    <div class="pg-section-label">
+                        <div class="title">
+                            <span class="num-red">02.</span>
+                            <span>เลือกห้องฝึก</span>
+                        </div>
+                        <div class="sub">กดที่ห้องเพื่อเลือก หรือกดปุ่ม ⓘ เพื่อดูอุปกรณ์</div>
+                    </div>
+
+                    <div class="pg-pod-grid">
+                        @{ int podCardIdx = 0; }
+                        @if (Model.Pods != null)
+                        {
+                            foreach (var pod in Model.Pods)
+                            {
+                                podCardIdx++;
+                                int imgNum = ((podCardIdx - 1) % 6) + 1;
+                                string podImgUrl = $"/images/pod-{imgNum:D2}.jpg";
+                                bool isSelPod = pod.PodId == Model.SelectedPodId;
+                                string shortTitle = pod.PodName.Contains(":") ? pod.PodName.Split(':')[1].Trim() : pod.PodName;
+                                string specLabel = pod.PodType switch
+                                {
+                                    "Strength & Power" => "Eleiko Olympic Power Rack &bull; Calibrated Plates",
+                                    "Cardio & Turf" => "Turf Strip 12m &bull; SkiErg &bull; Concept2 Rower",
+                                    "Recovery & Sauna" => "Cold Plunge 3°C &bull; Infrared Sauna &bull; En-suite",
+                                    "Combat & HIIT" => "Heavy Bag &bull; Kettlebells &bull; Plyo Boxes",
+                                    "Pilates & Flow" => "Reformer Bed &bull; Wall Bars &bull; Foam Rollers",
+                                    _ => "Dual Cable Stack &bull; Dumbbells 2.5–35kg"
+                                };
+
+                                <div class="pg-pod-card @(isSelPod ? "selected" : "")"
+                                     data-pod-id="@pod.PodId"
+                                     data-branch-id="@pod.BranchId"
+                                     data-pod-name="@pod.PodName"
+                                     onclick="selectPod(@pod.PodId, '@pod.PodName', this)">
+                                    <div class="pg-pod-thumb" style="background-image: linear-gradient(rgba(0,0,0,0.2), rgba(0,0,0,0.6)), url('@podImgUrl');">
+                                        <button type="button" class="pg-pod-info-trigger" onclick="openPodModal(event, @((pod.PodId - 1) % 6 + 1))">
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                                            <span>สเปกห้อง</span>
+                                        </button>
+                                        <div class="pg-pod-radio-circle">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                        </div>
+                                    </div>
+                                    <div class="pg-pod-body">
+                                        <div class="pg-pod-name">@shortTitle</div>
+                                        <div class="pg-pod-specs">@Html.Raw(specLabel)</div>
+                                        <div class="pg-pod-status-row">
+                                            <span style="color: #a1a1aa; font-weight: 500;">@(pod.Branch?.BranchName ?? "PrivateGym")</span>
+                                            <span class="pg-pod-size">@pod.PodType</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        }
+                    </div>
+                </div>
+
+                <!-- MOBILE STEP 3: วันที่ & รอบเวลา (03. Date & 04. Time Slot) -->
+                <div class="pg-mobile-pane" id="mPane3">
+                    <!-- 03. เลือกวันที่ -->
+                    <div class="pg-section-label">
+                        <div class="title">
+                            <span class="num-red">03.</span>
+                            <span>เลือกวันที่</span>
+                        </div>
+                        <div class="sub">เลือกวันในสัปดาห์ที่ต้องการเข้ารับบริการ</div>
+                    </div>
+
+                    <!-- Weekly Calendar Card ตาม UI Reference -->
+                    <div class="pg-week-calendar-box">
+                        <div class="pg-week-cal-header">
+                            <div class="pg-week-cal-nav">
+                                <button type="button" class="pg-cal-arrow-btn" onclick="shiftWeek(-7)" title="สัปดาห์ก่อนหน้า">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                                </button>
+                                
+                                <div class="pg-cal-month-title">
+                                    <span id="calMonthYearTitle">@thaiMonthYear</span>
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                </div>
+
+                                <button type="button" class="pg-cal-arrow-btn" onclick="shiftWeek(7)" title="สัปดาห์ถัดไป">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                                </button>
+                            </div>
+
+                            <button type="button" class="pg-cal-today-badge" onclick="selectTodayDate()">
+                                <span class="pg-cal-today-dot"></span>
+                                <span>วันนี้ (Today)</span>
+                            </button>
+                        </div>
+
+                        <!-- 7 วัน จ. - อา. -->
+                        <div class="pg-week-days-grid" id="weekDaysGrid">
+                            @foreach (var d in weekDays)
+                            {
+                                bool isPast = d.IsPast;
+                                bool isToday = d.IsToday;
+                                string cardClass = "pg-wday-card";
+                                if (isToday) cardClass += " selected";
+                                if (isPast) cardClass += " past";
+
+                                <div class="@cardClass" 
+                                     data-date="@d.FormattedDate" 
+                                     data-label="@d.LabelText"
+                                     onclick="@(isPast ? "" : $"selectDate('{d.FormattedDate}', '{d.LabelText}', this)")">
+                                    <div class="pg-wday-name">@d.DayName</div>
+                                    <div class="pg-wday-num">@d.DayNumber</div>
+                                    <div class="pg-wday-dot"></div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- 04. เลือกรอบเวลา -->
+                    <div class="pg-section-label">
+                        <div class="title">
+                            <span class="num-red">04.</span>
+                            <span>เลือกรอบเวลา</span>
+                        </div>
+                    </div>
+
+                    <div class="pg-slot-grid" id="slotsContainer">
+                        <!-- โหลดรอบเวลาแบบ Real-time ด้วย JavaScript -->
+                        <div style="grid-column: 1 / -1; padding: 20px; text-align: center; color: var(--cd-text-dim);">
+                            กำลังตรวจสอบรอบเวลาว่างของห้องนี้...
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Right Column: Step 4 สรุปข้อมูลการจอง & ตรวจสอบสิทธิ์ (Summary Ledger) -->
+            <div class="col-lg-4 pg-mobile-pane" id="mPane4">
+                <div class="pg-summary-card">
+                    <div class="pg-summary-title-row">
+                        <span class="pg-summary-title">
+                            <span class="num-red" style="color: #e50914;">04.</span> สรุปข้อมูลการจอง &amp; โควต้า
+                        </span>
+                        <span class="pg-summary-step">ขั้นตอนที่ 4/4</span>
+                    </div>
+
+                    <div class="pg-summary-info-table">
+                        <div class="pg-summary-info-row">
+                            <span class="pg-summary-info-label">ห้องฝึกที่ระบุ</span>
+                            <span class="pg-summary-info-val" id="summaryPodName" style="color: #fff;">
+                                <span style="color: #e50914;">●</span> Pod 02: Power Rig
+                            </span>
+                        </div>
+                        <div class="pg-summary-info-row">
+                            <span class="pg-summary-info-label">วันที่เข้ารับบริการ</span>
+                            <span class="pg-summary-info-val" id="summaryDate">วันนี้ @today.ToString("dd MMMM yyyy", new System.Globalization.CultureInfo("th-TH"))</span>
+                        </div>
+                        <div class="pg-summary-info-row">
+                            <span class="pg-summary-info-label">ช่วงเวลาเซสชัน</span>
+                            <span class="pg-summary-info-val" id="summarySlot" style="color: #e50914; font-weight: 600;">18:00 - 19:15 น. (75 นาที)</span>
+                        </div>
+                        <div class="pg-summary-info-row">
+                            <span class="pg-summary-info-label">ผู้ฝึกหลัก</span>
+                            <span class="pg-summary-info-val">@(Model.FullName ?? "คุณสมาชิก PrivateGym")</span>
+                        </div>
+                        <div class="pg-summary-info-row" id="summaryTrainerRow" style="display: none;">
+                            <span class="pg-summary-info-label">โค้ชผู้ฝึกสอน</span>
+                            <span class="pg-summary-info-val" id="summaryTrainerName" style="color: #22c55e; font-weight: 600;">-</span>
+                        </div>
+                    </div>
+
+                    <!-- Quota Ledger Box -->
+                    <div class="pg-quota-ledger-box">
+                        <div class="pg-ledger-header">การคำนวณสิทธิ์โควต้า</div>
+                        
+                        <!-- Pod Quota -->
+                        <div class="pg-ledger-row">
+                            <span style="color: #a1a1aa;">โควต้า Private Pod เดิม</span>
+                            <strong style="color: #fff;">@(Model.IsVip ? "ไม่จำกัด" : $"{Model.RemainingPods} ครั้ง")</strong>
+                        </div>
+                        <div class="pg-ledger-row deduct">
+                            <span>⊖ หักสิทธิ์ Private Pod สำหรับการจองนี้</span>
+                            <strong>@(Model.IsVip ? "0 ครั้ง" : "-1 ครั้ง")</strong>
+                        </div>
+                        <div class="pg-ledger-row total" style="margin-bottom: 8px;">
+                            <span>คงเหลือสิทธิ์ Pod</span>
+                            <strong>@(Model.IsVip ? "ไม่จำกัด" : $"{Math.Max(0, Model.RemainingPods - 1)} ครั้ง")</strong>
+                        </div>
+
+                        <!-- PT Quota (แสดงอัตโนมัติเมื่อเลือกบริการที่มี Trainer) -->
+                        <div id="ledgerPtSection" style="display: none; border-top: 1px dashed #27272a; padding-top: 8px; margin-top: 8px;">
+                            <div class="pg-ledger-row">
+                                <span style="color: #a1a1aa;">โควต้า Trainer 1-on-1 เดิม</span>
+                                <strong style="color: #fff;">@(Model.IsVip ? "ไม่จำกัด" : $"{Model.RemainingPt} ครั้ง")</strong>
+                            </div>
+                            <div class="pg-ledger-row deduct">
+                                <span>⊖ หักสิทธิ์เทรนเนอร์ (PT Session)</span>
+                                <strong>@(Model.IsVip ? "0 ครั้ง" : "-1 ครั้ง")</strong>
+                            </div>
+                            <div class="pg-ledger-row total">
+                                <span>คงเหลือสิทธิ์ Trainer</span>
+                                <strong>@(Model.IsVip ? "ไม่จำกัด" : $"{Math.Max(0, Model.RemainingPt - 1)} ครั้ง")</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Perks Info -->
+                    <ul class="pg-perks-list">
+                        <li>
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#e50914" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                            <div>
+                                <strong style="color: #fff; display: block;">สิทธิ์ผ่านประตูอัตโนมัติ (Turnstile)</strong>
+                                ระบบจะออกรหัส Dynamic QR Code ให้ทันทีในเมนู "การจองของฉัน" ใช้งานได้ก่อนเวลา 15 นาที
+                            </div>
+                        </li>
+                        <li>
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#e50914" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                            <div>
+                                <strong style="color: #fff; display: block;">Smart Environment Preset</strong>
+                                ปรับอุณหภูมิห้อง 21°C อัตโนมัติ พร้อมไฟสปอร์ตและระบบเชื่อมต่อบลูทูธส่วนตัว
+                            </div>
+                        </li>
+                    </ul>
+
+                    <!-- Submit Button -->
+                    <button type="submit" class="pg-btn-confirm-booking">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        <span>ยืนยันการจองบริการ</span>
+                    </button>
+
+                    <div class="pg-cancel-note">
+                        ⓘ ยกเลิกฟรีล่วงหน้าก่อน 4 ชม. โดยได้รับโควต้าคืนเต็มจำนวน
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile Sticky Bottom Navigation Controls (Next / Prev) -->
+        <div class="pg-mobile-sticky-footer" id="mStickyFooter">
+            <button type="button" class="pg-mobile-btn-prev" id="mFooterPrevBtn" onclick="changeMobileStep(-1)" style="display: none;">
+                &larr; ย้อนกลับ
+            </button>
+            <button type="button" class="pg-mobile-btn-next" id="mFooterNextBtn" onclick="changeMobileStep(1)">
+                <span id="mFooterNextText">ถัดไป: วันและเวลา</span>
+                <span>&rarr;</span>
+            </button>
+        </div>
+    </form>
+
+    <!-- Modal แจ้งผลการจองสำเร็จ พร้อม QR Code สแกนเข้าประตูทันที -->
+    <div id="bookingSuccessModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index: 9999; align-items: center; justify-content: center; padding: 20px;">
+        <div style="background: #141416; border: 1px solid #26262b; border-radius: 16px; width: 100%; max-width: 440px; padding: 28px 24px; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.8); animation: modalPop 0.3s cubic-bezier(0.16, 1, 0.3, 1);">
+            <div style="width: 56px; height: 56px; background: rgba(34, 197, 94, 0.15); border: 2px solid #22c55e; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            </div>
+            
+            <h2 style="font-size: 20px; font-weight: 700; color: #fff; margin-bottom: 6px;">จองรอบฝึกสำเร็จแล้ว!</h2>
+            <p style="font-size: 13px; color: #a1a1aa; margin-bottom: 20px;">รหัสผ่านประตู Turnstile ถูกสร้างขึ้นพร้อมใช้งานทันที</p>
+            
+            <div style="background: #0d0d0e; border: 1px dashed #333; border-radius: 12px; padding: 18px; margin-bottom: 20px;">
+                <div style="background: #fff; padding: 12px; border-radius: 8px; display: inline-block; margin-bottom: 12px;">
+                    <!-- QR Code SVG -->
+                    <svg width="150" height="150" viewBox="0 0 100 100" fill="#000">
+                        <rect x="5" y="5" width="30" height="30" fill="none" stroke="#000" stroke-width="5" />
+                        <rect x="13" y="13" width="14" height="14" fill="#000" />
+                        <rect x="65" y="5" width="30" height="30" fill="none" stroke="#000" stroke-width="5" />
+                        <rect x="73" y="13" width="14" height="14" fill="#000" />
+                        <rect x="5" y="65" width="30" height="30" fill="none" stroke="#000" stroke-width="5" />
+                        <rect x="13" y="73" width="14" height="14" fill="#000" />
+                        <rect x="45" y="15" width="10" height="25" />
+                        <rect x="45" y="50" width="15" height="10" />
+                        <rect x="65" y="55" width="25" height="10" />
+                        <rect x="45" y="70" width="10" height="20" />
+                        <rect x="70" y="75" width="20" height="15" />
+                    </svg>
+                </div>
+                <div style="font-family: monospace; font-size: 13px; color: #e50914; font-weight: 700; letter-spacing: 2px;" id="modalPassCode">PG-PASS-@Guid.NewGuid().ToString("N")[..8].ToUpper()</div>
+                <div style="font-size: 11.5px; color: #71717a; margin-top: 4px;">ใช้สแกนได้ก่อนรอบเวลา 15 นาที</div>
+            </div>
+
+            <div style="background: #18181b; border-radius: 8px; padding: 12px 14px; text-align: left; font-size: 12.5px; margin-bottom: 20px; line-height: 1.8;">
+                <div style="display: flex; justify-content: space-between;"><span style="color: #71717a;">ห้องฝึก:</span> <strong style="color: #fff;" id="modalPodName">-</strong></div>
+                <div style="display: flex; justify-content: space-between;"><span style="color: #71717a;">โค้ช / รูปแบบ:</span> <strong style="color: #22c55e;" id="modalTrainerName">ฝึกซ้อมส่วนตัว</strong></div>
+                <div style="display: flex; justify-content: space-between;"><span style="color: #71717a;">วันที่:</span> <strong style="color: #fff;" id="modalDate">-</strong></div>
+                <div style="display: flex; justify-content: space-between;"><span style="color: #71717a;">ช่วงเวลา:</span> <strong style="color: #e50914;" id="modalSlot">-</strong></div>
+            </div>
+
+            <div style="display: flex; gap: 10px;">
+                <a asp-controller="Customer" asp-action="MyBookings" asp-route-email="@Model.Email" id="modalMyBookingsLink" style="flex: 1; padding: 12px; background: #e50914; color: #fff; font-size: 13px; font-weight: 600; text-decoration: none; border-radius: 8px; text-align: center;">ดูการจองของฉัน</a>
+                <button type="button" onclick="closeModalAndRefresh()" style="padding: 12px 16px; background: #27272a; color: #fff; font-size: 13px; border: none; border-radius: 8px; cursor: pointer;">ปิด</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal แสดงสเปกและรายละเอียดอุปกรณ์ของห้องฝึก (Pod Details Modal) -->
+    <div id="podDetailModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index: 10000; align-items: center; justify-content: center; padding: 16px;">
+        <div style="background: #141416; border: 1px solid #27272a; border-radius: 18px; width: 100%; max-width: 440px; overflow: hidden; box-shadow: 0 25px 60px rgba(0,0,0,0.9); animation: modalPop 0.25s ease-out; display: flex; flex-direction: column; max-height: 90vh;">
+            
+            <!-- รูปห้อง Header กว้างเต็มกรอบ -->
+            <div style="height: 170px; background-size: cover; background-position: center; position: relative;" id="podModalImage">
+                <button type="button" onclick="closePodModal()" style="position: absolute; top: 12px; right: 12px; width: 32px; height: 32px; border-radius: 50%; background: rgba(0,0,0,0.65); backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.2); color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+                <div style="position: absolute; bottom: 12px; left: 14px; background: rgba(0,0,0,0.8); backdrop-filter: blur(4px); padding: 4px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.15);">
+                    <span id="podModalSize" style="font-size: 11px; font-weight: 600; color: #fff;">ขนาด 28 ตร.ม.</span>
+                </div>
+            </div>
+
+            <!-- รายละเอียดสเปกและอุปกรณ์ห้องฝึก -->
+            <div style="padding: 18px 20px; overflow-y: auto; flex: 1;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                    <div>
+                        <span id="podModalCode" style="font-size: 11.5px; font-weight: 700; color: #e50914; letter-spacing: 0.5px; text-transform: uppercase;">POD 02</span>
+                        <h3 id="podModalTitle" style="font-size: 18px; font-weight: 700; color: #fff; margin: 2px 0 0 0;">Power Rig &amp; Barbell</h3>
+                    </div>
+                </div>
+
+                <p id="podModalDesc" style="font-size: 12.5px; color: #a1a1aa; line-height: 1.6; margin-bottom: 16px;">
+                    ห้องฝึกส่วนตัวมาตรฐานระดับโอลิมปิก เหมาะสำหรับการฝึก Compound Lifts และสร้างกล้ามเนื้อความเข้มข้นสูง
+                </p>
+
+                <!-- หมวดอุปกรณ์หลัก -->
+                <div style="margin-bottom: 16px;">
+                    <div style="font-size: 11px; font-weight: 700; color: #71717a; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">
+                        อุปกรณ์หลักภายในห้อง (Equipment Highlights)
+                    </div>
+                    <ul id="podModalEquipment" style="list-style: none; padding: 0; margin: 0; font-size: 12px; color: #e4e4e7; line-height: 1.8;">
+                    </ul>
+                </div>
+
+                <!-- หมวดสิ่งอำนวยความสะดวกในห้อง -->
+                <div style="background: #0d0d0e; border: 1px solid #202024; border-radius: 10px; padding: 12px 14px; margin-bottom: 8px;">
+                    <div style="font-size: 11px; font-weight: 700; color: #71717a; text-transform: uppercase; margin-bottom: 6px;">ระบบควบคุมบรรยากาศ</div>
+                    <div style="font-size: 11.5px; color: #a1a1aa; line-height: 1.6;">
+                        &bull; แอร์เฉพาะห้อง 21°C ปรับอิสระ<br/>
+                        &bull; ลำโพงบลูทูธส่วนตัวเชื่อมต่อสมาร์ตโฟน<br/>
+                        &bull; ปิดเสียงรอบข้างแบบ Sound-Proof 100%
+                    </div>
+                </div>
+            </div>
+
+            <!-- ปุ่มเลือกห้องนี้จากใน Modal -->
+            <div style="padding: 14px 20px; background: #0d0d0e; border-top: 1px solid #202024; display: flex; gap: 10px;">
+                <button type="button" onclick="closePodModal()" style="flex: 1; padding: 12px; background: #27272a; color: #fff; font-size: 13px; font-weight: 600; border: none; border-radius: 8px; cursor: pointer;">
+                    ปิด
+                </button>
+                <button type="button" id="podModalSelectBtn" onclick="confirmSelectPodFromModal()" style="flex: 2; padding: 12px; background: #e50914; color: #fff; font-size: 13px; font-weight: 700; border: none; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                    <span>เลือกห้องนี้</span>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </button>
+            </div>
+        </div>
+    </div>
+</main>
+
+<script>
+    // กรอง Pod และ Trainer ตามสาขาที่เลือกจริง
+    function filterByBranch(branchId) {
+        var bIdStr = String(branchId);
+        document.getElementById('inputSelectedBranchId').value = bIdStr;
+
+        var firstVisiblePod = null;
+        document.querySelectorAll('.pg-pod-card').forEach(card => {
+            var match = card.getAttribute('data-branch-id') === bIdStr;
+            card.style.display = match ? '' : 'none';
+            if (match && !firstVisiblePod) firstVisiblePod = card;
+        });
+
+        if (firstVisiblePod) {
+            selectPod(firstVisiblePod.getAttribute('data-pod-id'), firstVisiblePod.getAttribute('data-pod-name'), firstVisiblePod);
+        }
+
+        var firstVisibleCoach = null;
+        document.querySelectorAll('.pg-trainer-card').forEach(card => {
+            var match = card.getAttribute('data-branch-id') === bIdStr;
+            card.style.display = match ? '' : 'none';
+            if (match && !firstVisibleCoach) firstVisibleCoach = card;
+        });
+
+        if (firstVisibleCoach && document.getElementById('inputServiceType').value === 'pod_trainer') {
+            selectTrainer(firstVisibleCoach.getAttribute('data-trainer-id'), firstVisibleCoach.getAttribute('data-trainer-name'), firstVisibleCoach);
+        } else if (firstVisibleCoach) {
+            document.querySelectorAll('.pg-trainer-card').forEach(c => c.classList.remove('selected'));
+            firstVisibleCoach.classList.add('selected');
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        var initBranch = document.getElementById('inputSelectedBranchId')?.value;
+        if (initBranch) filterByBranch(initBranch);
+    });
+
+    // JS จัดการ Interactive เปลี่ยนค่าใน Form และอัปเดตหน้าสรุปแบบเรียลไทม์
+    function selectService(type, elem, podId, trainerId) {
+        document.querySelectorAll('#mPane1 > .pg-service-grid > .pg-service-card').forEach(c => c.classList.remove('selected'));
+        elem.classList.add('selected');
+        document.getElementById('inputServiceType').value = type;
+
+        var trainerBox = document.getElementById('trainerSelectionBox');
+        var summaryTrainerRow = document.getElementById('summaryTrainerRow');
+        var summaryTrainerName = document.getElementById('summaryTrainerName');
+
+        if (type === 'pod_trainer') {
+            if (trainerBox) trainerBox.style.display = 'block';
+            var activeCoachCard = document.querySelector('.pg-trainer-card.selected') || document.querySelector('.pg-trainer-card');
+            if (activeCoachCard) {
+                var tid = activeCoachCard.getAttribute('data-trainer-id');
+                var tname = activeCoachCard.getAttribute('data-trainer-name');
+                document.getElementById('inputSelectedTrainerId').value = tid;
+                if (summaryTrainerRow) summaryTrainerRow.style.display = 'flex';
+                if (summaryTrainerName) summaryTrainerName.innerText = tname;
+            } else {
+                document.getElementById('inputSelectedTrainerId').value = trainerId || 1;
+            }
+        } else {
+            if (trainerBox) trainerBox.style.display = 'none';
+            document.getElementById('inputSelectedTrainerId').value = '';
+            if (summaryTrainerRow) summaryTrainerRow.style.display = 'none';
+            if (summaryTrainerName) summaryTrainerName.innerText = '-';
+        }
+
+        // อัปเดตกล่อง Quota Ledger ให้โชว์รายการหัก PT ทันทีถ้าเลือกบริการเทรนเนอร์
+        var ptLedger = document.getElementById('ledgerPtSection');
+        if (ptLedger) {
+            ptLedger.style.display = (type === 'pod_trainer') ? 'block' : 'none';
+        }
+
+        if (podId) {
+            var targetPod = document.querySelector(`.pg-pod-card[data-pod-id="${podId}"]`);
+            if (targetPod) {
+                selectPod(podId, targetPod.getAttribute('data-pod-name'), targetPod);
+            }
+        } else {
+            fetchAvailableSlots();
+        }
+    }
+
+    function selectTrainer(trainerId, trainerName, elem) {
+        document.querySelectorAll('.pg-trainer-card').forEach(c => c.classList.remove('selected'));
+        if (elem) elem.classList.add('selected');
+        document.getElementById('inputSelectedTrainerId').value = trainerId;
+        var summaryTrainerRow = document.getElementById('summaryTrainerRow');
+        var summaryTrainerName = document.getElementById('summaryTrainerName');
+        if (summaryTrainerRow) summaryTrainerRow.style.display = 'flex';
+        if (summaryTrainerName) summaryTrainerName.innerText = trainerName;
+        fetchAvailableSlots();
+    }
+
+    function selectPod(id, name, elem) {
+        document.querySelectorAll('.pg-pod-card').forEach(c => c.classList.remove('selected'));
+        elem.classList.add('selected');
+        document.getElementById('inputSelectedPodId').value = id;
+        document.getElementById('summaryPodName').innerHTML = '<span style="color: #e50914;">●</span> ' + name;
+        fetchAvailableSlots();
+    }
+
+    function selectDate(dateVal, labelText, elem) {
+        document.querySelectorAll('.pg-wday-card').forEach(c => c.classList.remove('selected'));
+        if (elem) elem.classList.add('selected');
+        document.getElementById('inputBookingDate').value = dateVal;
+        document.getElementById('summaryDate').innerText = labelText;
+        fetchAvailableSlots();
+    }
+
+    function selectTodayDate() {
+        var todayCard = document.querySelector('.pg-wday-card[data-date="@DateTime.Today.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)"]');
+        if (todayCard) {
+            todayCard.click();
+        }
+    }
+
+    // เลื่อนสัปดาห์หน้า / ย้อนหลัง
+    var weekOffsetDays = 0;
+    function shiftWeek(days) {
+        weekOffsetDays += days;
+        // สามารถเพิ่ม AJAX หรือคำนวณวันใหม่ได้ ในที่นี้จะช่วยเลื่อนวัน
+        var baseMonday = new Date('@mondayThisWeek.ToString("yyyy-MM-ddTHH:mm:ss")');
+        baseMonday.setDate(baseMonday.getDate() + weekOffsetDays);
+
+        var thaiMonths = ["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน","กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
+        // คำนวณปี พ.ศ. ให้ถูกต้อง (ถ้าเกิน 2400 อยู่แล้วไม่ต้องบวก 543 ซ้ำ)
+        var rawYear = baseMonday.getFullYear();
+        var thaiYear = rawYear > 2400 ? rawYear : rawYear + 543;
+        var title = thaiMonths[baseMonday.getMonth()] + " " + thaiYear;
+        document.getElementById('calMonthYearTitle').innerText = title;
+
+        var shortDayNames = ["อา.","จ.","อ.","พ.","พฤ.","ศ.","ส."];
+        var grid = document.getElementById('weekDaysGrid');
+        if (!grid) return;
+
+        var html = '';
+        var todayStr = '@DateTime.Today.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)';
+        var todayTime = new Date('@DateTime.Today.ToString("yyyy-MM-ddT00:00:00")').getTime();
+
+        for (var i = 0; i < 7; i++) {
+            var curr = new Date(baseMonday);
+            curr.setDate(baseMonday.getDate() + i);
+            
+            var y = curr.getFullYear();
+            var m = String(curr.getMonth() + 1).padStart(2, '0');
+            var d = String(curr.getDate()).padStart(2, '0');
+            var dateStr = `${y}-${m}-${d}`;
+
+            var isPast = curr.getTime() < todayTime;
+            var isToday = (dateStr === todayStr);
+
+            var cls = 'pg-wday-card';
+            if (isToday) cls += ' selected';
+            if (isPast) cls += ' past';
+
+            var dayName = shortDayNames[curr.getDay()];
+            var labelText = (isToday ? "วันนี้ " : "") + curr.getDate() + " " + thaiMonths[curr.getMonth()].substring(0, 3);
+
+            var clickAction = isPast ? '' : `onclick="selectDate('${dateStr}', '${labelText}', this)"`;
+
+            html += `
+                <div class="${cls}" data-date="${dateStr}" data-label="${labelText}" ${clickAction}>
+                    <div class="pg-wday-name">${dayName}</div>
+                    <div class="pg-wday-num">${curr.getDate()}</div>
+                    <div class="pg-wday-dot"></div>
+                </div>
+            `;
+        }
+        grid.innerHTML = html;
+    }
+
+    function selectSlot(slotText, elem) {
+        if (elem.classList.contains('disabled')) return;
+        document.querySelectorAll('.pg-slot-card').forEach(c => c.classList.remove('selected'));
+        elem.classList.add('selected');
+        document.getElementById('inputSelectedTimeSlot').value = slotText.replace(" น.", "");
+        document.getElementById('summarySlot').innerText = slotText + " (75 นาที)";
+    }
+
+    // ฟังก์ชันดึงรอบเวลาแบบ Real-time จากฐานข้อมูล (เช็คเวลาปัจจุบัน + เช็คการจองชนกัน + เช็คคิวเทรนเนอร์)
+    function fetchAvailableSlots() {
+        var podId = document.getElementById('inputSelectedPodId').value || 1;
+        var date = document.getElementById('inputBookingDate').value;
+        var trainerId = document.getElementById('inputSelectedTrainerId').value || '';
+        var container = document.getElementById('slotsContainer');
+        if (!container) return;
+
+        fetch(`/Customer/CheckSlots?podId=${podId}&date=${date}&trainerId=${trainerId}`)
+            .then(res => res.json())
+            .then(slots => {
+                var html = '';
+                var hasSelected = false;
+
+                slots.forEach(s => {
+                    var isDisabled = !s.isAvailable;
+                    var cardClass = 'pg-slot-card';
+                    if (isDisabled) cardClass += ' disabled';
+
+                    var descClass = 'pg-slot-desc';
+                    if (s.status === 'past') descClass += ' busy';
+                    if (s.status === 'booked') descClass += ' busy';
+                    if (s.status === 'prime') descClass += ' prime';
+
+                    // สุ่มหรือเลือกรอบแรกที่ว่างเป็นค่า default
+                    var isSelected = false;
+                    if (!isDisabled && !hasSelected) {
+                        cardClass += ' selected';
+                        isSelected = true;
+                        hasSelected = true;
+                        document.getElementById('inputSelectedTimeSlot').value = s.text.replace(" น.", "");
+                        document.getElementById('summarySlot').innerText = s.text + " (75 นาที)";
+                    }
+
+                    var onClickAttr = isDisabled ? '' : `onclick="selectSlot('${s.text}', this)"`;
+
+                    html += `
+                        <div class="${cardClass}" ${onClickAttr}>
+                            ${!isDisabled ? '<div class="pg-slot-radio"></div>' : ''}
+                            <div class="pg-slot-time">${s.text}</div>
+                            <div class="${descClass}">${s.reason}</div>
+                        </div>
+                    `;
+                });
+
+                if (!hasSelected) {
+                    document.getElementById('summarySlot').innerText = 'กรุณาเลือกวันหรือห้องอื่น (รอบเต็ม/หมดเวลา)';
+                    document.getElementById('inputSelectedTimeSlot').value = '';
+                }
+
+                container.innerHTML = html;
+            })
+            .catch(err => {
+                console.error(err);
+            });
+    }
+
+    // จัดการ Submit ฟอร์มแบบ AJAX พร้อมระบบล็อกป้องกันการกดซ้ำ (Double-Submit Guard)
+    var isBookingSubmitting = false;
+
+    function handleBookingSubmit(e) {
+        if (e) e.preventDefault();
+        if (isBookingSubmitting) {
+            return false;
+        }
+
+        var form = document.getElementById('bookingForm');
+        var slotVal = document.getElementById('inputSelectedTimeSlot').value;
+        if (!slotVal) {
+            alert('กรุณาเลือกรอบเวลาที่ว่างก่อนยืนยันการจอง');
+            return false;
+        }
+
+        isBookingSubmitting = true;
+        var formData = new FormData(form);
+
+        var btn = form.querySelector('.pg-btn-confirm-booking');
+        var mBtn = document.getElementById('mFooterNextBtn');
+        var mBtnText = document.getElementById('mFooterNextText');
+
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<span>กำลังทำรายการจอง...</span>';
+        }
+        if (mBtn) mBtn.disabled = true;
+        if (mBtnText) mBtnText.innerText = 'กำลังบันทึกข้อมูล...';
+
+        fetch(form.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        })
+        .then(res => {
+            const contentType = res.headers.get("content-type");
+            if (contentType && contentType.indexOf("application/json") !== -1) {
+                return res.json();
+            } else {
+                return res.text().then(txt => ({ success: false, message: 'เกิดข้อผิดพลาดจากเซิร์ฟเวอร์ (Status ' + res.status + ')' }));
+            }
+        })
+        .then(data => {
+            if (data && data.success) {
+                // ดึงค่ามาแสดงใน Modal
+                document.getElementById('modalPodName').innerText = data.podName || document.getElementById('summaryPodName').innerText.replace('●', '').trim();
+                var modalTrainerEl = document.getElementById('modalTrainerName');
+                if (modalTrainerEl) modalTrainerEl.innerText = data.trainerName || 'ฝึกซ้อมส่วนตัว (Solo Session)';
+                document.getElementById('modalDate').innerText = document.getElementById('summaryDate').innerText;
+                document.getElementById('modalSlot').innerText = data.timeSlot || document.getElementById('summarySlot').innerText;
+
+                var modalLink = document.getElementById('modalMyBookingsLink');
+                if (modalLink && data.email) {
+                    modalLink.href = '/Customer/MyBookings?email=' + encodeURIComponent(data.email);
+                }
+
+                var modal = document.getElementById('bookingSuccessModal');
+                if (modal) modal.style.display = 'flex';
+            } else {
+                isBookingSubmitting = false;
+                alert(data.message || 'ไม่สามารถทำการจองได้ กรุณาตรวจสอบรอบเวลาหรือโควต้า');
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<span>ยืนยันการจองบริการ</span>';
+                }
+                if (mBtn) mBtn.disabled = false;
+                if (mBtnText) mBtnText.innerText = 'ยืนยันการจองบริการ';
+                fetchAvailableSlots();
+            }
+        })
+        .catch(err => {
+            isBookingSubmitting = false;
+            console.error(err);
+            alert('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ กรุณาลองใหม่อีกครั้ง');
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<span>ยืนยันการจองบริการ</span>';
+            }
+            if (mBtn) mBtn.disabled = false;
+            if (mBtnText) mBtnText.innerText = 'ยืนยันการจองบริการ';
+        });
+
+        return false;
+    }
+
+    // ตัวแปรและฟังก์ชันควบคุม Step บน Mobile (4 สเต็ป)
+    var currentMobileStep = 1;
+
+    function changeMobileStep(delta) {
+        var nextStep = currentMobileStep + delta;
+        if (nextStep < 1) {
+            // เมื่ออยู่หน้าแรกของการจอง (Step 1) แล้วกดปุ่มย้อนกลับมุมซ้ายบน ให้ย้อนกลับไปหน้าที่มาก่อนหน้า
+            var email = document.getElementById('inputUserEmail')?.value || '@Model.Email';
+            var fallbackUrl = '/Customer/Index' + (email ? '?email=' + encodeURIComponent(email) : '');
+            if (document.referrer && document.referrer.indexOf(window.location.host) !== -1 && window.history.length > 1) {
+                window.history.back();
+            } else {
+                window.location.href = fallbackUrl;
+            }
+            return;
+        }
+        if (currentMobileStep === 4 && delta > 0) {
+            // อยู่ที่ขั้นตอน 4 แล้วกดปุ่มยืนยัน ให้ส่งฟอร์มทันที
+            var form = document.getElementById('bookingForm');
+            if (form) {
+                // เรียก handleBookingSubmit โดยตรง
+                handleBookingSubmit(new Event('submit', { cancelable: true }));
+            }
+            return;
+        }
+
+        // สลับ Pane บน Mobile (1 ถึง 4)
+        for (var i = 1; i <= 4; i++) {
+            var pane = document.getElementById('mPane' + i);
+            if (pane) pane.classList.remove('active');
+        }
+        var activePane = document.getElementById('mPane' + nextStep);
+        if (activePane) activePane.classList.add('active');
+
+        // อัปเดต Sticky Footer
+        var footerPrev = document.getElementById('mFooterPrevBtn');
+        var footerNext = document.getElementById('mFooterNextBtn');
+        var footerNextText = document.getElementById('mFooterNextText');
+
+        if (footerPrev) footerPrev.style.display = (nextStep === 1) ? 'none' : 'block';
+
+        if (nextStep === 1) {
+            if (footerNextText) footerNextText.innerText = 'ถัดไป: เลือกห้องฝึก';
+            if (footerNext) footerNext.style.background = '#e50914';
+        } else if (nextStep === 2) {
+            if (footerNextText) footerNextText.innerText = 'ถัดไป: เลือกวันและรอบเวลา';
+            if (footerNext) footerNext.style.background = '#e50914';
+        } else if (nextStep === 3) {
+            if (footerNextText) footerNextText.innerText = 'ถัดไป: ตรวจสอบโควต้า';
+            if (footerNext) footerNext.style.background = '#e50914';
+        } else if (nextStep === 4) {
+            if (footerNextText) footerNextText.innerText = 'ยืนยันการจองบริการ';
+            if (footerNext) footerNext.style.background = '#22c55e';
+        }
+
+        currentMobileStep = nextStep;
+        
+        // อัปเดต Progress Bar ใต้ Header (25%, 50%, 75%, 100%)
+        var pBar = document.getElementById('mProgressBar');
+        if (pBar) {
+            pBar.style.width = (currentMobileStep * 25) + '%';
+        }
+
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function closeModalAndRefresh() {
+        var email = document.getElementById('inputUserEmail')?.value || '@Model.Email';
+        window.location.href = '/Customer/MyBookings?email=' + encodeURIComponent(email);
+    }
+
+    // ข้อมูลสเปกและอุปกรณ์ของแต่ละ Pod สำหรับเปิดใน Modal
+    var podSpecsData = {
+        1: {
+            code: 'POD 01',
+            title: 'Solo Precision',
+            size: 'ขนาด 24 ตร.ม.',
+            image: "url('/images/hero-bg.jpg')",
+            desc: 'ห้องฝึกส่วนตัวแบบมินิมอล เน้นการฝึกเคลื่อนไหวเฉพาะจุด ฟังก์ชันนัลเทรนนิ่ง และกล้ามเนื้อมัดย่อยอย่างแม่นยำ',
+            equipment: [
+                'Dual Adjustable Cable Stack (พร้อมหัวต่อครบชุด)',
+                'Dumbbells Commercial Grade 2.5 – 35 kg',
+                'Multi-Angle Adjustable Bench (Flat, Incline, Decline)',
+                'TRX Suspension Trainer Pro',
+                'Mirror Wall รอบทิศทางเพื่อเช็คฟอร์มการเล่น'
+            ]
+        },
+        2: {
+            code: 'POD 02',
+            title: 'Power Rig & Barbell',
+            size: 'ขนาด 28 ตร.ม.',
+            image: "url('/images/hero-bg.jpg')",
+            desc: 'ห้องฝึกมาตรฐานโอลิมปิก ออกแบบเพื่อรองรับการเล่น Compound Lifts หนักๆ Squat, Bench Press และ Deadlift',
+            equipment: [
+                'Eleiko Olympic Power Rack พร้อม Safety Spotter Bars',
+                'Eleiko IWF Weightlifting Barbell (20kg / 15kg)',
+                'Calibrated Steel & Bumper Plates รวมกว่า 250 kg',
+                'Shock-Absorbing Deadlift Platform (ไม้โอ๊ค + ยางกันกระแทก)',
+                'Dip Horn Attachment & Multi-Grip Pull-Up Bar'
+            ]
+        },
+        3: {
+            code: 'POD 03',
+            title: 'Athletic & Cardio Conditioning',
+            size: 'ขนาด 32 ตร.ม.',
+            image: "url('/images/hero-bg.jpg')",
+            desc: 'พื้นที่เปิดโล่งพร้อมพื้นหญ้าเทียม เหมาะสำหรับการฝึกความเร็ว ความอดทน และ Athletic Conditioning',
+            equipment: [
+                'Indoor Turf Strip ความยาว 12 เมตร พร้อมแอกผลักน้ำหนัก (Sled)',
+                'Concept2 SkiErg & Concept2 RowErg',
+                'Assault AirBike Pro',
+                'Medicine Balls (4 - 12 kg) & Slam Balls',
+                'Speed Agility Ladder & Hurdles'
+            ]
+        },
+        4: {
+            code: 'POD 04',
+            title: 'Recovery Suite & Contrast Therapy',
+            size: 'ขนาด 30 ตร.ม.',
+            image: "url('/images/hero-bg.jpg')",
+            desc: 'ห้องฟื้นฟูร่างกายแบบองค์รวม สำหรับการทำ Contrast Therapy สลับน้ำเย็นจัดและซาวน่าร้อน',
+            equipment: [
+                'Commercial Cold Plunge Tub อุณหภูมิน้ำคงที่ 3°C พร้อมระบบฆ่าเชื้อโอโซน',
+                'Full Spectrum Infrared Sauna รองรับอุณหภูมิ 65°C',
+                'Normatec 3 Full Body Compression Boots',
+                'Theragun Pro Plus Percussive Massage Station',
+                'Rain Shower & Luxury Towel Service ภายในห้อง'
+            ]
+        },
+        5: {
+            code: 'POD 05',
+            title: 'Boxing & Functional Power',
+            size: 'ขนาด 26 ตร.ม.',
+            image: "url('/images/hero-bg.jpg')",
+            desc: 'ห้องฝึกสไตล์ Combat และ HIIT เหมาะสำหรับการเบิร์นไขมันขั้นสุด พร้อมอุปกรณ์ชกมวยครบครัน',
+            equipment: [
+                'Fairtex Leather Heavy Bag & Aqua Punching Bag',
+                'Competition Kettlebells (8 - 32 kg)',
+                'High-Density Foam Plyometric Boxes (3 ระดับ)',
+                'Heavy Battle Ropes (15 เมตร เกรดฟิตเนส)',
+                'Speed Jump Ropes & Hand Wraps / นวมสำหรับฝึกซ้อม'
+            ]
+        },
+        6: {
+            code: 'POD 06',
+            title: 'Pilates & Mobility Flow',
+            size: 'ขนาด 28 ตร.ม.',
+            image: "url('/images/hero-bg.jpg')",
+            desc: 'ห้องฝึกบรรยากาศสงบ สำหรับพิลาทิส การยืดเหยียด และการจัดระเบียบโครงสร้างกระดูกและกล้ามเนื้อ',
+            equipment: [
+                'Allegro 2 Reformer Bed พร้อม Tower System',
+                'Swedish Stall Bars (บันไดติดผนังสำหรับยืดเหยียด)',
+                'Spine Corrector & Pilates Arc',
+                'High-Density Yoga Mats, Blocks & Straps',
+                'TriggerPoint Mobility Grid Rollers & Massage Balls'
+            ]
+        }
+    };
+
+    var currentViewingPodId = 2;
+
+    function openPodModal(e, podId) {
+        if (e) e.stopPropagation();
+        currentViewingPodId = podId;
+        var data = podSpecsData[podId] || podSpecsData[1];
+
+        document.getElementById('podModalCode').innerText = data.code;
+        document.getElementById('podModalTitle').innerText = data.title;
+        document.getElementById('podModalSize').innerText = data.size;
+        document.getElementById('podModalDesc').innerText = data.desc;
+        document.getElementById('podModalImage').style.backgroundImage = `linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.7)), ${data.image}`;
+
+        var eqList = document.getElementById('podModalEquipment');
+        eqList.innerHTML = '';
+        data.equipment.forEach(item => {
+            var li = document.createElement('li');
+            li.innerHTML = `<span style="color: #e50914; margin-right: 6px;">✔</span> ${item}`;
+            eqList.appendChild(li);
+        });
+
+        document.getElementById('podDetailModal').style.display = 'flex';
+    }
+
+    function closePodModal() {
+        document.getElementById('podDetailModal').style.display = 'none';
+    }
+
+    function confirmSelectPodFromModal() {
+        var card = document.querySelector(`.pg-pod-card[data-pod-id="${currentViewingPodId}"]`);
+        if (card) {
+            selectPod(currentViewingPodId, card.getAttribute('data-pod-name'), card);
+        }
+        closePodModal();
+    }
+
+    // โหลดรอบเวลาทันทีเมื่อเปิดหน้า
+    document.addEventListener('DOMContentLoaded', function() {
+        fetchAvailableSlots();
+    });
+</script>

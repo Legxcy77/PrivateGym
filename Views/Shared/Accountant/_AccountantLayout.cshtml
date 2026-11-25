@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - PrivateGym บัญชีและการเงิน</title>
+    <link rel="icon" type="image/png" href="~/IconPrivate.png" asp-append-version="true" />
+
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/CustomerDashboard.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/UnifiedWorkspace.css" asp-append-version="true" />
+    <style>
+        /* Unified Typography (matching CustomerDashboard/Home) & shadcn/ui Dark Design System */
+        body.customer-dashboard-body,
+        body.customer-dashboard-body input,
+        body.customer-dashboard-body select,
+        body.customer-dashboard-body button,
+        body.customer-dashboard-body textarea,
+        body.customer-dashboard-body table {
+            font-family: 'Inter', 'Loma', -apple-system, BlinkMacSystemFont, sans-serif !important;
+        }
+
+        .cd-content {
+            width: 100%;
+        }
+
+        .cd-page-header {
+            margin-bottom: 20px !important;
+        }
+
+        .cd-page-title {
+            font-size: 22px;
+            font-weight: 600;
+            letter-spacing: -0.015em;
+            color: #fafafa;
+        }
+
+        .cd-page-subtext {
+            font-size: 13px;
+            font-weight: 400;
+            color: #a1a1aa;
+            margin-top: 4px;
+        }
+
+        /* Unified Filter Bar & Controls */
+        .acc-filter-bar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+
+        .acc-chips {
+            display: inline-flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 6px;
+            background: #09090b;
+            border: 1px solid #27272a;
+            border-radius: 10px;
+            padding: 4px;
+        }
+
+        .acc-chip {
+            padding: 6px 12px;
+            border-radius: 7px;
+            font-size: 12.5px;
+            font-weight: 500;
+            text-decoration: none;
+            border: 1px solid transparent;
+            background: transparent;
+            color: #a1a1aa;
+            transition: all 0.15s ease;
+            white-space: nowrap;
+        }
+
+        .acc-chip:hover {
+            color: #fafafa;
+            background: #18181b;
+        }
+
+        .acc-chip.active {
+            background: #18181b;
+            border-color: rgba(229, 9, 20, 0.55);
+            color: #ffffff;
+            font-weight: 500;
+        }
+
+        .acc-input,
+        .acc-select {
+            height: 36px;
+            background: #09090b !important;
+            border: 1px solid #27272a !important;
+            border-radius: 8px !important;
+            color: #fafafa !important;
+            font-size: 13px !important;
+            font-weight: 400 !important;
+            padding: 0 12px !important;
+            outline: none;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .acc-input::placeholder {
+            color: #71717a !important;
+            opacity: 1 !important;
+        }
+
+        .acc-input:focus,
+        .acc-select:focus {
+            border-color: #e50914 !important;
+            box-shadow: 0 0 0 2px rgba(229, 9, 20, 0.2) !important;
+        }
+
+        .acc-btn-primary {
+            height: 36px;
+            padding: 0 16px;
+            border-radius: 8px;
+            background: #e50914;
+            border: 1px solid #e50914;
+            color: #ffffff;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.15s ease;
+            white-space: nowrap;
+        }
+
+        .acc-btn-primary:hover {
+            background: #dc2626;
+        }
+
+        /* Unified Panel & shadcn/ui Table Container */
+        .acc-table-card,
+        .acc-panel {
+            background: #0c0c0f;
+            border: 1px solid #27272a;
+            border-radius: 12px;
+        }
+
+        .acc-table-card {
+            overflow: hidden;
+        }
+
+        .acc-shadcn-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            background: transparent;
+            color: #e4e4e7;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .acc-shadcn-table thead tr {
+            background: #121216;
+            border-bottom: 1px solid #27272a;
+        }
+
+        .acc-shadcn-table thead th {
+            padding: 12px 16px !important;
+            font-size: 12px;
+            font-weight: 500;
+            color: #a1a1aa;
+            text-align: left;
+            white-space: nowrap;
+            border: none !important;
+        }
+
+        .acc-shadcn-table tbody tr {
+            border-bottom: 1px solid #1f1f24;
+            transition: background-color 0.15s ease;
+        }
+
+        .acc-shadcn-table tbody tr:last-child {
+            border-bottom: none;
+        }
+
+        .acc-shadcn-table tbody tr:hover {
+            background-color: rgba(39, 39, 42, 0.45);
+        }
+
+        .acc-shadcn-table tbody td {
+            padding: 14px 16px !important;
+            vertical-align: middle;
+            border: none !important;
+            font-weight: 400;
+        }
+
+        .acc-shadcn-table tbody td .fw-bold,
+        .acc-shadcn-table tbody td strong {
+            font-weight: 500 !important;
+        }
+
+        .acc-shadcn-table thead th:first-child,
+        .acc-shadcn-table tbody td:first-child {
+            padding-left: 22px !important;
+        }
+
+        .acc-shadcn-table thead th:last-child,
+        .acc-shadcn-table tbody td:last-child {
+            padding-right: 22px !important;
+        }
+
+        /* Unified Badges */
+        .acc-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 3px 10px;
+            border-radius: 9999px;
+            font-size: 11.5px;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        .acc-badge-green {
+            background: rgba(34, 197, 94, 0.12);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            color: #4ade80;
+        }
+
+        .acc-badge-amber {
+            background: rgba(245, 158, 11, 0.12);
+            border: 1px solid rgba(245, 158, 11, 0.32);
+            color: #fcd34d;
+        }
+
+        .acc-badge-red {
+            background: rgba(239, 68, 68, 0.12);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #f87171;
+        }
+
+        .acc-badge-dim {
+            background: #18181b;
+            border: 1px solid #27272a;
+            color: #a1a1aa;
+        }
+    </style>
+</head>
+<body class="customer-dashboard-body">
+
+    <div class="cd-sidebar-backdrop" id="accSidebarBackdrop"></div>
+
+    <!-- ================= ACCOUNTANT SIDEBAR ================= -->
+    <aside class="cd-sidebar" id="accSidebar">
+        <div>
+            <div class="d-flex align-items-center justify-content-between pb-2 mb-2 border-bottom border-secondary border-opacity-25">
+                <a asp-controller="Accountant" asp-action="Index" asp-route-email="@ViewBag.Email" class="cd-sidebar-logo p-0 m-0 border-0">
+                    <img src="~/images/logo.png" alt="PrivateGym" class="cd-sidebar-logo-img" />
+                </a>
+                <button type="button" class="btn text-white-50 d-lg-none border-0 p-2" id="accSidebarCloseBtn" aria-label="ปิดเมนู" style="font-size: 24px; line-height: 1;">
+                    &times;
+                </button>
+            </div>
+
+            <ul class="cd-sidebar-nav">
+                <li class="pg-sb-cat">OVERVIEW &amp; LEDGER</li>
+                <li class="cd-nav-item @(ViewContext.RouteData.Values["Action"]?.ToString() == "Index" ? "active" : "")">
+                    <a asp-controller="Accountant" asp-action="Index" asp-route-email="@ViewBag.Email">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="7" height="7"></rect>
+                            <rect x="14" y="3" width="7" height="7"></rect>
+                            <rect x="14" y="14" width="7" height="7"></rect>
+                            <rect x="3" y="14" width="7" height="7"></rect>
+                        </svg>
+                        <span>ภาพรวมรายรับ</span>
+                    </a>
+                </li>
+
+                <li class="cd-nav-item @(ViewContext.RouteData.Values["Action"]?.ToString() == "Payments" ? "active" : "")">
+                    <a asp-controller="Accountant" asp-action="Payments" asp-route-email="@ViewBag.Email">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+                            <line x1="1" y1="10" x2="23" y2="10"></line>
+                        </svg>
+                        <span>ตรวจรับชำระเงิน</span>
+                    </a>
+                </li>
+
+                <li class="pg-sb-cat">BILLING &amp; SUBSCRIPTIONS</li>
+                <li class="cd-nav-item @(ViewContext.RouteData.Values["Action"]?.ToString() == "TaxInvoices" ? "active" : "")">
+                    <a asp-controller="Accountant" asp-action="TaxInvoices" asp-route-email="@ViewBag.Email">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                        </svg>
+                        <span>ใบเสร็จ / ใบกำกับภาษี</span>
+                    </a>
+                </li>
+
+                <li class="cd-nav-item @(ViewContext.RouteData.Values["Action"]?.ToString() == "Subscriptions" ? "active" : "")">
+                    <a asp-controller="Accountant" asp-action="Subscriptions" asp-route-email="@ViewBag.Email">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="9" cy="7" r="4"></circle>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                        </svg>
+                        <span>รอบบิลสมาชิก</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        <div class="pg-sb-user">
+            <div class="pg-sb-user-left">
+                <div class="pg-sb-avatar">@((((ViewBag.FullName as string) ?? "A").Trim().Length > 0 ? ((ViewBag.FullName as string) ?? "A").Trim()[0].ToString() : "A"))</div>
+                <div class="pg-sb-info">
+                    <span class="pg-sb-name">@(ViewBag.FullName ?? "Accountant")</span>
+                    <span class="pg-sb-role">Accountant • Finance</span>
+                </div>
+            </div>
+            <a asp-controller="Login" asp-action="Logout" class="pg-sb-logout" title="ออกจากระบบ" aria-label="ออกจากระบบ">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                    <polyline points="16 17 21 12 16 7"></polyline>
+                    <line x1="21" y1="12" x2="9" y2="12"></line>
+                </svg>
+            </a>
+        </div>
+    </aside>
+
+    <!-- ================= MAIN WRAPPER ================= -->
+    <div class="cd-main-wrapper">
+        @{
+            string currentAct = ViewContext.RouteData.Values["Action"]?.ToString() ?? "Index";
+            string pageLabel = currentAct switch
+            {
+                "Payments" => "ตรวจรับชำระเงิน",
+                "TaxInvoices" => "ใบเสร็จและใบกำกับภาษี",
+                "Subscriptions" => "รอบบิลสมาชิก",
+                _ => "ภาพรวมรายรับ"
+            };
+
+            string displayName = ViewBag.FullName?.ToString() ?? "ฝ่ายบัญชีและการเงิน";
+            string displayEmail = ViewBag.Email?.ToString() ?? "accountant@privategym.club";
+            char initialChar = string.IsNullOrEmpty(displayName) ? 'A' : displayName.TrimStart("คุณ".ToCharArray()).Trim().FirstOrDefault();
+            if (initialChar == '\0') initialChar = 'A';
+        }
+
+        <header class="cd-topbar" style="position: sticky; top: 0;">
+            <div class="d-flex align-items-center gap-3">
+                <button type="button" class="btn text-white p-1 d-lg-none border-0" id="accMobileToggleBtn" aria-label="เปิดเมนู">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="3" y1="12" x2="21" y2="12"></line>
+                        <line x1="3" y1="6" x2="21" y2="6"></line>
+                        <line x1="3" y1="18" x2="21" y2="18"></line>
+                    </svg>
+                </button>
+                <div class="cd-breadcrumb">
+                    <span>PrivateGym</span>
+                    <span>/</span>
+                    <span class="active">@pageLabel</span>
+                </div>
+            </div>
+
+            <div class="cd-topbar-right">
+                <div class="cd-quota-badge d-none d-sm-inline-flex">
+                    ฝ่ายบัญชีและการเงิน (Accountant)
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <div class="cd-user-avatar">@initialChar</div>
+                    <div class="cd-user-info text-start d-none d-sm-flex">
+                        <span class="cd-user-name">@displayName</span>
+                        <span class="cd-user-role">@displayEmail</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="cd-main-content">
+            @RenderBody()
+        </div>
+    </div>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        const accSidebar = document.getElementById('accSidebar');
+        const accBackdrop = document.getElementById('accSidebarBackdrop');
+        const accToggleBtn = document.getElementById('accMobileToggleBtn');
+        const accCloseBtn = document.getElementById('accSidebarCloseBtn');
+
+        function openAccSidebar() {
+            if (accSidebar) accSidebar.classList.add('mobile-open');
+            if (accBackdrop) accBackdrop.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeAccSidebar() {
+            if (accSidebar) accSidebar.classList.remove('mobile-open');
+            if (accBackdrop) accBackdrop.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        if (accToggleBtn) accToggleBtn.addEventListener('click', openAccSidebar);
+        if (accCloseBtn) accCloseBtn.addEventListener('click', closeAccSidebar);
+        if (accBackdrop) accBackdrop.addEventListener('click', closeAccSidebar);
+    </script>
+
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
+

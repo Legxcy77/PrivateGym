@@ -1,0 +1,2066 @@
+@model List<PrivateGym.Models.Booking>
+
+@{
+    ViewData["Title"] = "การจองของฉันและบัตรผ่านเข้าห้อง";
+    Layout = "~/Views/Shared/Customer/_CustomerLayout.cshtml";
+
+    var allBookings = Model ?? new List<PrivateGym.Models.Booking>();
+    var todayDate = DateOnly.FromDateTime(DateTime.Today);
+    var nowTime = TimeOnly.FromDateTime(DateTime.Now);
+    string activeTab = (ViewBag.ActiveTab as string ?? "upcoming").ToLower();
+
+    // ฟังก์ชันตรวจสอบว่ารอบจองเลยเวลาสิ้นสุด (EndTime) ไปหรือยัง และมีการเช็กอินเข้าห้องจริงหรือไม่
+    bool IsSessionExpired(PrivateGym.Models.Booking b) =>
+        b.BookingDate < todayDate || (b.BookingDate == todayDate && b.EndTime <= nowTime);
+
+    bool HasCheckIn(PrivateGym.Models.Booking b) =>
+        b.CheckIns != null && b.CheckIns.Any();
+
+    // แยกกลุ่มรายการตามเวลาจริงและสถานะการเช็กอิน:
+    // 1. การจองที่กำลังจะมาถึง / กำลังซ้อมอยู่ในห้อง (Confirmed และยังไม่เลยเวลา EndTime)
+    var upcomingList = allBookings
+        .Where(b => b.Status == "Confirmed" && !IsSessionExpired(b))
+        .OrderBy(b => b.BookingDate)
+        .ThenBy(b => b.StartTime)
+        .ToList();
+
+    // 2. ประวัติการใช้งาน (รวมทั้งที่เข้าฝึกซ้อมสำเร็จ Completed และที่เลยเวลา EndTime โดยไม่ได้เช็กอิน No-Show)
+    var historyList = allBookings
+        .Where(b => b.Status == "Completed" || (b.Status == "Confirmed" && IsSessionExpired(b)))
+        .OrderByDescending(b => b.BookingDate)
+        .ThenByDescending(b => b.StartTime)
+        .ToList();
+
+    // 3. ยกเลิกแล้ว (Cancelled)
+    var cancelledList = allBookings
+        .Where(b => b.Status == "Cancelled")
+        .OrderByDescending(b => b.BookingDate)
+        .ThenByDescending(b => b.StartTime)
+        .ToList();
+
+    // ถ้าลูกค้าเปิดเข้ามาหน้าเริ่มต้น (ไม่ได้ระบุแท็บอื่น) แล้วรอบของวันนี้หมดเวลาไปอยู่ในประวัติหมดแล้ว ให้เลือกแสดงตามแท็บ
+    List<PrivateGym.Models.Booking> displayList;
+    if (activeTab == "history" || activeTab == "completed")
+    {
+        activeTab = "history";
+        displayList = historyList;
+    }
+    else if (activeTab == "cancelled")
+    {
+        displayList = cancelledList;
+    }
+    else if (activeTab == "all")
+    {
+        displayList = allBookings;
+    }
+    else
+    {
+        activeTab = "upcoming";
+        displayList = upcomingList;
+    }
+
+    // รายการหลักที่ถูกเลือกแสดงใน Dynamic Access Pass ด้านขวา (แสดงเฉพาะรายการที่ยังไม่หมดเวลาเท่านั้น!)
+    var primaryBooking = upcomingList.FirstOrDefault();
+
+    string[] thaiShortMonths = { "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค." };
+    string[] engShortMonths = { "JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC" };
+    string[] thaiDayNames = { "อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์" };
+    string[] engDayNames = { "SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT" };
+
+    (string FullTitle, string SubDesc, string EquipShort, string PodCode) GetPodMeta(string? podName, int podId)
+    {
+        string raw = (podName ?? "").ToLower();
+        if (raw.Contains("01") || raw.Contains("solo"))
+            return ("Pod 01: Solo Precision Suite", "ห้องฝึกซ้อมส่วนตัวแบบมินิมอล Acoustic Seal พร้อมชุดเคเบิลคู่และดัมเบลครบชุด", "Dual Cable & DB", "PG01");
+        if (raw.Contains("02") || raw.Contains("power") || raw.Contains("rig"))
+            return ("The Integrated Power Rig", "ห้องฝึกซ้อมส่วนตัวแบบเก็บเสียง Acoustic Seal พร้อมแท่นยกน้ำหนักระดับการแข่งขัน", "Eleiko Rig", "PG02");
+        if (raw.Contains("03") || raw.Contains("athletic") || raw.Contains("cardio"))
+            return ("Athletic & Cardio Conditioning", "พื้นที่ฝึกความเร็วและระบบหัวใจ พร้อมลู่วิ่งหญ้าเทียม Sled และ Concept2", "Turf & SkiErg", "PG03");
+        if (raw.Contains("04") || raw.Contains("recovery"))
+            return ("Recovery & Contrast Therapy Suite", "โซนฟื้นฟูร่างกายส่วนตัว อ่างน้ำเย็นจัด Cold Plunge 3°C และ Infrared Sauna", "Plunge & Sauna", "PG04");
+        if (raw.Contains("05") || raw.Contains("boxing"))
+            return ("Boxing & Functional Power Pod", "ห้องฝึกสไตล์ Combat & HIIT พร้อมกระสอบทรายหนังแท้และ Kettlebells", "Heavy Bag & KB", "PG05");
+        if (raw.Contains("06") || raw.Contains("pilates"))
+            return ("Pilates & Mobility Flow Suite", "ห้องฝึกพิลาทิสและจัดระเบียบโครงสร้างร่างกาย พร้อมเตียง Allegro 2 Reformer", "Reformer Bed", "PG06");
+
+        int num = ((podId - 1) % 6) + 1;
+        return ($"Pod 0{num}: Private Training Suite", "ห้องฝึกซ้อมส่วนตัวแบบเก็บเสียง Acoustic Seal มาตรฐานโอลิมปิก", "Eleiko Pro", $"PG0{num}");
+    }
+}
+
+<style>
+    /* ================= DARFWEBSITE MY BOOKINGS LUXURY STYLES ================= */
+    .mb-page-wrap {
+        width: 100%;
+        padding-bottom: 40px;
+    }
+
+    /* Header & Segmented Tabs */
+    .mb-top-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+
+    .mb-main-title {
+        font-size: 28px;
+        font-weight: 800;
+        color: #ffffff;
+        margin: 0;
+        letter-spacing: -0.3px;
+    }
+
+    .mb-segmented-tabs {
+        display: inline-flex;
+        background: #141417;
+        border: 1px solid #26262b;
+        border-radius: 10px;
+        padding: 5px;
+        gap: 4px;
+    }
+
+    .mb-seg-tab {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 9px 18px;
+        border-radius: 7px;
+        font-size: 13.5px;
+        font-weight: 600;
+        color: #a1a1aa;
+        text-decoration: none;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+    }
+
+    .mb-seg-tab:hover {
+        color: #ffffff;
+    }
+
+    .mb-seg-tab.active {
+        background: #232329;
+        color: #ffffff;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    }
+
+    .mb-seg-tab .count-red {
+        color: #e50914;
+        font-weight: 700;
+    }
+
+    .mb-seg-tab .count-dim {
+        color: #71717a;
+        font-weight: 600;
+    }
+
+    /* Security Isolation Banner */
+    .mb-iso-banner {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: #121215;
+        border: 1px solid #222228;
+        border-radius: 10px;
+        padding: 14px 20px;
+        margin-bottom: 20px;
+        font-size: 13.5px;
+        color: #a1a1aa;
+    }
+
+    .mb-iso-left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .mb-iso-zone {
+        font-family: monospace;
+        font-size: 12px;
+        color: #71717a;
+        letter-spacing: 0.5px;
+        white-space: nowrap;
+    }
+
+    /* Accordion Booking Cards (ขยาย / หุบได้ทุกการ์ด และแยกสถานะการ์ดที่กำลังแสดง QR) */
+    .mb-booking-item {
+        background: #121215;
+        border: 1px solid #242429;
+        border-radius: 14px;
+        margin-bottom: 16px;
+        overflow: hidden;
+        transition: all 0.25s ease;
+    }
+
+    .mb-booking-item.is-expanded {
+        border-color: #32323d;
+        box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+    }
+
+    .mb-booking-item.is-active-pass {
+        border-color: rgba(229, 9, 20, 0.45);
+        border-left: 4px solid #e50914;
+        background: linear-gradient(145deg, rgba(229, 9, 20, 0.05) 0%, #121215 45%);
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+    }
+
+    .mb-qr-select-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        font-weight: 700;
+        padding: 5px 12px;
+        border-radius: 6px;
+        background: #1d1d24;
+        border: 1px solid #343442;
+        color: #e4e4e7;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .mb-qr-select-btn:hover {
+        background: rgba(229, 9, 20, 0.15);
+        border-color: #e50914;
+        color: #ffffff;
+    }
+
+    .mb-booking-item.is-active-pass .mb-qr-select-btn {
+        background: rgba(34, 197, 94, 0.14);
+        border-color: rgba(34, 197, 94, 0.4);
+        color: #4ade80;
+        cursor: default;
+    }
+
+    /* แถบสลับเลือกห้องบนกล่อง QR Pass (กรณีจองหลายห้อง/หลายรอบ) */
+    .mb-pass-switcher {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-bottom: 14px;
+        padding: 8px;
+        background: #0c0c0e;
+        border: 1px solid #1f1f25;
+        border-radius: 10px;
+    }
+
+    .mb-pass-switch-pill {
+        flex: 1;
+        min-width: calc(50% - 4px);
+        background: #16161b;
+        border: 1px solid #272730;
+        color: #a1a1aa;
+        font-size: 11.5px;
+        font-weight: 600;
+        padding: 7px 10px;
+        border-radius: 7px;
+        cursor: pointer;
+        text-align: left;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 6px;
+        transition: all 0.18s ease;
+    }
+
+    .mb-pass-switch-pill:hover {
+        color: #ffffff;
+        border-color: #3f3f4e;
+    }
+
+    .mb-pass-switch-pill.active {
+        background: rgba(229, 9, 20, 0.14);
+        border-color: #e50914;
+        color: #ffffff;
+    }
+
+    /* ส่วนหัวการ์ดตอนหุบ (Compact Summary Row - ซ่อนเมื่อการ์ดกำลังขยาย เพื่อไม่ให้ซ้ำซ้อน) */
+    .mb-compact-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 20px 24px;
+        cursor: pointer;
+        user-select: none;
+        gap: 18px;
+        transition: background 0.15s ease;
+    }
+
+    .mb-booking-item.is-expanded .mb-compact-header {
+        display: none;
+    }
+
+    .mb-compact-header:hover {
+        background: rgba(255, 255, 255, 0.025);
+    }
+
+    .mb-date-badge-box {
+        width: 58px;
+        min-width: 58px;
+        height: 64px;
+        background: #1a1a1f;
+        border: 1px solid #2c2c35;
+        border-radius: 10px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        line-height: 1.15;
+    }
+
+    .mb-date-badge-box .dow {
+        font-size: 10px;
+        font-weight: 700;
+        color: #71717a;
+        text-transform: uppercase;
+    }
+
+    .mb-date-badge-box .day {
+        font-size: 20px;
+        font-weight: 800;
+        color: #ffffff;
+        margin: 2px 0;
+    }
+
+    .mb-date-badge-box .mon {
+        font-size: 10px;
+        font-weight: 600;
+        color: #a1a1aa;
+        text-transform: uppercase;
+    }
+
+    .mb-compact-main {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .mb-compact-top-line {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 5px;
+    }
+
+    .mb-compact-date-text {
+        font-size: 15px;
+        font-weight: 700;
+        color: #ffffff;
+    }
+
+    .mb-compact-time-red {
+        font-size: 14px;
+        font-weight: 700;
+        color: #e50914;
+    }
+
+    .mb-compact-pod-pill {
+        font-size: 11.5px;
+        font-weight: 600;
+        background: #232329;
+        color: #d4d4d8;
+        padding: 3px 10px;
+        border-radius: 6px;
+        border: 1px solid #32323a;
+    }
+
+    .mb-compact-sub-line {
+        font-size: 13.5px;
+        color: #a1a1aa;
+        margin-bottom: 6px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .mb-compact-status-line {
+        font-size: 12.5px;
+        color: #71717a;
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .mb-expand-btn {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        background: #1b1b20;
+        border: 1px solid #2a2a32;
+        color: #a1a1aa;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+        flex-shrink: 0;
+    }
+
+    /* ส่วนเนื้อหาขยาย (Expanded Detail Body ตาม Darfwebsite) */
+    .mb-expanded-body {
+        display: none;
+        padding: 22px 26px 24px 26px;
+        animation: mbSlideDown 0.22s ease-out;
+    }
+
+    .mb-booking-item.is-expanded .mb-expanded-body {
+        display: block;
+    }
+
+    @@keyframes mbSlideDown {
+        from { opacity: 0; transform: translateY(-6px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .mb-exp-top-meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 12px;
+        padding-bottom: 18px;
+        cursor: pointer;
+        user-select: none;
+    }
+
+    .mb-exp-today-tag {
+        font-size: 15px;
+        color: #d4d4d8;
+    }
+
+    .mb-exp-today-tag strong {
+        color: #ffffff;
+        font-weight: 800;
+    }
+
+    .mb-exp-countdown-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        padding: 5px 12px;
+        border-radius: 6px;
+        background: rgba(229, 9, 20, 0.12);
+        border: 1px solid rgba(229, 9, 20, 0.3);
+        color: #ef4444;
+    }
+
+    .mb-exp-grid {
+        display: grid;
+        grid-template-columns: 270px 1fr;
+        gap: 24px;
+        margin-bottom: 20px;
+    }
+
+    .mb-pod-photo {
+        height: 195px;
+        border-radius: 10px;
+        background-size: cover;
+        background-position: center;
+        position: relative;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .mb-pod-photo-badge {
+        position: absolute;
+        bottom: 12px;
+        left: 12px;
+        background: rgba(0, 0, 0, 0.85);
+        backdrop-filter: blur(4px);
+        color: #ffffff;
+        font-size: 12px;
+        font-weight: 700;
+        padding: 4px 11px;
+        border-radius: 6px;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    .mb-exp-info-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 8px;
+        margin-bottom: 6px;
+    }
+
+    .mb-exp-pod-title {
+        font-size: 20px;
+        font-weight: 800;
+        color: #ffffff;
+        margin: 0;
+    }
+
+    .mb-exp-duration-tag {
+        font-size: 11.5px;
+        font-weight: 700;
+        color: #71717a;
+        letter-spacing: 0.5px;
+        white-space: nowrap;
+    }
+
+    .mb-exp-pod-desc {
+        font-size: 13.5px;
+        color: #a1a1aa;
+        margin-bottom: 14px;
+        line-height: 1.5;
+    }
+
+    /* Coach Strip inside Expanded Card */
+    .mb-coach-strip {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        background: #18181d;
+        border: 1px solid #27272f;
+        border-radius: 10px;
+        padding: 12px 16px;
+        margin-bottom: 14px;
+    }
+
+    .mb-coach-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #e50914, #7f1d1d);
+        color: #fff;
+        font-weight: 700;
+        font-size: 15px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .mb-coach-name {
+        font-size: 14px;
+        font-weight: 700;
+        color: #ffffff;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .mb-coach-sub {
+        font-size: 12.5px;
+        color: #a1a1aa;
+    }
+
+    /* 3 Spec Mini-Boxes */
+    .mb-specs-row {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+    }
+
+    .mb-spec-cell {
+        background: #16161a;
+        border: 1px solid #24242b;
+        border-radius: 8px;
+        padding: 10px 14px;
+    }
+
+    .mb-spec-cell .lbl {
+        font-size: 11.5px;
+        color: #71717a;
+        display: block;
+        margin-bottom: 3px;
+    }
+
+    .mb-spec-cell .val {
+        font-size: 13.5px;
+        font-weight: 700;
+        color: #ffffff;
+    }
+
+    /* Expanded Footer Buttons */
+    .mb-exp-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 12px;
+        padding-top: 16px;
+        border-top: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .mb-cancel-policy-note {
+        font-size: 12.5px;
+        color: #71717a;
+    }
+
+    .mb-exp-actions {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .mb-btn-reschedule {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        background: #1c1c22;
+        border: 1px solid #30303a;
+        color: #e4e4e7;
+        font-size: 13px;
+        font-weight: 600;
+        padding: 9px 16px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .mb-btn-reschedule:hover {
+        background: #272730;
+        color: #fff;
+    }
+
+    .mb-btn-cancel {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        background: rgba(239, 68, 68, 0.1);
+        border: 1px solid rgba(239, 68, 68, 0.35);
+        color: #f87171;
+        font-size: 13px;
+        font-weight: 600;
+        padding: 9px 16px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .mb-btn-cancel:hover {
+        background: rgba(239, 68, 68, 0.2);
+        color: #ffffff;
+    }
+
+    /* Section Divider Label */
+    .mb-section-divider {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin: 26px 0 14px 0;
+        font-size: 13.5px;
+        font-weight: 700;
+        color: #a1a1aa;
+        letter-spacing: 0.3px;
+    }
+
+    /* ================= RIGHT COLUMN: DYNAMIC ACCESS PASS & TELEMETRY ================= */
+    .mb-pass-panel {
+        background: #121215;
+        border: 1px solid #242429;
+        border-radius: 14px;
+        padding: 24px 26px;
+        margin-bottom: 20px;
+    }
+
+    .mb-pass-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+    }
+
+    .mb-pass-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13.5px;
+        font-weight: 800;
+        color: #ffffff;
+        letter-spacing: 0.5px;
+    }
+
+    .mb-secure-id-badge {
+        font-family: monospace;
+        font-size: 12px;
+        background: #1b1b20;
+        border: 1px solid #2c2c34;
+        color: #a1a1aa;
+        padding: 4px 10px;
+        border-radius: 6px;
+    }
+
+    .mb-qr-stage {
+        background: #0c0c0e;
+        border: 1px solid #1f1f25;
+        border-radius: 12px;
+        padding: 20px;
+        text-align: center;
+        margin-bottom: 16px;
+    }
+
+    .mb-qr-stage-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 12.5px;
+        color: #71717a;
+        margin-bottom: 16px;
+    }
+
+    .mb-qr-box-white {
+        width: 230px;
+        height: 230px;
+        background: #ffffff;
+        border-radius: 14px;
+        padding: 16px;
+        margin: 0 auto 16px auto;
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 8px 28px rgba(0, 0, 0, 0.6);
+    }
+
+    .mb-qr-center-logo {
+        position: absolute;
+        width: 46px;
+        height: 46px;
+        background: #09090b;
+        border: 2px solid #ffffff;
+        border-radius: 9px;
+        color: #ffffff;
+        font-size: 12px;
+        font-weight: 800;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        letter-spacing: 0.5px;
+    }
+
+    .mb-access-window-box {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: #17171c;
+        border: 1px solid #26262f;
+        border-radius: 10px;
+        padding: 14px 18px;
+        margin-bottom: 16px;
+    }
+
+    .mb-btn-ble-unlock {
+        width: 100%;
+        background: #e50914;
+        color: #ffffff;
+        font-size: 14.5px;
+        font-weight: 700;
+        border: none;
+        border-radius: 10px;
+        padding: 15px 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        box-shadow: 0 6px 20px rgba(229, 9, 20, 0.3);
+    }
+
+    .mb-btn-ble-unlock:hover {
+        background: #c80812;
+    }
+
+    /* Realtime Telemetry Card */
+    .mb-telemetry-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        margin: 16px 0;
+    }
+
+    .mb-tele-box {
+        background: #17171c;
+        border: 1px solid #25252d;
+        border-radius: 10px;
+        padding: 14px 14px;
+    }
+
+    .mb-tele-box .t-lbl {
+        font-size: 12px;
+        color: #71717a;
+        margin-bottom: 5px;
+    }
+
+    .mb-tele-box .t-val {
+        font-size: 20px;
+        font-weight: 800;
+        color: #ffffff;
+        margin-bottom: 3px;
+    }
+
+    .mb-tele-box .t-sub {
+        font-size: 11.5px;
+        color: #22c55e;
+        font-weight: 600;
+    }
+
+    /* ================= MOBILE TICKET CARD & BOTTOM SHEET QR PASS (OPTION 1) ================= */
+    .mb-mobile-ticket {
+        display: none;
+    }
+
+    .mb-qr-sheet-backdrop {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.78);
+        backdrop-filter: blur(6px);
+        z-index: 10040;
+        align-items: flex-end;
+        justify-content: center;
+    }
+
+    .mb-qr-sheet-backdrop.show {
+        display: flex;
+    }
+
+    .mb-qr-sheet-modal {
+        width: 100%;
+        max-width: 480px;
+        max-height: 90vh;
+        overflow-y: auto;
+        background: #121216;
+        border-top: 1px solid #2d2d38;
+        border-radius: 22px 22px 0 0;
+        padding: 14px 20px 30px 20px;
+        box-shadow: 0 -16px 48px rgba(0, 0, 0, 0.85);
+        animation: mbSheetSlideUp 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @@keyframes mbSheetSlideUp {
+        from { transform: translateY(100%); opacity: 0.5; }
+        to { transform: translateY(0); opacity: 1; }
+    }
+
+    .mb-sheet-handle {
+        width: 42px;
+        height: 4px;
+        background: #343440;
+        border-radius: 4px;
+        margin: 0 auto 14px auto;
+    }
+
+    @@media (max-width: 991.98px) {
+        .mb-top-bar {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .mb-main-title {
+            font-size: 20px;
+        }
+        .mb-segmented-tabs {
+            width: 100%;
+            overflow-x: auto;
+            justify-content: space-between;
+        }
+        .mb-seg-tab {
+            flex: 1;
+            justify-content: center;
+            padding: 8px 10px;
+            font-size: 12px;
+        }
+        .mb-iso-banner {
+            padding: 10px 14px;
+            font-size: 12px;
+            margin-bottom: 14px;
+        }
+        .mb-iso-zone {
+            display: none;
+        }
+
+        /* บนมือถือ ซ่อนหัวการ์ดแนวนอน 3 คอลัมน์ของ Desktop แล้วใช้การ์ดตั๋วแนวนอนเต็มจอแทน */
+        .mb-compact-header {
+            display: none !important;
+        }
+        .mb-exp-top-meta {
+            display: none !important;
+        }
+
+        .mb-mobile-ticket {
+            display: block;
+            padding: 16px;
+        }
+
+        .mb-mt-top-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .mb-mt-date-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 0;
+        }
+
+        .mb-mt-pod-badge {
+            background: rgba(229, 9, 20, 0.14);
+            border: 1px solid rgba(229, 9, 20, 0.4);
+            color: #ffffff;
+            font-size: 11px;
+            font-weight: 800;
+            padding: 3px 8px;
+            border-radius: 5px;
+            white-space: nowrap;
+        }
+
+        .mb-mt-date-str {
+            font-size: 13px;
+            font-weight: 700;
+            color: #ffffff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .mb-mt-time-str {
+            font-size: 13px;
+            font-weight: 800;
+            color: #e50914;
+            white-space: nowrap;
+        }
+
+        .mb-mt-title {
+            font-size: 16px;
+            font-weight: 800;
+            color: #ffffff;
+            margin-bottom: 4px;
+            line-height: 1.3;
+        }
+
+        .mb-mt-sub {
+            font-size: 12.5px;
+            color: #a1a1aa;
+            margin-bottom: 8px;
+            line-height: 1.4;
+        }
+
+        .mb-mt-meta-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 11.5px;
+            color: #71717a;
+            margin-bottom: 14px;
+        }
+
+        .mb-mt-btn-row {
+            display: grid;
+            grid-template-columns: 1.25fr 1fr;
+            gap: 8px;
+        }
+
+        .mb-mt-btn-qr {
+            background: #e50914;
+            color: #ffffff;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 12px;
+            font-size: 12.5px;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            cursor: pointer;
+            box-shadow: 0 4px 14px rgba(229, 9, 20, 0.28);
+        }
+
+        .mb-mt-btn-detail {
+            background: #1b1b22;
+            color: #e4e4e7;
+            border: 1px solid #2e2e3a;
+            border-radius: 8px;
+            padding: 10px 10px;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            cursor: pointer;
+        }
+
+        /* บนมือถือ ซ่อนรายละเอียดจนกว่าผู้ใช้จะกดปุ่ม "ดูรายละเอียด / เลื่อนรอบ" */
+        .mb-expanded-body {
+            display: none !important;
+            padding: 0 16px 16px 16px;
+            border-top: 1px dashed #282832;
+            padding-top: 14px;
+        }
+
+        .mb-booking-item.mobile-detail-open .mb-expanded-body {
+            display: block !important;
+        }
+
+        .mb-exp-grid {
+            grid-template-columns: 1fr;
+            gap: 12px;
+        }
+        .mb-pod-photo {
+            height: 140px;
+        }
+        .mb-specs-row {
+            grid-template-columns: repeat(3, 1fr);
+        }
+        .mb-exp-footer {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        .mb-exp-actions {
+            width: 100%;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+        }
+        .mb-btn-reschedule, .mb-btn-cancel {
+            justify-content: center;
+            width: 100%;
+        }
+    }
+</style>
+
+<main class="cd-content">
+    <div class="mb-page-wrap">
+        <!-- Mobile Top Bar (โลโก้อยู่ทางซ้าย ชื่อหน้าอยู่ตรงกลาง) -->
+        <div class="pg-m-topbar d-flex d-lg-none">
+            <a asp-controller="Customer" asp-action="Index" asp-route-email="@ViewBag.Email" class="pg-m-topbar-logo-left">
+                <img src="~/images/logo.png" alt="PrivateGym" />
+            </a>
+            <span class="pg-m-topbar-center">การจองของฉัน</span>
+            <div class="pg-m-topbar-right"></div>
+        </div>
+
+        <!-- Top Header & Segmented Tabs -->
+        <div class="mb-top-bar">
+            <h1 class="mb-main-title d-none d-lg-block">การจองของฉันและบัตรผ่านเข้าห้อง</h1>
+
+            <div class="mb-segmented-tabs">
+                <a asp-controller="Customer" asp-action="MyBookings" asp-route-email="@ViewBag.Email" asp-route-tab="upcoming"
+                   class="mb-seg-tab @(activeTab == "upcoming" ? "active" : "")">
+                    <span>การจองที่กำลังจะมาถึง</span>
+                    <span class="count-red">@upcomingList.Count</span>
+                </a>
+                <a asp-controller="Customer" asp-action="MyBookings" asp-route-email="@ViewBag.Email" asp-route-tab="history"
+                   class="mb-seg-tab @(activeTab == "history" ? "active" : "")">
+                    <span>ประวัติการใช้งาน</span>
+                    <span class="count-dim">@historyList.Count</span>
+                </a>
+                <a asp-controller="Customer" asp-action="MyBookings" asp-route-email="@ViewBag.Email" asp-route-tab="cancelled"
+                   class="mb-seg-tab @(activeTab == "cancelled" ? "active" : "")">
+                    <span>ยกเลิกแล้ว</span>
+                    <span class="count-dim">@cancelledList.Count</span>
+                </a>
+            </div>
+        </div>
+
+        @if (TempData["Success"] != null)
+        {
+            <div class="alert alert-success" style="background: rgba(34, 197, 94, 0.15); border: 1px solid #22c55e; color: #fff; border-radius: 10px; padding: 12px 16px; margin-bottom: 18px; font-size: 13px;">
+                @TempData["Success"]
+            </div>
+        }
+        @if (TempData["Error"] != null)
+        {
+            <div class="alert alert-danger" style="background: rgba(239, 68, 68, 0.15); border: 1px solid #ef4444; color: #fff; border-radius: 10px; padding: 12px 16px; margin-bottom: 18px; font-size: 13px;">
+                @TempData["Error"]
+            </div>
+        }
+
+        <div class="row g-4">
+            <!-- ================= LEFT COLUMN: EXPANDABLE BOOKINGS LIST ================= -->
+            <div class="col-lg-7">
+                <!-- Security Isolation Banner -->
+                <div class="mb-iso-banner">
+                    <div class="mb-iso-left">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#e50914" stroke-width="2.2">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                        </svg>
+                        <span>ประตูล็อกอัตโนมัติ 55dB Active Sound Isolation พร้อมใช้งาน 15 นาทีก่อนเวลา</span>
+                    </div>
+                    <span class="mb-iso-zone">ZONE-01 / FL.4</span>
+                </div>
+
+                @if (!displayList.Any())
+                {
+                    var expiredTodayNoShows = historyList.Where(b => b.BookingDate == todayDate && b.Status == "Confirmed" && !HasCheckIn(b)).ToList();
+
+                    <div class="cd-card" style="padding: 44px 24px; text-align: center; background: #121215; border: 1px dashed #2e2e36; border-radius: 14px;">
+                        <div style="width: 56px; height: 56px; border-radius: 50%; background: rgba(229, 9, 20, 0.12); color: #e50914; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 14px;">
+                            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                <line x1="16" y1="2" x2="16" y2="6"></line>
+                                <line x1="8" y1="2" x2="8" y2="6"></line>
+                                <line x1="3" y1="10" x2="21" y2="10"></line>
+                            </svg>
+                        </div>
+                        <h4 style="color: #fff; font-size: 17px; font-weight: 700; margin-bottom: 6px;">ไม่มีรายการจองที่กำลังจะมาถึงในขณะนี้</h4>
+                        <p style="color: #a1a1aa; font-size: 13px; margin-bottom: 18px;">คุณสามารถสำรองห้อง Private Pod หรือโค้ชส่วนตัวเพื่อรับรหัส QR Pass เข้าห้องได้ทันที</p>
+
+                        @if (activeTab == "upcoming" && expiredTodayNoShows.Any())
+                        {
+                            <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.38); border-radius: 10px; padding: 12px 16px; max-width: 520px; margin: 0 auto 20px auto; text-align: left;">
+                                <div style="font-size: 13px; font-weight: 700; color: #fbbf24; margin-bottom: 4px;">
+                                    รายการจองของวันนี้ที่เลยเวลาสิ้นสุดแล้ว (@expiredTodayNoShows.Count รายการ) ถูกตัดรอบอัตโนมัติ
+                                </div>
+                                <div style="font-size: 12px; color: #d4d4d8; line-height: 1.5; margin-bottom: 10px;">
+                                    เนื่องจากเลยเวลาสิ้นสุดเซสชันโดยไม่มีการสแกนเช็กอินเข้าห้อง ระบบจึงปิดรหัสประตู QR และย้ายรายการไปไว้ที่แท็บ <strong>ประวัติการใช้งาน (ไม่ได้เข้าใช้งาน)</strong> เรียบร้อยแล้วครับ
+                                </div>
+                                <a asp-controller="Customer" asp-action="MyBookings" asp-route-email="@ViewBag.Email" asp-route-tab="history"
+                                   style="display: inline-block; background: #fbbf24; color: #09090b; font-size: 12px; font-weight: 700; padding: 6px 14px; border-radius: 6px; text-decoration: none;">
+                                    ดูในประวัติการใช้งาน (@historyList.Count) &rarr;
+                                </a>
+                            </div>
+                        }
+
+                        <a asp-controller="Customer" asp-action="BookSession" asp-route-email="@ViewBag.Email" class="cd-btn-primary" style="display: inline-flex; padding: 10px 24px; text-decoration: none; border-radius: 8px;">
+                            + จองบริการรอบฝึกตอนนี้
+                        </a>
+                    </div>
+                }
+                else
+                {
+                    for (int idx = 0; idx < displayList.Count; idx++)
+                    {
+                        var b = displayList[idx];
+                        bool isFirst = (idx == 0);
+                        bool isToday = b.BookingDate == todayDate;
+                        bool isExpired = IsSessionExpired(b);
+                        bool hasCheckedIn = HasCheckIn(b);
+                        var latestCheckIn = b.CheckIns?.OrderByDescending(c => c.CheckInId).FirstOrDefault();
+                        string checkInTimeStr = latestCheckIn?.CheckInTime != null ? latestCheckIn.CheckInTime.Value.ToString("HH:mm น.") : "";
+                        string checkOutTimeStr = latestCheckIn?.CheckOutTime != null ? latestCheckIn.CheckOutTime.Value.ToString("HH:mm น.") : "";
+
+                        // 4 สถานะจริงตามเวลาและตาราง CheckIns
+                        bool isNoShow = (b.Status == "Confirmed" && isExpired && !hasCheckedIn);
+                        bool isCompletedSession = (b.Status == "Completed" || (isExpired && hasCheckedIn));
+                        bool isCheckedInActive = (b.Status == "Confirmed" && !isExpired && hasCheckedIn);
+                        bool isUpcomingWaiting = (b.Status == "Confirmed" && !isExpired && !hasCheckedIn);
+
+                        int dowIndex = (int)b.BookingDate.DayOfWeek;
+                        string thaiDay = thaiDayNames[dowIndex];
+                        string engDow = engDayNames[dowIndex];
+                        string thaiMonth = thaiShortMonths[b.BookingDate.Month - 1];
+                        string engMonth = engShortMonths[b.BookingDate.Month - 1];
+                        string dateDisplay = $"{thaiDay} {b.BookingDate.Day} {thaiMonth} {b.BookingDate.Year}";
+
+                        var meta = GetPodMeta(b.Pod?.PodName, b.PodId);
+                        string podBadgeLabel = $"Pod 0{((b.PodId - 1) % 6) + 1}";
+
+                        string coachFullName = b.Trainer != null
+                            ? (b.Trainer.User?.FullName ?? $"Coach #{b.TrainerId}")
+                            : "ฝึกซ้อมส่วนตัว (Self-Training)";
+                        string coachSub = b.Trainer != null
+                            ? $"1-on-1 {b.Trainer.Specialty}"
+                            : "คอร์สออกกำลังกายเดี่ยวแบบส่วนตัว • Autonomous Pod";
+
+                        var accessOpenTime = b.StartTime.AddMinutes(-15);
+                        string accessWindowStr = $"{accessOpenTime:HH:mm} - {b.EndTime:HH:mm} น.";
+
+                        if (idx == 1)
+                        {
+                            <div class="mb-section-divider d-none d-lg-flex">
+                                <span>รายการลำดับถัดไป — กดที่รายการเพื่อขยายหรือหุบรายละเอียด</span>
+                                <span>LIST (@(displayList.Count - 1))</span>
+                            </div>
+                        }
+
+                        string cardCustomStyle = "";
+                        if (isCheckedInActive)
+                        {
+                            cardCustomStyle = "border-color: rgba(34, 197, 94, 0.55); box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.25);";
+                        }
+                        else if (isNoShow)
+                        {
+                            cardCustomStyle = "opacity: 0.78; border-color: #26262e;";
+                        }
+
+                        <div class="mb-booking-item @(isFirst && !isExpired ? "is-expanded is-active-pass" : (isFirst ? "is-expanded" : ""))"
+                             id="bookingCard_@b.BookingId"
+                             style="@cardCustomStyle"
+                             data-booking-id="@b.BookingId"
+                             data-ref="PG-@b.BookingId.ToString("D5")"
+                             data-pod-code="@meta.PodCode"
+                             data-pod-label="@podBadgeLabel.ToUpper()"
+                             data-pod-name="@(b.Pod?.PodName ?? meta.FullTitle)"
+                             data-date-str="@(isToday ? "วันนี้ • " + dateDisplay : dateDisplay)"
+                             data-time-str="@b.StartTime.ToString("HH:mm") - @b.EndTime.ToString("HH:mm") น."
+                             data-access-window="@accessWindowStr"
+                             data-checked-in="@(isCheckedInActive ? "1" : "0")"
+                             data-expired="@(isExpired ? "1" : "0")">
+
+                            <!-- ================= MOBILE TICKET CARD VIEW (แบบที่ 1) ================= -->
+                            <div class="mb-mobile-ticket">
+                                <!-- Row 1: ป้ายห้อง + วันที่ ด้านซ้าย | เวลาสีแดง ด้านขวา -->
+                                <div class="mb-mt-top-row">
+                                    <div class="mb-mt-date-group">
+                                        <span class="mb-mt-pod-badge" style="@(isNoShow ? "background: #27272a; border-color: #3f3f46; color: #a1a1aa;" : "")">@podBadgeLabel.ToUpper()</span>
+                                        <span class="mb-mt-date-str" style="@(isNoShow ? "text-decoration: line-through; color: #71717a;" : "")">
+                                            @if (isToday)
+                                            {
+                                                <span style="color: @(isNoShow ? "#71717a" : "#e50914");">วันนี้ &bull; </span>
+                                            }
+                                            @dateDisplay
+                                        </span>
+                                    </div>
+                                    <span class="mb-mt-time-str" style="@(isNoShow ? "text-decoration: line-through; color: #71717a;" : "")">
+                                        @b.StartTime.ToString("HH:mm") - @b.EndTime.ToString("HH:mm") น.
+                                    </span>
+                                </div>
+
+                                <!-- Row 2: ชื่อห้องเต็ม + ข้อมูลโค้ช/สาขา (ขีดฆ่าถ้าไม่ได้เข้าใช้งาน) -->
+                                <div class="mb-mt-title" style="@(isNoShow ? "text-decoration: line-through; color: #a1a1aa;" : "")">@meta.FullTitle</div>
+                                <div class="mb-mt-sub">
+                                    @(b.Trainer != null ? $"ร่วมกับ {coachFullName}" : "ฝึกซ้อมส่วนตัว (Self-Training)") &bull; สาขา @(b.Pod?.Branch?.BranchName ?? "ทองหล่อ")
+                                </div>
+
+                                <!-- Row 3: สถานะ 4 รูปแบบตามจริง + รหัสใบจอง -->
+                                <div class="mb-mt-meta-row">
+                                    <div>
+                                        @if (isCheckedInActive)
+                                        {
+                                            <span style="color: #4ade80; font-weight: 700;">● เช็กอินแล้ว • กำลังใช้งานห้องซ้อม (@checkInTimeStr)</span>
+                                        }
+                                        else if (isUpcomingWaiting)
+                                        {
+                                            <span style="color: #22c55e; font-weight: 700;">● จองสำเร็จ (รอเช็กอินเข้าห้อง)</span>
+                                        }
+                                        else if (isCompletedSession)
+                                        {
+                                            <span style="color: #4ade80; font-weight: 700;">● เข้าฝึกซ้อมสำเร็จ @(string.IsNullOrEmpty(checkInTimeStr) ? "" : $"(เช็กอิน {checkInTimeStr})")</span>
+                                        }
+                                        else if (isNoShow)
+                                        {
+                                            <span style="color: #f59e0b; font-weight: 700;">● ไม่ได้เข้าใช้งาน (เลยเวลาเช็กอิน)</span>
+                                        }
+                                        else
+                                        {
+                                            <span style="color: #ef4444; font-weight: 700;">● ยกเลิกแล้ว</span>
+                                        }
+                                    </div>
+                                    <span style="font-family: monospace; color: #a1a1aa;">#PG-@b.BookingId.ToString("D5")</span>
+                                </div>
+
+                                <!-- Row 4: ปุ่มสำหรับมือถือ แยกตามสถานะจริง -->
+                                @if (!isExpired && b.Status == "Confirmed")
+                                {
+                                    <div class="mb-mt-btn-row">
+                                        <button type="button" class="mb-mt-btn-qr" style="@(isCheckedInActive ? "background: #16a34a; box-shadow: 0 4px 14px rgba(22, 163, 74, 0.3);" : "")" onclick="openMobileQrSheet(@b.BookingId)">
+                                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
+                                                <rect x="3" y="3" width="7" height="7"></rect>
+                                                <rect x="14" y="3" width="7" height="7"></rect>
+                                                <rect x="14" y="14" width="7" height="7"></rect>
+                                                <rect x="3" y="14" width="7" height="7"></rect>
+                                            </svg>
+                                            <span>@(isCheckedInActive ? "กำลังซ้อม • ดูบัตร/เช็กเอาต์" : "เปิด QR / เช็กอินเข้าห้อง")</span>
+                                        </button>
+                                        <button type="button" class="mb-mt-btn-detail" onclick="toggleMobileDetail(@b.BookingId)">
+                                            <span id="mobileDetailBtnText_@b.BookingId">@(isCheckedInActive ? "ดูรายละเอียดห้อง" : "ดูรายละเอียด / เลื่อนรอบ")</span>
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
+                                                <polyline points="6 9 12 15 18 9"></polyline>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 8px; border-top: 1px dashed #272730; font-size: 11.5px; color: #71717a;">
+                                        <span>@(isNoShow ? "ตัดรอบอัตโนมัติเนื่องจากไม่ได้เช็กอินตามเวลา" : (isCompletedSession ? $"เสร็จสิ้นการซ้อม {(string.IsNullOrEmpty(checkOutTimeStr) ? "" : "• เช็กเอาต์ " + checkOutTimeStr)}" : "รายการนี้ถูกยกเลิกแล้ว"))</span>
+                                        <button type="button" onclick="toggleMobileDetail(@b.BookingId)" style="background: none; border: none; color: #d4d4d8; font-size: 11.5px; font-weight: 600; text-decoration: underline; padding: 0;">
+                                            ดูรายละเอียด
+                                        </button>
+                                    </div>
+                                }
+                            </div>
+
+                            <!-- แถบหัวการ์ดตอนหุบ (Desktop): กดเพื่อ ขยายรายละเอียด และซิงค์ QR Pass ด้านขวา -->
+                            <div class="mb-compact-header" onclick="toggleBookingCard(@b.BookingId)">
+                                <div class="mb-date-badge-box" style="@(isNoShow ? "opacity: 0.6;" : "")">
+                                    <span class="dow">@engDow</span>
+                                    <span class="day">@b.BookingDate.Day</span>
+                                    <span class="mon">@engMonth</span>
+                                </div>
+
+                                <div class="mb-compact-main">
+                                    <div class="mb-compact-top-line">
+                                        <span class="mb-compact-date-text" style="@(isNoShow ? "text-decoration: line-through; color: #71717a;" : "")">
+                                            @if (isToday)
+                                            {
+                                                <span style="color: @(isNoShow ? "#71717a" : "#e50914");">TODAY • </span>
+                                            }
+                                            @dateDisplay
+                                        </span>
+                                        <span class="mb-compact-time-red" style="@(isNoShow ? "text-decoration: line-through; color: #71717a;" : "")">@b.StartTime.ToString("HH:mm") - @b.EndTime.ToString("HH:mm") น.</span>
+                                        <span class="mb-compact-pod-pill">@podBadgeLabel</span>
+                                    </div>
+
+                                    <div class="mb-compact-sub-line" style="@(isNoShow ? "text-decoration: line-through; color: #71717a;" : "")">
+                                        @(b.Pod?.PodName ?? meta.FullTitle) &bull;
+                                        @(b.Trainer != null ? $"ร่วมกับ {coachFullName}" : "คอร์สออกกำลังกายเดี่ยวแบบส่วนตัว (Self-Training)")
+                                    </div>
+
+                                    <div class="mb-compact-status-line">
+                                        @if (isCheckedInActive)
+                                        {
+                                            <span style="color: #4ade80; font-weight: 700;">● เช็กอินแล้ว • กำลังใช้งานห้องซ้อม (เริ่ม @checkInTimeStr)</span>
+                                        }
+                                        else if (isUpcomingWaiting)
+                                        {
+                                            <span style="color: #22c55e; font-weight: 600;">● จองสำเร็จ (รอเช็กอินเข้าห้อง)</span>
+                                        }
+                                        else if (isCompletedSession)
+                                        {
+                                            <span style="color: #4ade80; font-weight: 600;">● เข้าฝึกซ้อมสำเร็จ @(string.IsNullOrEmpty(checkInTimeStr) ? "" : $"(เช็กอิน {checkInTimeStr})")</span>
+                                        }
+                                        else if (isNoShow)
+                                        {
+                                            <span style="color: #f59e0b; font-weight: 700;">● ไม่ได้เข้าใช้งาน (เลยเวลาเช็กอิน)</span>
+                                        }
+                                        else
+                                        {
+                                            <span style="color: #ef4444; font-weight: 600;">● ยกเลิกแล้ว</span>
+                                        }
+                                        <span>&bull; ฉนวนกันเสียง 55dB พร้อม @meta.EquipShort</span>
+                                    </div>
+                                </div>
+
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    @if (!isExpired && b.Status == "Confirmed")
+                                    {
+                                        <button type="button" class="mb-qr-select-btn qr-btn-indicator" onclick="event.stopPropagation(); selectBookingPass(@b.BookingId)">
+                                            <span class="qr-btn-text">@(isFirst ? "กำลังแสดง QR ห้องนี้" : "แสดง QR ห้องนี้")</span>
+                                        </button>
+                                    }
+                                    else if (isNoShow)
+                                    {
+                                        <span style="background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.35); color: #fbbf24; font-size: 11px; font-weight: 700; padding: 5px 10px; border-radius: 6px;">
+                                            ไม่ได้เข้าใช้งาน
+                                        </span>
+                                    }
+                                    <button type="button" class="mb-expand-btn" title="กดเพื่อขยายรายละเอียด">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+                                            <polyline points="6 9 12 15 18 9"></polyline>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- ส่วนรายละเอียดแบบเต็มเมื่อกดขยาย (Expanded View) -->
+                            <div class="mb-expanded-body" onclick="@(!isExpired && b.Status == "Confirmed" ? $"selectBookingPass({b.BookingId})" : "")">
+                                <div class="mb-exp-top-meta">
+                                    <div class="mb-exp-today-tag" onclick="event.stopPropagation(); toggleBookingCard(@b.BookingId)" title="กดเพื่อหุบรายละเอียด">
+                                        @if (isToday)
+                                        {
+                                            <span style="color: @(isNoShow ? "#71717a" : "#e50914"); font-weight: 800;">TODAY &bull; </span>
+                                        }
+                                        <strong style="@(isNoShow ? "text-decoration: line-through; color: #a1a1aa;" : "")">@dateDisplay</strong>
+                                        <span style="color: #a1a1aa; @(isNoShow ? "text-decoration: line-through;" : "")"> &bull; @b.StartTime.ToString("HH:mm") - @b.EndTime.ToString("HH:mm") น.</span>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        @if (!isExpired && b.Status == "Confirmed")
+                                        {
+                                            <button type="button" class="mb-qr-select-btn qr-btn-indicator" onclick="event.stopPropagation(); selectBookingPass(@b.BookingId)">
+                                                <span class="qr-btn-text">@(isFirst ? "กำลังแสดง QR ห้องนี้ (#PG-" + b.BookingId.ToString("D5") + ")" : "กดเพื่อแสดง QR ห้องนี้ (#PG-" + b.BookingId.ToString("D5") + ")")</span>
+                                            </button>
+                                        }
+                                        <button type="button" class="mb-expand-btn" onclick="event.stopPropagation(); toggleBookingCard(@b.BookingId)" style="background: rgba(229, 9, 20, 0.15); border-color: rgba(229, 9, 20, 0.4); color: #ffffff;" title="หุบรายละเอียด">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" style="transform: rotate(180deg);">
+                                                <polyline points="6 9 12 15 18 9"></polyline>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="mb-exp-grid">
+                                    <!-- รูปห้อง Pod -->
+                                    <div class="mb-pod-photo" style="background-image: linear-gradient(rgba(0,0,0,0.15), rgba(0,0,0,0.65)), url('/images/hero-bg.jpg'); @(isNoShow ? "filter: grayscale(80%);" : "")">
+                                        <span class="mb-pod-photo-badge">@podBadgeLabel.ToUpper()</span>
+                                    </div>
+
+                                    <!-- รายละเอียดห้อง + โค้ช + 3 กล่องสเปก -->
+                                    <div>
+                                        <div class="mb-exp-info-head">
+                                            <h3 class="mb-exp-pod-title" style="@(isNoShow ? "text-decoration: line-through; color: #a1a1aa;" : "")">@meta.FullTitle</h3>
+                                            <span class="mb-exp-duration-tag">75 MIN SESSION</span>
+                                        </div>
+                                        <div class="mb-exp-pod-desc">@meta.SubDesc</div>
+
+                                        <!-- แถบข้อมูลผู้ฝึกสอน / โค้ช -->
+                                        <div class="mb-coach-strip">
+                                            <div class="mb-coach-avatar">
+                                                @(b.Trainer != null ? "C" : "S")
+                                            </div>
+                                            <div>
+                                                <div class="mb-coach-name">
+                                                    <span>@coachFullName</span>
+                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#e50914" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                                </div>
+                                                <div class="mb-coach-sub">@coachSub &bull; สาขา @(b.Pod?.Branch?.BranchName ?? "ทองหล่อ")</div>
+                                            </div>
+                                        </div>
+
+                                        <!-- 3 กล่องสเปกย่อย -->
+                                        <div class="mb-specs-row">
+                                            <div class="mb-spec-cell">
+                                                <span class="lbl">เสียงรบกวน</span>
+                                                <span class="val">ฉนวน 55dB</span>
+                                            </div>
+                                            <div class="mb-spec-cell">
+                                                <span class="lbl">อุณหภูมิเซ็ต</span>
+                                                <span class="val">21.0°C</span>
+                                            </div>
+                                            <div class="mb-spec-cell">
+                                                <span class="lbl">อุปกรณ์</span>
+                                                <span class="val">@meta.EquipShort</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- ปุ่มจัดการด้านล่างของการ์ดที่ขยาย แยกตาม 4 สถานะจริง -->
+                                <div class="mb-exp-footer">
+                                    @if (isCheckedInActive)
+                                    {
+                                        <div class="mb-cancel-policy-note" style="display: flex; align-items: center; gap: 6px; color: #4ade80; font-weight: 600;">
+                                            <span>คุณเช็กอินเข้าห้องซ้อมเมื่อเวลา @checkInTimeStr • ระบบกำลังเปิดระบบปรับอากาศและไฟห้องซ้อม</span>
+                                        </div>
+                                        <div class="mb-exp-actions">
+                                            <form asp-controller="Customer" asp-action="CheckOutSession" method="post" style="margin: 0;">
+                                                <input type="hidden" name="bookingId" value="@b.BookingId" />
+                                                <input type="hidden" name="email" value="@ViewBag.Email" />
+                                                <button type="submit" style="background: #16a34a; color: #ffffff; border: none; border-radius: 8px; padding: 9px 18px; font-size: 13px; font-weight: 700; cursor: pointer;">
+                                                    เช็กเอาต์ / จบการซ้อม (บันทึกเข้าประวัติ)
+                                                </button>
+                                            </form>
+                                        </div>
+                                    }
+                                    else if (isUpcomingWaiting)
+                                    {
+                                        <div class="mb-cancel-policy-note" style="display: flex; align-items: center; gap: 6px;">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <circle cx="12" cy="12" r="10"></circle>
+                                                <line x1="12" y1="16" x2="12" y2="12"></line>
+                                                <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                                            </svg>
+                                            <span>กดเช็กอินเพื่อปลดล็อกประตูเข้าห้อง หรือยกเลิกล่วงหน้าก่อนเวลาเริ่มซ้อม</span>
+                                        </div>
+
+                                        <div class="mb-exp-actions">
+                                            <form asp-controller="Customer" asp-action="CheckInSession" method="post" style="margin: 0;">
+                                                <input type="hidden" name="bookingId" value="@b.BookingId" />
+                                                <input type="hidden" name="email" value="@ViewBag.Email" />
+                                                <button type="submit" style="background: #16a34a; color: #ffffff; border: none; border-radius: 8px; padding: 9px 16px; font-size: 13px; font-weight: 700; cursor: pointer;">
+                                                    เช็กอินเข้าห้องซ้อม
+                                                </button>
+                                            </form>
+
+                                            <button type="button"
+                                                    class="mb-btn-reschedule"
+                                                    onclick="openRescheduleModal(@b.BookingId, '@b.BookingDate.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)', '@b.StartTime.ToString("HH:mm") - @b.EndTime.ToString("HH:mm")', '@(b.Pod?.PodName ?? meta.FullTitle)')">
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                                                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                                                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                                                </svg>
+                                                <span>ขอเลื่อนรอบ</span>
+                                            </button>
+
+                                            <form asp-controller="Customer" asp-action="CancelBooking" method="post" style="margin: 0;"
+                                                  onsubmit="return confirm('ยืนยันการยกเลิกการจอง #BK-@b.BookingId.ToString("D5")? ระบบจะคืนโควต้ากลับเข้าบัญชีของคุณทันที');">
+                                                <input type="hidden" name="bookingId" value="@b.BookingId" />
+                                                <input type="hidden" name="email" value="@ViewBag.Email" />
+                                                <button type="submit" class="mb-btn-cancel">
+                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                        <circle cx="12" cy="12" r="10"></circle>
+                                                        <line x1="15" y1="9" x2="9" y2="15"></line>
+                                                        <line x1="9" y1="9" x2="15" y2="15"></line>
+                                                    </svg>
+                                                    <span>ยกเลิกการจอง</span>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    }
+                                    else if (isNoShow)
+                                    {
+                                        <div class="mb-cancel-policy-note" style="color: #fbbf24;">
+                                            รายการนี้เลยเวลาสิ้นสุด (@b.EndTime.ToString("HH:mm") น.) โดยไม่ได้สแกนเช็กอินเข้าห้องซ้อม ระบบจึงบันทึกสถานะเป็น ไม่ได้เข้าใช้งาน
+                                        </div>
+                                        <a asp-controller="Customer" asp-action="BookSession" asp-route-email="@ViewBag.Email" class="mb-btn-reschedule" style="text-decoration: none;">
+                                            + จองรอบซ้อมใหม่
+                                        </a>
+                                    }
+                                    else if (isCompletedSession)
+                                    {
+                                        <div class="mb-cancel-policy-note" style="color: #4ade80;">
+                                            เข้าฝึกซ้อมสำเร็จเรียบร้อยแล้ว @(string.IsNullOrEmpty(checkInTimeStr) ? "" : $"(เช็กอิน {checkInTimeStr}{(string.IsNullOrEmpty(checkOutTimeStr) ? "" : $" - เช็กเอาต์ {checkOutTimeStr}")})")
+                                        </div>
+                                        <a asp-controller="Customer" asp-action="BookSession" asp-route-email="@ViewBag.Email" class="mb-btn-reschedule" style="text-decoration: none;">
+                                            + จองซ้อมห้องนี้อีกครั้ง
+                                        </a>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+
+            <!-- ================= RIGHT COLUMN: DYNAMIC ACCESS PASS & TELEMETRY ================= -->
+            <div class="col-lg-5 d-none d-lg-block" id="dynamicPassColumn">
+                @if (primaryBooking == null)
+                {
+                    <!-- กรณีไม่มีการจองที่กำลังเปิดใช้งาน (เช่น เลยเวลา 4 ทุ่มไปแล้ว หรืออยู่ในประวัติ) จะไม่เปิด QR ให้สแกนเข้าห้องมั่วซั่ว -->
+                    <div class="mb-pass-panel" style="text-align: center; padding: 36px 24px;">
+                        <div style="width: 54px; height: 54px; border-radius: 50%; background: #18181f; border: 1px solid #2b2b36; color: #71717a; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 14px;">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                            </svg>
+                        </div>
+                        <div style="font-size: 15px; font-weight: 800; color: #ffffff; margin-bottom: 6px;">
+                            บัตรผ่าน QR ปิดใช้งานชั่วคราว
+                        </div>
+                        <p style="font-size: 12.5px; color: #a1a1aa; line-height: 1.55; margin-bottom: 18px;">
+                            ไม่มีเซสชันที่กำลังเปิดให้เข้าใช้งานในขณะนี้ รอบการจองที่เลยเวลาสิ้นสุดไปแล้วจะถูกปิดสัญญาณปลดล็อกประตูอัตโนมัติเพื่อความปลอดภัย
+                        </p>
+                        <a asp-controller="Customer" asp-action="BookSession" asp-route-email="@ViewBag.Email" class="cd-btn-primary" style="display: inline-flex; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-size: 13px;">
+                            + จองรอบเวลาซ้อมใหม่เพื่อรับ QR Pass
+                        </a>
+                    </div>
+                }
+                else
+                {
+                    var pMeta = GetPodMeta(primaryBooking.Pod?.PodName, primaryBooking.PodId);
+                    string pPodLabel = $"POD 0{((primaryBooking.PodId - 1) % 6) + 1}";
+                    string pSecureId = $"#PG-{primaryBooking.BookingId:D5}";
+                    string pAccessWindow = $"{primaryBooking.StartTime.AddMinutes(-15):HH:mm} - {primaryBooking.EndTime:HH:mm} น.";
+                    bool pIsCheckedIn = HasCheckIn(primaryBooking);
+
+                    <!-- Card 1: DYNAMIC ACCESS PASS -->
+                    <div class="mb-pass-panel">
+                        <div class="mb-pass-top">
+                            <div class="mb-pass-title">
+                                <span style="color: #22c55e;">●</span>
+                                <span>DYNAMIC ACCESS PASS</span>
+                            </div>
+                            <span class="mb-secure-id-badge" id="passSecureId">SECURE-ID: @pSecureId</span>
+                        </div>
+
+                        @if (upcomingList.Count > 1)
+                        {
+                            <div style="font-size: 11.5px; color: #a1a1aa; margin-bottom: 6px; font-weight: 600;">
+                                เลือกสลับบัตรผ่าน QR ตามรายการจองที่กำลังจะมาถึง (@upcomingList.Count รายการ):
+                            </div>
+                            <div class="mb-pass-switcher">
+                                @for (int sIdx = 0; sIdx < upcomingList.Count; sIdx++)
+                                {
+                                    var sb = upcomingList[sIdx];
+                                    string sPodLabel = $"POD 0{((sb.PodId - 1) % 6) + 1}";
+                                    <button type="button"
+                                            class="mb-pass-switch-pill @(sIdx == 0 ? "active" : "")"
+                                            id="passSwitchPill_@sb.BookingId"
+                                            onclick="selectBookingPass(@sb.BookingId)">
+                                        <span><strong>@sPodLabel</strong> &bull; @sb.StartTime.ToString("HH:mm") น.</span>
+                                        <span style="font-family: monospace; font-size: 10.5px; opacity: 0.85;">#PG-@sb.BookingId.ToString("D5")</span>
+                                    </button>
+                                }
+                            </div>
+                        }
+
+                        <div class="mb-qr-stage">
+                            <div class="mb-qr-stage-top">
+                                <span style="display: inline-flex; align-items: center; gap: 5px;">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                                        <polyline points="23 4 23 10 17 10"></polyline>
+                                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                                    </svg>
+                                    <span>อัปเดตรหัสอัตโนมัติ</span>
+                                </span>
+                                <span style="color: #e50914; font-weight: 600;">รีเฟรชใน <span id="qrRefreshCountdown">29</span> วิ</span>
+                            </div>
+
+                            <div class="mb-qr-box-white">
+                                <svg viewBox="0 0 100 100" fill="#000" style="width: 100%; height: 100%;">
+                                    <rect x="4" y="4" width="28" height="28" fill="none" stroke="#000" stroke-width="6" />
+                                    <rect x="12" y="12" width="12" height="12" fill="#000" />
+                                    <rect x="68" y="4" width="28" height="28" fill="none" stroke="#000" stroke-width="6" />
+                                    <rect x="76" y="12" width="12" height="12" fill="#000" />
+                                    <rect x="4" y="68" width="28" height="28" fill="none" stroke="#000" stroke-width="6" />
+                                    <rect x="12" y="76" width="12" height="12" fill="#000" />
+                                    <rect x="40" y="8" width="8" height="18" />
+                                    <rect x="52" y="14" width="8" height="10" />
+                                    <rect x="8" y="40" width="16" height="8" />
+                                    <rect x="28" y="36" width="8" height="14" />
+                                    <rect x="66" y="40" width="12" height="8" />
+                                    <rect x="82" y="44" width="12" height="10" />
+                                    <rect x="40" y="68" width="8" height="22" />
+                                    <rect x="54" y="74" width="14" height="8" />
+                                    <rect x="74" y="66" width="10" height="14" />
+                                    <rect x="66" y="84" width="24" height="8" />
+                                </svg>
+                                <div class="mb-qr-center-logo" id="passCenterCode">@pMeta.PodCode</div>
+                            </div>
+
+                            <div style="font-size: 12px; color: #a1a1aa;" id="passCaptionText">
+                                สแกนได้ที่ประตูกลางเลี้ยวเข้าอาคาร (Turnstile) และประตูห้อง @pPodLabel
+                            </div>
+                        </div>
+
+                        <div class="mb-access-window-box">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#e50914" stroke-width="2.2">
+                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                    <path d="M7 11V7a5 5 0 0 1 9.9-1"></path>
+                                </svg>
+                                <div>
+                                    <div style="font-size: 12px; font-weight: 700; color: #ffffff;">สิทธิ์เข้าพื้นที่ (Access Window)</div>
+                                    <div style="font-size: 11px; color: #71717a;">ระบบเปิดให้เข้าล่วงหน้า 15 นาทีก่อนเซสชัน</div>
+                                </div>
+                            </div>
+                            <span style="font-size: 12px; font-weight: 700; color: #e50914; white-space: nowrap;" id="passAccessWindow">@pAccessWindow</span>
+                        </div>
+
+                        <button type="button"
+                                class="mb-btn-ble-unlock"
+                                id="desktopBleUnlockBtn"
+                                style="@(pIsCheckedIn ? "background: #16a34a; box-shadow: 0 6px 20px rgba(22, 163, 74, 0.3);" : "")"
+                                onclick="triggerBleUnlock()">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                                <path d="M6.5 6.5l11 11L12 23V1l5.5 5.5-11 11"></path>
+                            </svg>
+                            <span id="bleUnlockBtnText">@(pIsCheckedIn ? "เช็กอินแล้ว • กดเพื่อเช็กเอาต์ / จบการซ้อม" : "แตะเพื่อปลดล็อกประตูและเช็กอินเข้าห้อง (1.5m)")</span>
+                        </button>
+                    </div>
+
+                    <!-- Card 2: สถานะห้อง POD (REALTIME TELEMETRY) -->
+                    <div class="mb-pass-panel" style="margin-bottom: 0;">
+                        <div class="mb-pass-top" style="margin-bottom: 8px;">
+                            <div class="mb-pass-title">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#e50914" stroke-width="2.2">
+                                    <line x1="4" y1="21" x2="4" y2="14"></line>
+                                    <line x1="4" y1="10" x2="4" y2="3"></line>
+                                    <line x1="12" y1="21" x2="12" y2="12"></line>
+                                    <line x1="12" y1="8" x2="12" y2="3"></line>
+                                    <line x1="20" y1="21" x2="20" y2="16"></line>
+                                    <line x1="20" y1="12" x2="20" y2="3"></line>
+                                </svg>
+                                <span id="telemetryHeaderTitle">สถานะห้อง @pPodLabel (REALTIME TELEMETRY)</span>
+                            </div>
+                            <span style="font-size: 11px; font-weight: 700; color: #22c55e;">● LIVE</span>
+                        </div>
+
+                        <div class="mb-telemetry-grid">
+                            <div class="mb-tele-box">
+                                <div class="t-lbl">คุณภาพอากาศ</div>
+                                <div class="t-val">PM 0.0</div>
+                                <div class="t-sub">HEPA H14 Clean</div>
+                            </div>
+                            <div class="mb-tele-box">
+                                <div class="t-lbl">อุณหภูมิ</div>
+                                <div class="t-val">21.0°C</div>
+                                <div class="t-sub" style="color: #a1a1aa;">ความชื้น 45%</div>
+                            </div>
+                            <div class="mb-tele-box">
+                                <div class="t-lbl">กักเก็บเสียง</div>
+                                <div class="t-val">55 dB</div>
+                                <div class="t-sub">Isolation Ready</div>
+                            </div>
+                        </div>
+
+                        <div style="display: flex; gap: 10px;">
+                            <a asp-controller="Customer" asp-action="Support" asp-route-email="@ViewBag.Email"
+                               style="flex: 1; background: #18181d; border: 1px solid #282830; color: #d4d4d8; font-size: 12px; font-weight: 600; padding: 10px 12px; border-radius: 8px; text-decoration: none; text-align: center;">
+                                ติดต่อเคาน์เตอร์ส่วนกลาง
+                            </a>
+                            <button type="button" onclick="alert('ส่งสัญญาณแจ้งเจ้าหน้าที่ประจำสาขาเรียบร้อยแล้ว เจ้าหน้าที่จะติดต่อกลับทันทีครับ')"
+                                    style="background: rgba(229, 9, 20, 0.12); border: 1px solid rgba(229, 9, 20, 0.35); color: #ef4444; font-size: 12px; font-weight: 700; padding: 10px 14px; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                                    <line x1="12" y1="9" x2="12" y2="13"></line>
+                                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                                </svg>
+                                <span>ฉุกเฉิน</span>
+                            </button>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</main>
+
+<!-- ฟอร์มซ่อนสำหรับส่งคำสั่งเช็กอินเข้าห้องและเช็กเอาต์จบการซ้อมจริงลงตาราง CheckIns -->
+<form id="globalCheckInForm" asp-controller="Customer" asp-action="CheckInSession" method="post" style="display: none;">
+    <input type="hidden" name="bookingId" id="globalCheckInBookingId" value="@(primaryBooking?.BookingId ?? 0)" />
+    <input type="hidden" name="email" value="@ViewBag.Email" />
+</form>
+
+<form id="globalCheckOutForm" asp-controller="Customer" asp-action="CheckOutSession" method="post" style="display: none;">
+    <input type="hidden" name="bookingId" id="globalCheckOutBookingId" value="@(primaryBooking?.BookingId ?? 0)" />
+    <input type="hidden" name="email" value="@ViewBag.Email" />
+</form>
+
+<!-- ================= MOBILE QR PASS BOTTOM SHEET MODAL ================= -->
+<div class="mb-qr-sheet-backdrop" id="mobileQrSheetBackdrop" onclick="if(event.target === this) closeMobileQrSheet()">
+    <div class="mb-qr-sheet-modal">
+        <div class="mb-sheet-handle"></div>
+
+        <!-- Header ของ Bottom Sheet -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 800; color: #ffffff;">
+                <span style="color: #22c55e;">●</span>
+                <span>DYNAMIC ACCESS PASS</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span class="mb-secure-id-badge" id="mSheetSecureId">SECURE-ID: #PG-00001</span>
+                <button type="button" onclick="closeMobileQrSheet()" style="background: #1f1f27; border: 1px solid #32323e; color: #fff; width: 30px; height: 30px; border-radius: 50%; font-size: 16px; line-height: 1; display: inline-flex; align-items: center; justify-content: center; cursor: pointer;">
+                    &times;
+                </button>
+            </div>
+        </div>
+
+        <!-- แถบสรุปห้องและรอบเวลาของบัตรใบนี้ -->
+        <div style="background: #18181f; border: 1px solid #282834; border-radius: 10px; padding: 12px 14px; margin-bottom: 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                <span style="font-size: 14px; font-weight: 800; color: #ffffff;" id="mSheetPodTitle">POD 02: The Integrated Power Rig</span>
+                <span style="font-size: 12.5px; font-weight: 800; color: #e50914;" id="mSheetTimeStr">18:00 - 19:15 น.</span>
+            </div>
+            <div style="font-size: 12px; color: #a1a1aa; display: flex; justify-content: space-between; align-items: center;">
+                <span id="mSheetDateStr">วันนี้</span>
+                <span>เข้าห้องได้: <strong style="color: #4ade80;" id="mSheetAccessWin">17:45 - 19:15 น.</strong></span>
+            </div>
+        </div>
+
+        @if (upcomingList.Count > 1)
+        {
+            <!-- ปุ่มสลับห้องด่วนภายในหน้าต่าง QR มือถือ -->
+            <div class="mb-pass-switcher" style="margin-bottom: 14px;">
+                @for (int mIdx = 0; mIdx < upcomingList.Count; mIdx++)
+                {
+                    var mb = upcomingList[mIdx];
+                    string mPodLbl = $"POD 0{((mb.PodId - 1) % 6) + 1}";
+                    <button type="button"
+                            class="mb-pass-switch-pill mobile-switch-pill @(mIdx == 0 ? "active" : "")"
+                            id="mSheetPill_@mb.BookingId"
+                            onclick="openMobileQrSheet(@mb.BookingId)">
+                        <span><strong>@mPodLbl</strong> &bull; @mb.StartTime.ToString("HH:mm") น.</span>
+                        <span style="font-family: monospace; font-size: 10px;">#PG-@mb.BookingId.ToString("D5")</span>
+                    </button>
+                }
+            </div>
+        }
+
+        <!-- กล่อง QR Code ขนาดใหญ่สแกนง่าย -->
+        <div class="mb-qr-stage" style="padding: 16px; margin-bottom: 14px;">
+            <div class="mb-qr-stage-top" style="margin-bottom: 12px;">
+                <span style="display: inline-flex; align-items: center; gap: 5px;">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                        <polyline points="23 4 23 10 17 10"></polyline>
+                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                    </svg>
+                    <span>อัปเดตรหัสอัตโนมัติ</span>
+                </span>
+                <span style="color: #e50914; font-weight: 600;">รีเฟรชใน <span id="mSheetQrCountdown">29</span> วิ</span>
+            </div>
+
+            <div class="mb-qr-box-white" style="width: 210px; height: 210px; margin-bottom: 12px;">
+                <svg viewBox="0 0 100 100" fill="#000" style="width: 100%; height: 100%;">
+                    <rect x="4" y="4" width="28" height="28" fill="none" stroke="#000" stroke-width="6" />
+                    <rect x="12" y="12" width="12" height="12" fill="#000" />
+                    <rect x="68" y="4" width="28" height="28" fill="none" stroke="#000" stroke-width="6" />
+                    <rect x="76" y="12" width="12" height="12" fill="#000" />
+                    <rect x="4" y="68" width="28" height="28" fill="none" stroke="#000" stroke-width="6" />
+                    <rect x="12" y="76" width="12" height="12" fill="#000" />
+                    <rect x="40" y="8" width="8" height="18" />
+                    <rect x="52" y="14" width="8" height="10" />
+                    <rect x="8" y="40" width="16" height="8" />
+                    <rect x="28" y="36" width="8" height="14" />
+                    <rect x="66" y="40" width="12" height="8" />
+                    <rect x="82" y="44" width="12" height="10" />
+                    <rect x="40" y="68" width="8" height="22" />
+                    <rect x="54" y="74" width="14" height="8" />
+                    <rect x="74" y="66" width="10" height="14" />
+                    <rect x="66" y="84" width="24" height="8" />
+                </svg>
+                <div class="mb-qr-center-logo" id="mSheetCenterCode">PG02</div>
+            </div>
+
+            <div style="font-size: 12px; color: #a1a1aa;" id="mSheetCaptionText">
+                สแกนได้ที่ประตูกลางเลี้ยวเข้าอาคาร (Turnstile) และประตูห้อง POD 02
+            </div>
+        </div>
+
+        <!-- ปุ่มปลดล็อกประตู BLE และเช็กอินจริง -->
+        <button type="button" class="mb-btn-ble-unlock" id="mSheetBleBtn" onclick="triggerBleUnlock()" style="margin-bottom: 12px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <path d="M6.5 6.5l11 11L12 23V1l5.5 5.5-11 11"></path>
+            </svg>
+            <span id="mSheetBleBtnText">แตะเพื่อปลดล็อกประตูและเช็กอินเข้าห้อง (1.5m)</span>
+        </button>
+
+        <!-- แถบสถานะห้องแบบย่อ (บรรทัดเดียว ไม่รกหน้าจอ) -->
+        <div style="display: flex; justify-content: space-between; align-items: center; background: #17171d; border: 1px solid #262630; border-radius: 8px; padding: 10px 12px; font-size: 11.5px; color: #a1a1aa;">
+            <span>สถานะห้อง: <strong style="color: #fff;">21.0°C</strong> &bull; <strong style="color: #4ade80;">PM 0.0</strong> &bull; <strong style="color: #fff;">55dB</strong></span>
+            <button type="button" onclick="alert('ส่งสัญญาณแจ้งเจ้าหน้าที่ประจำสาขาเรียบร้อยแล้ว เจ้าหน้าที่จะติดต่อกลับทันทีครับ')" style="background: rgba(229,9,20,0.12); border: 1px solid rgba(229,9,20,0.35); color: #ef4444; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 6px;">
+                ฉุกเฉิน
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal ขอเลื่อนวันและรอบเวลาการจอง (Reschedule Booking - Update DB) -->
+<div id="rescheduleModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(6px); z-index: 9999; align-items: center; justify-content: center; padding: 16px;">
+    <div style="background: #141416; border: 1px solid #27272a; border-radius: 16px; width: 100%; max-width: 420px; padding: 24px;">
+        <h4 style="color: #fff; font-size: 18px; font-weight: 700; margin-bottom: 6px;">ขอเลื่อนรอบเวลาการจอง</h4>
+        <p style="font-size: 13px; color: #a1a1aa; margin-bottom: 16px;" id="reschedulePodTitle">-</p>
+
+        <form asp-controller="Customer" asp-action="RescheduleBooking" method="post">
+            <input type="hidden" name="bookingId" id="rescheduleBookingId" />
+            <input type="hidden" name="email" value="@ViewBag.Email" />
+
+            <div class="mb-3">
+                <label class="form-label" style="color: #fff; font-size: 13px;">เลือกวันที่ใหม่</label>
+                <input type="date" name="newDate" id="rescheduleDateInput" class="form-control"
+                       min="@DateTime.Today.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)"
+                       style="background: #18181b; border: 1px solid #3f3f46; color: #fff;" required />
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label" style="color: #fff; font-size: 13px;">เลือกรอบเวลาใหม่ (75 นาที)</label>
+                <select name="newTimeSlot" id="rescheduleSlotSelect" class="form-select" style="background: #18181b; border: 1px solid #3f3f46; color: #fff;" required>
+                    <option value="08:00 - 09:15">08:00 - 09:15 น.</option>
+                    <option value="09:30 - 10:45">09:30 - 10:45 น.</option>
+                    <option value="11:00 - 12:15">11:00 - 12:15 น.</option>
+                    <option value="14:00 - 15:15">14:00 - 15:15 น.</option>
+                    <option value="18:00 - 19:15">18:00 - 19:15 น. (Prime Time)</option>
+                    <option value="19:30 - 20:45">19:30 - 20:45 น.</option>
+                </select>
+            </div>
+
+            <div style="display: flex; gap: 10px;">
+                <button type="button" onclick="document.getElementById('rescheduleModal').style.display='none'" class="cd-btn-secondary w-100 py-2" style="border-radius: 8px; justify-content: center;">
+                    ยกเลิก
+                </button>
+                <button type="submit" class="cd-btn-primary w-100 py-2" style="border: 0; border-radius: 8px; justify-content: center;">
+                    บันทึกการเลื่อนรอบ
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    var currentPassBookingId = @(primaryBooking?.BookingId ?? 0);
+    var currentPassCheckedIn = @((primaryBooking != null && HasCheckIn(primaryBooking)) ? "true" : "false");
+
+    // ฟังก์ชันเลือกแสดง QR Pass ของห้องนั้นๆ โดยไม่ทำให้การ์ดที่ขยายอยู่หุบลง
+    function selectBookingPass(bookingId) {
+        var card = document.getElementById('bookingCard_' + bookingId);
+        if (!card) return;
+        if (card.getAttribute('data-expired') === '1') return;
+
+        currentPassBookingId = bookingId;
+        currentPassCheckedIn = (card.getAttribute('data-checked-in') === '1');
+
+        var inIdInput = document.getElementById('globalCheckInBookingId');
+        var outIdInput = document.getElementById('globalCheckOutBookingId');
+        if (inIdInput) inIdInput.value = bookingId;
+        if (outIdInput) outIdInput.value = bookingId;
+
+        // 1. ย้ายสถานะไฮไลต์สีแดง (is-active-pass) และป้ายปุ่ม "กำลังแสดง QR ห้องนี้" ไปยังการ์ดที่เลือก
+        var allCards = document.querySelectorAll('.mb-booking-item');
+        allCards.forEach(function (c) {
+            var cId = c.getAttribute('data-booking-id');
+            var cRef = c.getAttribute('data-ref') || '';
+            var isTarget = (String(cId) === String(bookingId));
+
+            if (isTarget) {
+                c.classList.add('is-active-pass');
+            } else {
+                c.classList.remove('is-active-pass');
+            }
+
+            var compactBtns = c.querySelectorAll('.mb-compact-header .qr-btn-text');
+            compactBtns.forEach(function (el) {
+                el.innerText = isTarget ? 'กำลังแสดง QR ห้องนี้' : 'แสดง QR ห้องนี้';
+            });
+
+            var expBtns = c.querySelectorAll('.mb-expanded-body .qr-btn-text');
+            expBtns.forEach(function (el) {
+                el.innerText = isTarget
+                    ? 'กำลังแสดง QR ห้องนี้ (#' + cRef + ')'
+                    : 'กดเพื่อแสดง QR ห้องนี้ (#' + cRef + ')';
+            });
+        });
+
+        // 2. อัปเดตปุ่มสลับด่วน (Pass Switcher Pills) ด้านบนกล่อง QR
+        var allPills = document.querySelectorAll('.mb-pass-switch-pill');
+        allPills.forEach(function (p) {
+            p.classList.remove('active');
+        });
+        var activePill = document.getElementById('passSwitchPill_' + bookingId);
+        if (activePill) activePill.classList.add('active');
+
+        // 3. อัปเดตข้อมูลในกล่อง Dynamic Access Pass และปุ่มเช็กอิน/เช็กเอาต์
+        var refCode = card.getAttribute('data-ref') || 'PG-00001';
+        var podCode = card.getAttribute('data-pod-code') || 'PG02';
+        var podLabel = card.getAttribute('data-pod-label') || 'POD 02';
+        var accessWin = card.getAttribute('data-access-window') || 'เปิดก่อนเวลา 15 นาที';
+
+        var elSecure = document.getElementById('passSecureId');
+        var elCenter = document.getElementById('passCenterCode');
+        var elCaption = document.getElementById('passCaptionText');
+        var elWin = document.getElementById('passAccessWindow');
+        var elTele = document.getElementById('telemetryHeaderTitle');
+        var dBtn = document.getElementById('desktopBleUnlockBtn');
+        var dBtnTxt = document.getElementById('bleUnlockBtnText');
+        var mBtn = document.getElementById('mSheetBleBtn');
+        var mBtnTxt = document.getElementById('mSheetBleBtnText');
+
+        if (elSecure) elSecure.innerText = 'SECURE-ID: #' + refCode;
+        if (elCenter) elCenter.innerText = podCode;
+        if (elCaption) elCaption.innerText = 'สแกนได้ที่ประตูกลางเลี้ยวเข้าอาคาร (Turnstile) และประตูห้อง ' + podLabel;
+        if (elWin) elWin.innerText = accessWin;
+        if (elTele) elTele.innerText = 'สถานะห้อง ' + podLabel + ' (REALTIME TELEMETRY)';
+
+        if (currentPassCheckedIn) {
+            if (dBtn) dBtn.style.background = '#16a34a';
+            if (dBtnTxt) dBtnTxt.innerText = 'เช็กอินแล้ว • กดเพื่อเช็กเอาต์ / จบการซ้อม';
+            if (mBtn) mBtn.style.background = '#16a34a';
+            if (mBtnTxt) mBtnTxt.innerText = 'เช็กอินแล้ว • กดเพื่อเช็กเอาต์ / จบการซ้อม';
+        } else {
+            if (dBtn) dBtn.style.background = '#e50914';
+            if (dBtnTxt) dBtnTxt.innerText = 'แตะเพื่อปลดล็อกประตูและเช็กอินเข้าห้อง (1.5m)';
+            if (mBtn) mBtn.style.background = '#e50914';
+            if (mBtnTxt) mBtnTxt.innerText = 'แตะเพื่อปลดล็อกประตูและเช็กอินเข้าห้อง (1.5m)';
+        }
+    }
+
+    // ฟังก์ชันเปิดหน้าต่าง Popup QR Pass บนมือถือ
+    function openMobileQrSheet(bookingId) {
+        selectBookingPass(bookingId);
+        var card = document.getElementById('bookingCard_' + bookingId);
+        if (!card) return;
+
+        var refCode = card.getAttribute('data-ref') || 'PG-00001';
+        var podCode = card.getAttribute('data-pod-code') || 'PG02';
+        var podLabel = card.getAttribute('data-pod-label') || 'POD 02';
+        var podName = card.getAttribute('data-pod-name') || 'Private Pod';
+        var dateStr = card.getAttribute('data-date-str') || 'วันนี้';
+        var timeStr = card.getAttribute('data-time-str') || '';
+        var accessWin = card.getAttribute('data-access-window') || '';
+
+        var mSecure = document.getElementById('mSheetSecureId');
+        var mTitle = document.getElementById('mSheetPodTitle');
+        var mTime = document.getElementById('mSheetTimeStr');
+        var mDate = document.getElementById('mSheetDateStr');
+        var mWin = document.getElementById('mSheetAccessWin');
+        var mCenter = document.getElementById('mSheetCenterCode');
+        var mCaption = document.getElementById('mSheetCaptionText');
+
+        if (mSecure) mSecure.innerText = 'SECURE-ID: #' + refCode;
+        if (mTitle) mTitle.innerText = podLabel + ': ' + podName;
+        if (mTime) mTime.innerText = timeStr;
+        if (mDate) mDate.innerText = dateStr;
+        if (mWin) mWin.innerText = accessWin;
+        if (mCenter) mCenter.innerText = podCode;
+        if (mCaption) mCaption.innerText = 'สแกนได้ที่ประตูกลางเลี้ยวเข้าอาคาร (Turnstile) และประตูห้อง ' + podLabel;
+
+        var mPills = document.querySelectorAll('.mobile-switch-pill');
+        mPills.forEach(function (p) { p.classList.remove('active'); });
+        var activeMPill = document.getElementById('mSheetPill_' + bookingId);
+        if (activeMPill) activeMPill.classList.add('active');
+
+        var backdrop = document.getElementById('mobileQrSheetBackdrop');
+        if (backdrop) backdrop.classList.add('show');
+    }
+
+    function closeMobileQrSheet() {
+        var backdrop = document.getElementById('mobileQrSheetBackdrop');
+        if (backdrop) backdrop.classList.remove('show');
+    }
+
+    // ฟังก์ชันเปิด/ปิด รายละเอียดและปุ่มเลื่อน-ยกเลิกบนการ์ดมือถือ
+    function toggleMobileDetail(bookingId) {
+        var card = document.getElementById('bookingCard_' + bookingId);
+        if (!card) return;
+        var isOpen = card.classList.contains('mobile-detail-open');
+        var btnTxt = document.getElementById('mobileDetailBtnText_' + bookingId);
+        if (isOpen) {
+            card.classList.remove('mobile-detail-open');
+            if (btnTxt) btnTxt.innerText = 'ดูรายละเอียด / เลื่อนรอบ';
+        } else {
+            card.classList.add('mobile-detail-open');
+            if (btnTxt) btnTxt.innerText = 'ซ่อนรายละเอียด';
+        }
+    }
+
+    // ฟังก์ชัน กดขยาย/หุบ รายการจอง (Expand / Collapse สำหรับ Desktop)
+    function toggleBookingCard(bookingId) {
+        var card = document.getElementById('bookingCard_' + bookingId);
+        if (!card) return;
+
+        var wasExpanded = card.classList.contains('is-expanded');
+        if (wasExpanded) {
+            card.classList.remove('is-expanded');
+        } else {
+            card.classList.add('is-expanded');
+            if (card.getAttribute('data-expired') !== '1') {
+                selectBookingPass(bookingId);
+            }
+        }
+    }
+
+    function openRescheduleModal(bookingId, currentDate, currentSlot, podName) {
+        document.getElementById('rescheduleBookingId').value = bookingId;
+        document.getElementById('rescheduleDateInput').value = currentDate;
+        document.getElementById('rescheduleSlotSelect').value = currentSlot;
+        document.getElementById('reschedulePodTitle').innerText = podName + ' (#BK-' + String(bookingId).padStart(5, '0') + ')';
+        document.getElementById('rescheduleModal').style.display = 'flex';
+    }
+
+    // เมื่อกดปุ่มปลดล็อกประตู BLE: บันทึกการเช็กอินเข้าห้องจริงลงตาราง CheckIns (หรือถ้าเช็กอินอยู่แล้ว จะเป็นการเช็กเอาต์จบการซ้อม)
+    function triggerBleUnlock() {
+        if (!currentPassBookingId || currentPassBookingId <= 0) return;
+
+        var btnText = document.getElementById('bleUnlockBtnText');
+        var mBtnText = document.getElementById('mSheetBleBtnText');
+
+        if (currentPassCheckedIn) {
+            if (btnText) btnText.innerText = 'กำลังบันทึกเวลาเช็กเอาต์และจบการซ้อม...';
+            if (mBtnText) mBtnText.innerText = 'กำลังบันทึกเวลาเช็กเอาต์และจบการซ้อม...';
+            var outForm = document.getElementById('globalCheckOutForm');
+            if (outForm) outForm.submit();
+        } else {
+            if (btnText) btnText.innerText = 'กำลังส่งสัญญาณ BLE Unlock และบันทึกเวลาเช็กอิน...';
+            if (mBtnText) mBtnText.innerText = 'กำลังส่งสัญญาณ BLE Unlock และบันทึกเวลาเช็กอิน...';
+            var inForm = document.getElementById('globalCheckInForm');
+            if (inForm) inForm.submit();
+        }
+    }
+
+    // ตัวนับถอยหลังรีเฟรชรหัส Dynamic QR Pass (29 วินาทีวนลูป)
+    var qrTimerSec = 29;
+    setInterval(function () {
+        qrTimerSec--;
+        if (qrTimerSec <= 0) qrTimerSec = 30;
+        var el = document.getElementById('qrRefreshCountdown');
+        var mEl = document.getElementById('mSheetQrCountdown');
+        if (el) el.innerText = qrTimerSec;
+        if (mEl) mEl.innerText = qrTimerSec;
+    }, 1000);
+</script>

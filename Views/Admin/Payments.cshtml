@@ -1,0 +1,273 @@
+@model List<PrivateGym.Models.Payment>
+@using PrivateGym.Models
+@{
+    ViewData["Title"] = "จัดการธุรกรรมและการชำระเงิน (Payments & Billing Ledger)";
+    Layout = "~/Views/Shared/Admin/_AdminLayout.cshtml";
+
+    var list = Model ?? new List<Payment>();
+    string status = ViewBag.FilterStatus as string ?? "all";
+    string search = ViewBag.Search as string ?? "";
+
+    decimal totalRev = ViewBag.TotalRevenue is decimal tr ? tr : 0m;
+    decimal promptPayRev = ViewBag.PromptPayRevenue is decimal ppr ? ppr : 0m;
+    decimal cardRev = ViewBag.CardAndBankRevenue is decimal cr ? cr : 0m;
+    decimal pendingRev = ViewBag.PendingRevenue is decimal pr ? pr : 0m;
+    int pendingCount = ViewBag.PendingCount ?? 0;
+
+    var firstPay = list.FirstOrDefault();
+    decimal firstVat = firstPay != null ? Math.Round(firstPay.Amount * 7m / 107m, 2) : 0m;
+    decimal firstSub = firstPay != null ? firstPay.Amount - firstVat : 0m;
+}
+
+<style>
+    .pay-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 340px;
+        gap: 18px;
+        align-items: start;
+    }
+    .pay-row {
+        cursor: pointer;
+        transition: background-color 0.15s ease;
+    }
+    .pay-row.is-selected td {
+        background: rgba(229, 9, 20, 0.08) !important;
+    }
+    .pay-inspector {
+        background: #09090b;
+        border: 1px solid #27272a;
+        border-radius: 12px;
+        padding: 18px;
+        position: sticky;
+        top: 76px;
+    }
+    .pay-kv {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        font-size: 12.5px;
+        padding: 7px 0;
+        border-bottom: 1px solid #18181b;
+    }
+    .pay-kv:last-child { border-bottom: none; }
+    @@media (max-width: 1180px) {
+        .pay-layout { grid-template-columns: 1fr; }
+        .pay-inspector { position: static; }
+    }
+</style>
+
+<div class="adm-page">
+    <div class="adm-page-head">
+        <div>
+            <h1 class="adm-page-title">จัดการธุรกรรมและการชำระเงิน (Payments &amp; Billing Ledger)</h1>
+            <p class="adm-page-sub">คลิกที่รายการเพื่อดู Transaction Audit Console (ยอดสุทธิ, VAT 7%, ข้อมูลออกใบกำกับภาษี) และอนุมัติบิล</p>
+        </div>
+        <a asp-controller="Admin" asp-action="ExportDashboardCsv" class="st-btn-outline">ส่งออกรายงาน CSV</a>
+    </div>
+
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success" style="background: rgba(16, 185, 129, 0.14); border: 1px solid rgba(16, 185, 129, 0.35); color: #fafafa; border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; font-size: 13px;">
+            @TempData["SuccessMessage"]
+        </div>
+    }
+
+    <div class="adm-kpi-4">
+        <div class="adm-stat-card">
+            <div class="adm-stat-lbl">GROSS REVENUE (สำเร็จรวม)</div>
+            <div class="adm-stat-val" style="color:#10b981;">฿@totalRev.ToString("N0")</div>
+            <div class="adm-stat-sub">ยอดรับชำระสถานะ Success</div>
+        </div>
+        <div class="adm-stat-card">
+            <div class="adm-stat-lbl">รับผ่าน PROMPTPAY QR</div>
+            <div class="adm-stat-val">฿@promptPayRev.ToString("N0")</div>
+            <div class="adm-stat-sub">สแกน QR PromptPay</div>
+        </div>
+        <div class="adm-stat-card">
+            <div class="adm-stat-lbl">บัตรเครดิต &amp; โอนธนาคาร</div>
+            <div class="adm-stat-val">฿@cardRev.ToString("N0")</div>
+            <div class="adm-stat-sub">Credit Card / Bank Transfer</div>
+        </div>
+        <div class="adm-stat-card">
+            <div class="adm-stat-lbl">รอตรวจสอบ (PENDING AUDIT)</div>
+            <div class="adm-stat-val" style="color:@(pendingCount > 0 ? "#f59e0b" : "#fafafa");">฿@pendingRev.ToString("N0")</div>
+            <div class="adm-stat-sub">@pendingCount รายการรออนุมัติ</div>
+        </div>
+    </div>
+
+    <div class="st-filter-bar">
+        <div class="st-chips">
+            <a asp-controller="Admin" asp-action="Payments" asp-route-status="all" asp-route-search="@search"
+               class="st-chip @(status == "all" ? "active" : "")">ทั้งหมด</a>
+            <a asp-controller="Admin" asp-action="Payments" asp-route-status="Success" asp-route-search="@search"
+               class="st-chip @(status == "Success" ? "active" : "")">ชำระสำเร็จ (Success)</a>
+            <a asp-controller="Admin" asp-action="Payments" asp-route-status="Pending" asp-route-search="@search"
+               class="st-chip @(status == "Pending" ? "active" : "")">รอตรวจสอบ (@pendingCount)</a>
+            <a asp-controller="Admin" asp-action="Payments" asp-route-status="Failed" asp-route-search="@search"
+               class="st-chip @(status == "Failed" ? "active" : "")">ไม่สำเร็จ (Failed)</a>
+        </div>
+
+        <form asp-controller="Admin" asp-action="Payments" method="get" class="d-flex gap-2">
+            <input type="hidden" name="status" value="@status" />
+            <input type="text" name="search" value="@search" class="st-input" style="min-width:240px;" placeholder="ค้นหาชื่อสมาชิก, แพ็กเกจ, #PAY-..." />
+            <button type="submit" class="st-btn-primary">ค้นหา</button>
+        </form>
+    </div>
+
+    <div class="pay-layout">
+        <div class="st-table-card">
+            @if (!list.Any())
+            {
+                <div style="padding:44px; text-align:center; color:#71717a; font-size:13.5px;">ไม่พบรายการชำระเงินในหมวดหมู่นี้</div>
+            }
+            else
+            {
+                <table class="st-shadcn-table">
+                    <thead>
+                        <tr>
+                            <th>เลขที่ใบเสร็จ &amp; วันที่</th>
+                            <th>สมาชิก</th>
+                            <th>แพ็กเกจที่ซื้อ</th>
+                            <th>ช่องทางชำระ</th>
+                            <th>ยอดเงินสุทธิ</th>
+                            <th>สถานะ</th>
+                            <th style="text-align:right;">การจัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (int i = 0; i < list.Count; i++)
+                        {
+                            var p = list[i];
+                            decimal vat = Math.Round(p.Amount * 7m / 107m, 2);
+                            decimal sub = p.Amount - vat;
+                            string payCode = $"#PAY-{p.PaymentId:D5}";
+                            string payDate = p.PaymentDate.HasValue ? p.PaymentDate.Value.ToString("dd/MM/yyyy HH:mm") : "-";
+
+                            <tr class="pay-row @(i == 0 ? "is-selected" : "")"
+                                onclick="selectPaymentRow(this)"
+                                data-id="@p.PaymentId"
+                                data-code="@payCode"
+                                data-date="@payDate"
+                                data-member="@(p.User?.FullName ?? "-")"
+                                data-email="@(p.User?.Email ?? "-")"
+                                data-taxid="@(string.IsNullOrWhiteSpace(p.User?.TaxId) ? "-" : p.User!.TaxId)"
+                                data-addr="@(string.IsNullOrWhiteSpace(p.User?.BillingAddress) ? "ไม่ได้ระบุที่อยู่" : p.User!.BillingAddress)"
+                                data-pkg="@(p.Package?.PackageName ?? "-")"
+                                data-method="@(p.PaymentMethod ?? "PromptPay")"
+                                data-subtotal="฿@sub.ToString("N2")"
+                                data-vat="฿@vat.ToString("N2")"
+                                data-total="฿@p.Amount.ToString("N2")"
+                                data-status="@p.Status">
+                                <td>
+                                    <div style="font-weight:600; color:#fafafa; font-family:monospace;">@payCode</div>
+                                    <div style="font-size:11.5px; color:#71717a;">@payDate</div>
+                                </td>
+                                <td>
+                                    <div style="font-weight:600; color:#fafafa;">@(p.User?.FullName ?? "-")</div>
+                                    <div style="font-size:11.5px; color:#a1a1aa;">@(p.User?.Email ?? "-")</div>
+                                </td>
+                                <td style="font-weight:500; color:#e4e4e7;">@(p.Package?.PackageName ?? "-")</td>
+                                <td><span class="st-badge st-badge-blue">@(p.PaymentMethod ?? "PromptPay")</span></td>
+                                <td>
+                                    <div style="font-weight:700; color:#fafafa;">฿@p.Amount.ToString("N0")</div>
+                                    <div style="font-size:11px; color:#71717a;">VAT ฿@vat.ToString("N2")</div>
+                                </td>
+                                <td>
+                                    @if (p.Status == "Success")
+                                    {
+                                        <span class="st-badge st-badge-green">ชำระแล้ว</span>
+                                    }
+                                    else if (p.Status == "Pending")
+                                    {
+                                        <span class="st-badge st-badge-amber">รอตรวจสอบ</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="st-badge st-badge-red">ไม่สำเร็จ</span>
+                                    }
+                                </td>
+                                <td style="text-align:right; white-space:nowrap;" onclick="event.stopPropagation()">
+                                    @if (p.Status == "Pending")
+                                    {
+                                        <form asp-controller="Admin" asp-action="ApprovePayment" method="post" style="display:inline;"
+                                              data-confirm-title="ยืนยันอนุมัติยอดชำระเงิน"
+                                              data-confirm="ยืนยันอนุมัติบิล @payCode จำนวน ฿@p.Amount.ToString("N0") ของ @(p.User?.FullName ?? "-") และเปิดใช้งานแพ็กเกจหรือไม่?">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="paymentId" value="@p.PaymentId" />
+                                            <button type="submit" class="st-btn-primary" style="height:30px; padding:0 12px; font-size:12px;">อนุมัติยอด</button>
+                                        </form>
+                                        <form asp-controller="Admin" asp-action="RejectPayment" method="post" style="display:inline;"
+                                              data-confirm-title="ยืนยันปฏิเสธรายการชำระเงิน"
+                                              data-confirm="ยืนยันปฏิเสธบิล @payCode ของ @(p.User?.FullName ?? "-") เป็นสถานะไม่สำเร็จ (Failed) หรือไม่?">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="paymentId" value="@p.PaymentId" />
+                                            <button type="submit" class="st-btn-outline" style="height:30px; padding:0 10px; font-size:12px; color:#ef4444;">ปฏิเสธ</button>
+                                        </form>
+                                    }
+                                    else
+                                    {
+                                        <span style="font-size:12px; color:#71717a;">ตรวจสอบแล้ว</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+
+        <!-- Right: Transaction Audit Console -->
+        <aside class="pay-inspector">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <span style="font-size:11px; font-weight:700; color:#71717a; letter-spacing:0.06em;">TRANSACTION AUDIT CONSOLE</span>
+                <span class="st-badge st-badge-green" id="payInspStatus">@(firstPay?.Status ?? "-")</span>
+            </div>
+            <div style="font-size:20px; font-weight:700; color:#fafafa; font-family:monospace;" id="payInspCode">
+                @(firstPay != null ? $"#PAY-{firstPay.PaymentId:D5}" : "-")
+            </div>
+            <div style="font-size:12px; color:#71717a;" id="payInspDate">
+                @(firstPay?.PaymentDate?.ToString("dd/MM/yyyy HH:mm") ?? "-")
+            </div>
+
+            <div class="mt-3 p-3" style="background:#111114; border:1px solid #27272a; border-radius:10px;">
+                <div style="font-size:10.5px; color:#71717a; text-transform:uppercase; margin-bottom:6px;">Reconciliation Breakdown</div>
+                <div class="pay-kv"><span style="color:#a1a1aa;">ยอดก่อนภาษี (Subtotal)</span><span style="color:#fafafa;" id="payInspSub">฿@firstSub.ToString("N2")</span></div>
+                <div class="pay-kv"><span style="color:#a1a1aa;">ภาษีมูลค่าเพิ่ม (VAT 7%)</span><span style="color:#fafafa;" id="payInspVat">฿@firstVat.ToString("N2")</span></div>
+                <div class="pay-kv"><span style="color:#fafafa; font-weight:600;">ยอดสุทธิ (Net Total)</span><strong style="color:#10b981; font-size:15px;" id="payInspTotal">฿@(firstPay?.Amount.ToString("N2") ?? "0.00")</strong></div>
+            </div>
+
+            <div class="mt-3">
+                <div class="pay-kv"><span style="color:#71717a;">ผู้ชำระ</span><strong style="color:#fafafa;" id="payInspMember">@(firstPay?.User?.FullName ?? "-")</strong></div>
+                <div class="pay-kv"><span style="color:#71717a;">อีเมล</span><span style="color:#d4d4d8;" id="payInspEmail">@(firstPay?.User?.Email ?? "-")</span></div>
+                <div class="pay-kv"><span style="color:#71717a;">แพ็กเกจ</span><span style="color:#e4e4e7;" id="payInspPkg">@(firstPay?.Package?.PackageName ?? "-")</span></div>
+                <div class="pay-kv"><span style="color:#71717a;">ช่องทาง</span><span style="color:#60a5fa;" id="payInspMethod">@(firstPay?.PaymentMethod ?? "-")</span></div>
+                <div class="pay-kv"><span style="color:#71717a;">เลขผู้เสียภาษี</span><span style="color:#d4d4d8;" id="payInspTaxId">@(string.IsNullOrWhiteSpace(firstPay?.User?.TaxId) ? "-" : firstPay!.User!.TaxId)</span></div>
+                <div class="pay-kv"><span style="color:#71717a;">ที่อยู่ใบเสร็จ</span><span style="color:#a1a1aa; text-align:right;" id="payInspAddr">@(string.IsNullOrWhiteSpace(firstPay?.User?.BillingAddress) ? "ไม่ได้ระบุที่อยู่" : firstPay!.User!.BillingAddress)</span></div>
+            </div>
+
+            <div class="d-flex gap-2 mt-3">
+                <button type="button" onclick="window.print()" class="st-btn-outline w-100">พิมพ์ใบเสร็จ (e-Tax)</button>
+            </div>
+        </aside>
+    </div>
+</div>
+
+<script>
+    function selectPaymentRow(row) {
+        document.querySelectorAll('.pay-row').forEach(r => r.classList.remove('is-selected'));
+        row.classList.add('is-selected');
+
+        document.getElementById('payInspCode').textContent = row.dataset.code || '-';
+        document.getElementById('payInspDate').textContent = row.dataset.date || '-';
+        document.getElementById('payInspStatus').textContent = row.dataset.status || '-';
+        document.getElementById('payInspSub').textContent = row.dataset.subtotal || '-';
+        document.getElementById('payInspVat').textContent = row.dataset.vat || '-';
+        document.getElementById('payInspTotal').textContent = row.dataset.total || '-';
+        document.getElementById('payInspMember').textContent = row.dataset.member || '-';
+        document.getElementById('payInspEmail').textContent = row.dataset.email || '-';
+        document.getElementById('payInspPkg').textContent = row.dataset.pkg || '-';
+        document.getElementById('payInspMethod').textContent = row.dataset.method || '-';
+        document.getElementById('payInspTaxId').textContent = row.dataset.taxid || '-';
+        document.getElementById('payInspAddr').textContent = row.dataset.addr || '-';
+    }
+</script>

@@ -1,0 +1,451 @@
+/* ============================================================================
+   PrivateGym Unified Workspace Shell (Admin • Staff • Trainer)
+   Ensures 100% consistent Sidebar, Topbar, Active State & Footer across roles.
+   ============================================================================ */
+
+/* 1. Shared Sidebar Container */
+.admin-sidebar,
+.cd-sidebar {
+    width: 248px !important;
+    background: #09090b !important;
+    border-right: 1px solid #18181b !important;
+    padding: 16px 14px !important;
+}
+
+@media (min-width: 992px) {
+    .admin-wrapper,
+    .cd-main-wrapper {
+        margin-left: 248px !important;
+        width: calc(100% - 248px) !important;
+    }
+}
+
+/* 2. Sidebar Brand Header */
+.admin-sidebar .sidebar-header,
+.cd-sidebar .cd-sidebar-logo {
+    height: auto !important;
+    min-height: 0 !important;
+    padding: 4px 6px 14px !important;
+    margin-bottom: 10px !important;
+    border-bottom: 1px solid #18181b !important;
+}
+
+.admin-sidebar .sidebar-nav-container {
+    padding: 0 !important;
+    flex: 1 !important;
+    overflow-y: auto !important;
+}
+
+.admin-sidebar .sidebar-logo-img,
+.cd-sidebar .cd-sidebar-logo-img {
+    height: 28px !important;
+    width: auto !important;
+    object-fit: contain !important;
+}
+
+.admin-sidebar .badge-admin {
+    background: rgba(229, 9, 20, 0.14) !important;
+    color: #ef4444 !important;
+    border: 1px solid rgba(229, 9, 20, 0.4) !important;
+    font-size: 10px !important;
+    font-weight: 700 !important;
+    padding: 2px 7px !important;
+    border-radius: 999px !important;
+    letter-spacing: 0.05em !important;
+}
+
+/* 3. Section Labels */
+.admin-sidebar .nav-category,
+.admin-sidebar .pg-sb-cat,
+.cd-sidebar .cd-sidebar-menu-title,
+.cd-sidebar .pg-sb-cat {
+    font-size: 10.5px !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.06em !important;
+    color: #52525b !important;
+    padding: 12px 10px 6px !important;
+    margin: 0 !important;
+    list-style: none !important;
+}
+
+.admin-sidebar .pg-sb-cat:first-child,
+.cd-sidebar .pg-sb-cat:first-child {
+    padding-top: 4px !important;
+}
+
+/* 4. Nav Links (Normal, Hover, Active) */
+.admin-sidebar .sidebar-nav,
+.cd-sidebar .cd-sidebar-nav {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 3px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    list-style: none !important;
+}
+
+.admin-sidebar .sidebar-nav .nav-link,
+.cd-sidebar .cd-nav-item a {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    padding: 9px 12px !important;
+    border-radius: 8px !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    color: #a1a1aa !important;
+    border: 1px solid transparent !important;
+    background: transparent !important;
+    text-decoration: none !important;
+    transition: all 0.15s ease !important;
+}
+
+.admin-sidebar .sidebar-nav .nav-link .nav-icon,
+.cd-sidebar .cd-nav-item a svg {
+    width: 17px !important;
+    height: 17px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-shrink: 0 !important;
+    color: #71717a !important;
+    transition: color 0.15s ease !important;
+}
+
+.admin-sidebar .sidebar-nav .nav-link:hover,
+.cd-sidebar .cd-nav-item a:hover {
+    background: #141418 !important;
+    color: #fafafa !important;
+}
+
+.admin-sidebar .sidebar-nav .nav-link:hover .nav-icon,
+.cd-sidebar .cd-nav-item a:hover svg {
+    color: #e4e4e7 !important;
+}
+
+.admin-sidebar .sidebar-nav .nav-link.active,
+.cd-sidebar .cd-nav-item.active a {
+    background: rgba(229, 9, 20, 0.14) !important;
+    border: 1px solid transparent !important;
+    border-left: 3px solid #e50914 !important;
+    border-radius: 8px !important;
+    color: #ffffff !important;
+    font-weight: 600 !important;
+}
+
+.admin-sidebar .sidebar-nav .nav-link.active .nav-icon,
+.admin-sidebar .sidebar-nav .nav-link.active svg,
+.cd-sidebar .cd-nav-item.active a svg {
+    color: #ef4444 !important;
+}
+
+/* 5. Sidebar Footer */
+.admin-sidebar .sidebar-user,
+.cd-sidebar .cd-sidebar-bottom,
+.admin-sidebar .pg-sb-user,
+.cd-sidebar .pg-sb-user {
+    border-top: 1px solid #18181b !important;
+    padding: 12px 8px 4px !important;
+    margin-top: auto !important;
+    background: transparent !important;
+}
+
+.admin-sidebar .pg-sb-user,
+.cd-sidebar .pg-sb-user {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 10px !important;
+}
+
+.admin-sidebar .pg-sb-user-left,
+.cd-sidebar .pg-sb-user-left {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    min-width: 0 !important;
+}
+
+.admin-sidebar .pg-sb-avatar,
+.cd-sidebar .pg-sb-avatar {
+    width: 34px !important;
+    height: 34px !important;
+    border-radius: 50% !important;
+    background: #e50914 !important;
+    color: #ffffff !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-shrink: 0 !important;
+    text-transform: uppercase !important;
+}
+
+.admin-sidebar .pg-sb-info,
+.cd-sidebar .pg-sb-info {
+    display: flex !important;
+    flex-direction: column !important;
+    min-width: 0 !important;
+}
+
+.admin-sidebar .pg-sb-name,
+.cd-sidebar .pg-sb-name {
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    color: #fafafa !important;
+    line-height: 1.25 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+.admin-sidebar .pg-sb-role,
+.cd-sidebar .pg-sb-role {
+    font-size: 11px !important;
+    color: #71717a !important;
+    line-height: 1.25 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+.admin-sidebar .pg-sb-logout,
+.cd-sidebar .pg-sb-logout {
+    width: 30px !important;
+    height: 30px !important;
+    border-radius: 8px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    color: #71717a !important;
+    text-decoration: none !important;
+    flex-shrink: 0 !important;
+    transition: all 0.15s ease !important;
+}
+
+.admin-sidebar .pg-sb-logout:hover,
+.cd-sidebar .pg-sb-logout:hover {
+    background: #141418 !important;
+    color: #ef4444 !important;
+}
+
+/* 6. Shared Topbar */
+.admin-topbar,
+.cd-topbar {
+    height: 58px !important;
+    min-height: 58px !important;
+    background: rgba(9, 9, 11, 0.92) !important;
+    backdrop-filter: blur(8px) !important;
+    border-bottom: 1px solid #18181b !important;
+    padding: 0 24px !important;
+}
+
+.admin-topbar .topbar-title,
+.cd-topbar .cd-breadcrumb {
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    color: #a1a1aa !important;
+}
+
+.admin-topbar .btn-visit-site {
+    background: #141418 !important;
+    border: 1px solid #27272a !important;
+    color: #e4e4e7 !important;
+    border-radius: 8px !important;
+    padding: 6px 12px !important;
+    font-size: 12px !important;
+    font-weight: 500 !important;
+}
+
+.admin-topbar .btn-visit-site:hover {
+    background: #1c1c22 !important;
+    color: #fafafa !important;
+}
+
+/* ============================================================================
+   7. Unified shadcn/ui Dark Components (Tables, Forms, Cards, Buttons, Modals)
+   Applies consistently across Admin, Staff, Trainer, and Accountant workspaces.
+   ============================================================================ */
+
+/* Unified Card & Table Wrapper */
+.st-table-card,
+.adm-card {
+    background: #09090b !important;
+    border: 1px solid #27272a !important;
+    border-radius: 12px !important;
+    overflow: hidden;
+}
+
+/* Unified Data Table */
+.st-shadcn-table,
+.adm-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0;
+}
+
+.st-shadcn-table thead th,
+.adm-table thead th {
+    padding: 12px 16px !important;
+    font-size: 11.5px !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.04em !important;
+    color: #71717a !important;
+    border-bottom: 1px solid #27272a !important;
+    text-align: left;
+    background: #0c0c0f !important;
+    white-space: nowrap;
+}
+
+.st-shadcn-table tbody td,
+.adm-table tbody td {
+    padding: 13px 16px !important;
+    font-size: 13px !important;
+    color: #d4d4d8 !important;
+    border-bottom: 1px solid #18181b !important;
+    vertical-align: middle !important;
+}
+
+.st-shadcn-table tbody tr:last-child td,
+.adm-table tbody tr:last-child td {
+    border-bottom: none !important;
+}
+
+.st-shadcn-table tbody tr:hover td,
+.adm-table tbody tr:hover td {
+    background: rgba(255, 255, 255, 0.025) !important;
+}
+
+/* Unified Form Inputs, Selects & Textareas */
+.st-input,
+.adm-input,
+.adm-select,
+.admin-body .form-control,
+.admin-body .form-select,
+.customer-dashboard-body .form-control,
+.customer-dashboard-body .form-select {
+    min-height: 36px;
+    background-color: #09090b !important;
+    border: 1px solid #27272a !important;
+    border-radius: 8px !important;
+    color: #fafafa !important;
+    font-size: 13px !important;
+    padding: 6px 12px !important;
+    box-shadow: none !important;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.st-input::placeholder,
+.adm-input::placeholder,
+.admin-body .form-control::placeholder,
+.customer-dashboard-body .form-control::placeholder {
+    color: #52525b !important;
+}
+
+.st-input:focus,
+.adm-input:focus,
+.adm-select:focus,
+.admin-body .form-control:focus,
+.admin-body .form-select:focus,
+.customer-dashboard-body .form-control:focus,
+.customer-dashboard-body .form-select:focus {
+    border-color: #e50914 !important;
+    outline: none !important;
+    box-shadow: 0 0 0 2px rgba(229, 9, 20, 0.16) !important;
+}
+
+.admin-body .form-select option,
+.customer-dashboard-body .form-select option,
+.st-input option,
+.adm-select option {
+    background-color: #09090b;
+    color: #fafafa;
+}
+
+.admin-body .form-label,
+.customer-dashboard-body .form-label,
+.pg-form-label {
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    color: #a1a1aa !important;
+    margin-bottom: 6px !important;
+    display: block;
+}
+
+/* Unified Buttons */
+.st-btn-primary,
+.adm-btn-primary {
+    height: 36px;
+    padding: 0 16px;
+    border-radius: 8px !important;
+    background: #e50914 !important;
+    border: 1px solid #e50914 !important;
+    color: #ffffff !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    text-decoration: none;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.st-btn-primary:hover,
+.adm-btn-primary:hover {
+    background: #c80812 !important;
+    border-color: #c80812 !important;
+    color: #ffffff !important;
+}
+
+.st-btn-outline,
+.adm-btn-ghost {
+    height: 36px;
+    padding: 0 14px;
+    border-radius: 8px !important;
+    background: #09090b !important;
+    border: 1px solid #27272a !important;
+    color: #e4e4e7 !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    text-decoration: none;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.st-btn-outline:hover,
+.adm-btn-ghost:hover {
+    background: #18181b !important;
+    border-color: #3f3f46 !important;
+    color: #fafafa !important;
+}
+
+/* Unified Modals */
+.admin-body .modal-content,
+.customer-dashboard-body .modal-content {
+    background: #09090b !important;
+    border: 1px solid #27272a !important;
+    border-radius: 14px !important;
+    color: #fafafa !important;
+}
+
+.admin-body .modal-header,
+.customer-dashboard-body .modal-header {
+    border-bottom: 1px solid #18181b !important;
+}
+
+.admin-body .modal-footer,
+.customer-dashboard-body .modal-footer {
+    border-top: 1px solid #18181b !important;
+}
+

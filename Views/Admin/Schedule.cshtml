@@ -1,0 +1,564 @@
+@model List<PrivateGym.Models.Booking>
+@using PrivateGym.Models
+@{
+    Layout = "~/Views/Shared/Admin/_AdminLayout.cshtml";
+    ViewData["Title"] = "ตารางเวลา (Master Schedule)";
+
+    string viewMode = ViewBag.ViewMode as string ?? "weekly";
+    var selectedDate = ViewBag.SelectedDate is DateOnly sd ? sd : DateOnly.FromDateTime(DateTime.Today);
+    string prevDay = selectedDate.AddDays(-1).ToString("yyyy-MM-dd");
+    string nextDay = selectedDate.AddDays(1).ToString("yyyy-MM-dd");
+
+    var monday = (DateOnly)(ViewBag.Monday ?? DateOnly.FromDateTime(DateTime.Today));
+    var sunday = (DateOnly)(ViewBag.Sunday ?? monday.AddDays(6));
+    string prevWeek = ViewBag.PrevWeek ?? monday.AddDays(-7).ToString("yyyy-MM-dd");
+    string nextWeek = ViewBag.NextWeek ?? monday.AddDays(7).ToString("yyyy-MM-dd");
+
+    int selectedBranchId = ViewBag.SelectedBranchId is int sb ? sb : 0;
+    int selectedTrainerId = ViewBag.SelectedTrainerId is int st ? st : -1;
+
+    var branches = ViewBag.Branches as List<Branch> ?? new List<Branch>();
+    var trainers = ViewBag.Trainers as List<Trainer> ?? new List<Trainer>();
+    var pods = ViewBag.Pods as List<Pod> ?? new List<Pod>();
+
+    int doneCount = Model.Count(b => b.Status == "Completed");
+    int liveCount = Model.Count(b => b.Status != "Completed" && b.CheckIns != null && b.CheckIns.Any(c => c.CheckOutTime == null));
+    int pendingCount = Model.Count(b => b.Status == "Confirmed" && (b.CheckIns == null || !b.CheckIns.Any(c => c.CheckOutTime == null)));
+    int ptCount = Model.Count(b => b.TrainerId != null);
+    int soloCount = Model.Count(b => b.TrainerId == null);
+
+    var today = DateOnly.FromDateTime(DateTime.Today);
+    var nowTime = TimeOnly.FromDateTime(DateTime.Now);
+
+    string[] dayLabels = new[] { "จ.", "อ.", "พ.", "พฤ.", "ศ.", "ส.", "อา." };
+
+    var timeRows = new[]
+    {
+        new { Label = "07:30", Tag = "SLOT 01", MinStart = new TimeOnly(6, 0), MaxStart = new TimeOnly(8, 59) },
+        new { Label = "09:00", Tag = "SLOT 02", MinStart = new TimeOnly(9, 0), MaxStart = new TimeOnly(10, 29) },
+        new { Label = "10:30", Tag = "SLOT 03", MinStart = new TimeOnly(10, 30), MaxStart = new TimeOnly(11, 59) },
+        new { Label = "12:00", Tag = "MIDDAY",  MinStart = new TimeOnly(12, 0), MaxStart = new TimeOnly(13, 59) },
+        new { Label = "14:00", Tag = "SLOT 04", MinStart = new TimeOnly(14, 0), MaxStart = new TimeOnly(15, 29) },
+        new { Label = "15:30", Tag = "SLOT 05", MinStart = new TimeOnly(15, 30), MaxStart = new TimeOnly(17, 59) },
+        new { Label = "18:00", Tag = "PRIME A", MinStart = new TimeOnly(18, 0), MaxStart = new TimeOnly(19, 29) },
+        new { Label = "19:30", Tag = "PRIME B", MinStart = new TimeOnly(19, 30), MaxStart = new TimeOnly(22, 0) }
+    };
+
+    var branchStats = branches.Select(br => new
+    {
+        Branch = br,
+        Count = Model.Count(b => b.Pod != null && b.Pod.BranchId == br.BranchId)
+    }).ToList();
+
+    int readyPodsCount = pods.Count(p => p.Status != "Maintenance");
+    int maintPodsCount = pods.Count(p => p.Status == "Maintenance");
+}
+
+<style>
+    .sch-head {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+        margin-bottom: 18px;
+    }
+    .sch-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+        background: #09090b;
+        border: 1px solid #27272a;
+        border-radius: 12px;
+        padding: 10px 14px;
+        margin-bottom: 18px;
+    }
+    .sch-legend {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        font-size: 11.5px;
+        color: #a1a1aa;
+        flex-wrap: wrap;
+    }
+    .sch-dot {
+        display: inline-block;
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        margin-right: 5px;
+    }
+    .sch-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 295px;
+        gap: 18px;
+        align-items: start;
+    }
+    .sch-cal-wrap {
+        background: #09090b;
+        border: 1px solid #27272a;
+        border-radius: 12px;
+        overflow-x: auto;
+    }
+    .sch-cal-table {
+        width: 100%;
+        min-width: 820px;
+        border-collapse: collapse;
+        table-layout: fixed;
+    }
+    .sch-cal-table thead th {
+        padding: 12px 8px;
+        text-align: center;
+        border-bottom: 1px solid #27272a;
+        border-right: 1px solid #18181b;
+        background: #0c0c0f;
+        font-weight: 600;
+    }
+    .sch-cal-table thead th:first-child {
+        width: 76px;
+        font-size: 10.5px;
+        color: #71717a;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+    .sch-cal-table thead th:last-child {
+        border-right: none;
+    }
+    .sch-cal-table thead th.is-today {
+        background: rgba(229, 9, 20, 0.12);
+        border-bottom-color: rgba(229, 9, 20, 0.5);
+    }
+    .sch-cal-table tbody td {
+        height: 82px;
+        padding: 6px;
+        vertical-align: top;
+        border-bottom: 1px solid #141418;
+        border-right: 1px solid #141418;
+        position: relative;
+    }
+    .sch-cal-table tbody tr:last-child td {
+        border-bottom: none;
+    }
+    .sch-cal-table tbody td:last-child {
+        border-right: none;
+    }
+    .sch-cal-table tbody td.sch-time-cell {
+        background: #0a0a0d;
+        border-right: 1px solid #27272a;
+        padding: 8px 10px;
+        text-align: right;
+    }
+    .sch-time-main {
+        font-size: 11.5px;
+        font-weight: 600;
+        color: #a1a1aa;
+        line-height: 1.2;
+    }
+    .sch-time-tag {
+        font-size: 9.5px;
+        color: #52525b;
+        margin-top: 2px;
+        letter-spacing: 0.04em;
+    }
+    .sch-cal-table tbody td.is-today-col {
+        background: rgba(255, 255, 255, 0.015);
+    }
+    .sch-now-line {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 6px;
+        height: 1.5px;
+        background: rgba(229, 9, 20, 0.85);
+        z-index: 3;
+        pointer-events: none;
+    }
+    .sch-now-pill {
+        position: absolute;
+        right: 4px;
+        top: -15px;
+        background: #e50914;
+        color: #ffffff;
+        font-size: 9px;
+        font-weight: 700;
+        padding: 1px 5px;
+        border-radius: 4px;
+        white-space: nowrap;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+    }
+
+    .sch-ev {
+        display: block;
+        text-decoration: none;
+        background: #141418;
+        border: 1px solid #27272a;
+        border-left: 3px solid #3b82f6;
+        border-radius: 7px;
+        padding: 6px 8px;
+        margin-bottom: 5px;
+        font-size: 11px;
+        transition: border-color 0.15s, background-color 0.15s;
+    }
+    .sch-ev:hover {
+        border-color: #52525b;
+        background: #18181f;
+    }
+    .sch-ev:last-child {
+        margin-bottom: 0;
+    }
+    .sch-ev.is-done {
+        border-left-color: #10b981;
+        background: #101214;
+        opacity: 0.8;
+    }
+    .sch-ev.is-live {
+        border-color: rgba(229, 9, 20, 0.55);
+        border-left: 3px solid #e50914;
+        background: linear-gradient(180deg, rgba(229, 9, 20, 0.14) 0%, #141418 100%);
+    }
+    .sch-ev-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 4px;
+        margin-bottom: 2px;
+    }
+    .sch-ev-time {
+        font-size: 10px;
+        font-weight: 600;
+        color: #d4d4d8;
+        white-space: nowrap;
+    }
+    .sch-ev-badge {
+        font-size: 9px;
+        font-weight: 700;
+        padding: 1px 5px;
+        border-radius: 4px;
+        white-space: nowrap;
+    }
+    .sch-ev-badge.done {
+        background: rgba(16, 185, 129, 0.15);
+        color: #10b981;
+    }
+    .sch-ev-badge.live {
+        background: #e50914;
+        color: #ffffff;
+    }
+    .sch-ev-badge.wait {
+        background: rgba(59, 130, 246, 0.15);
+        color: #60a5fa;
+    }
+    .sch-ev-name {
+        font-size: 11.5px;
+        font-weight: 600;
+        color: #fafafa;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .sch-ev-pod {
+        font-size: 10px;
+        color: #a1a1aa;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        margin-top: 1px;
+    }
+
+    .sch-side-card {
+        background: #09090b;
+        border: 1px solid #27272a;
+        border-radius: 12px;
+        padding: 18px;
+    }
+    .sch-stat-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+        margin: 14px 0;
+    }
+    .sch-stat-box {
+        background: #111114;
+        border: 1px solid #27272a;
+        border-radius: 8px;
+        padding: 12px;
+    }
+
+    @@media (max-width: 1200px) {
+        .sch-layout {
+            grid-template-columns: 1fr;
+        }
+    }
+    @@media print {
+        .admin-sidebar, .admin-topbar, .no-print {
+            display: none !important;
+        }
+        .admin-wrapper {
+            margin-left: 0 !important;
+            width: 100% !important;
+        }
+    }
+</style>
+
+<div class="adm-page">
+    <div class="sch-head">
+        <div>
+            <div class="d-flex align-items-center gap-2">
+                <h1 class="adm-page-title">ตารางเวลา (Master Schedule)</h1>
+                <span class="st-badge st-badge-green">LIVE SYNC</span>
+            </div>
+            <p class="adm-page-sub">ปฏิทินการจองรายสัปดาห์ทุกสาขา กรองตามสาขาและเทรนเนอร์ได้จากฐานข้อมูลจริง</p>
+        </div>
+        <div class="d-flex gap-2 no-print">
+            <a asp-controller="Admin" asp-action="Bookings" class="st-btn-outline">จัดการรายการจอง (Bookings)</a>
+        </div>
+    </div>
+
+    <div class="sch-toolbar no-print">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <div class="st-chips">
+                <a asp-controller="Admin" asp-action="Schedule" asp-route-viewMode="weekly" asp-route-branchId="@selectedBranchId" asp-route-trainerId="@selectedTrainerId"
+                   class="st-chip @(viewMode == "weekly" ? "active" : "")">รายสัปดาห์ (Weekly)</a>
+                <a asp-controller="Admin" asp-action="Schedule" asp-route-viewMode="daily" asp-route-date="@selectedDate.ToString("yyyy-MM-dd")" asp-route-branchId="@selectedBranchId" asp-route-trainerId="@selectedTrainerId"
+                   class="st-chip @(viewMode == "daily" ? "active" : "")">รายวันแยกห้อง Pod (Daily)</a>
+            </div>
+            @if (viewMode == "daily")
+            {
+                <a asp-controller="Admin" asp-action="Schedule" asp-route-viewMode="daily" asp-route-date="@prevDay" asp-route-branchId="@selectedBranchId" asp-route-trainerId="@selectedTrainerId" class="st-btn-outline">&lt;</a>
+                <a asp-controller="Admin" asp-action="Schedule" asp-route-viewMode="daily" asp-route-branchId="@selectedBranchId" asp-route-trainerId="@selectedTrainerId" class="st-btn-outline">วันนี้</a>
+                <a asp-controller="Admin" asp-action="Schedule" asp-route-viewMode="daily" asp-route-date="@nextDay" asp-route-branchId="@selectedBranchId" asp-route-trainerId="@selectedTrainerId" class="st-btn-outline">&gt;</a>
+                <span style="font-size:14px; font-weight:600; color:#fafafa; margin-left:6px;">
+                    @selectedDate.ToString("dd MMM yyyy")
+                </span>
+            }
+            else
+            {
+                <a asp-controller="Admin" asp-action="Schedule" asp-route-viewMode="weekly" asp-route-weekStart="@prevWeek" asp-route-branchId="@selectedBranchId" asp-route-trainerId="@selectedTrainerId" class="st-btn-outline">&lt;</a>
+                <a asp-controller="Admin" asp-action="Schedule" asp-route-viewMode="weekly" asp-route-branchId="@selectedBranchId" asp-route-trainerId="@selectedTrainerId" class="st-btn-outline">สัปดาห์นี้</a>
+                <a asp-controller="Admin" asp-action="Schedule" asp-route-viewMode="weekly" asp-route-weekStart="@nextWeek" asp-route-branchId="@selectedBranchId" asp-route-trainerId="@selectedTrainerId" class="st-btn-outline">&gt;</a>
+                <span style="font-size:14px; font-weight:600; color:#fafafa; margin-left:6px;">
+                    @monday.ToString("dd MMM") - @sunday.ToString("dd MMM yyyy")
+                </span>
+            }
+        </div>
+
+        <form method="get" asp-controller="Admin" asp-action="Schedule" class="d-flex align-items-center gap-2 flex-wrap">
+            <input type="hidden" name="viewMode" value="@viewMode" />
+            <input type="hidden" name="weekStart" value="@monday.ToString("yyyy-MM-dd")" />
+            <input type="hidden" name="date" value="@selectedDate.ToString("yyyy-MM-dd")" />
+            <select name="branchId" class="st-input" onchange="this.form.submit()">
+                <option value="0" selected="@(selectedBranchId == 0)">ทุกสาขา (@branches.Count)</option>
+                @foreach (var br in branches)
+                {
+                    <option value="@br.BranchId" selected="@(selectedBranchId == br.BranchId)">@br.BranchName</option>
+                }
+            </select>
+            <select name="trainerId" class="st-input" onchange="this.form.submit()">
+                <option value="-1" selected="@(selectedTrainerId == -1)">ทุกประเภท (PT + Solo)</option>
+                <option value="0" selected="@(selectedTrainerId == 0)">เฉพาะ Solo Pod (ไม่ใช้โค้ช)</option>
+                @foreach (var tr in trainers)
+                {
+                    <option value="@tr.TrainerId" selected="@(selectedTrainerId == tr.TrainerId)">@(tr.User?.FullName ?? $"Coach #{tr.TrainerId}")</option>
+                }
+            </select>
+        </form>
+
+        <div class="sch-legend">
+            <span><i class="sch-dot" style="background:#10b981;"></i>เสร็จสิ้น</span>
+            <span><i class="sch-dot" style="background:#3b82f6;"></i>ยืนยันแล้ว</span>
+            <span><i class="sch-dot" style="background:#e50914;"></i>กำลังใช้งาน</span>
+            <button type="button" onclick="window.print()" class="st-btn-outline" style="height:30px; padding:0 10px; font-size:11.5px;">พิมพ์ตาราง</button>
+        </div>
+    </div>
+
+    <div class="sch-layout">
+        <div class="sch-cal-wrap">
+            @if (viewMode == "daily")
+            {
+                <table class="sch-cal-table">
+                    <thead>
+                        <tr>
+                            <th>TIME</th>
+                            @foreach (var pod in pods.Take(8))
+                            {
+                                <th>
+                                    <div style="font-size:11.5px; color:#fafafa;">@pod.PodName</div>
+                                    <div style="font-size:10px; color:@(pod.Status == "Available" ? "#10b981" : "#f59e0b"); margin-top:2px;">@(pod.Branch?.BranchName ?? "-")</div>
+                                </th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in timeRows)
+                        {
+                            <tr>
+                                <td class="sch-time-cell">
+                                    <div class="sch-time-main">@row.Label</div>
+                                    <div class="sch-time-tag">@row.Tag</div>
+                                </td>
+                                @foreach (var pod in pods.Take(8))
+                                {
+                                    var cellBookings = Model
+                                        .Where(b => b.PodId == pod.PodId && b.StartTime >= row.MinStart && b.StartTime <= row.MaxStart)
+                                        .OrderBy(b => b.StartTime)
+                                        .ToList();
+                                    <td>
+                                        @if (pod.Status != "Available" && !cellBookings.Any())
+                                        {
+                                            <div style="font-size:10.5px; color:#f59e0b; text-align:center; padding:12px 4px;">ปิดปรับปรุง</div>
+                                        }
+                                        @foreach (var b in cellBookings)
+                                        {
+                                            bool isDone = b.Status == "Completed";
+                                            bool isLive = !isDone && b.CheckIns != null && b.CheckIns.Any(c => c.CheckOutTime == null);
+                                            string cardCls = isDone ? "is-done" : (isLive ? "is-live" : "");
+                                            string badgeCls = isDone ? "done" : (isLive ? "live" : "wait");
+                                            string badgeTxt = isDone ? "DONE" : (isLive ? "LIVE" : "BOOKED");
+                                            string memberName = b.User?.FullName ?? $"Member #{b.UserId}";
+                                            string trainerTag = b.Trainer?.User?.FullName ?? "Solo";
+                                            <a asp-controller="Admin" asp-action="Bookings" asp-route-search="@memberName" class="sch-ev @cardCls">
+                                                <div class="sch-ev-top">
+                                                    <span class="sch-ev-time">@b.StartTime.ToString("HH:mm")</span>
+                                                    <span class="sch-ev-badge @badgeCls">@badgeTxt</span>
+                                                </div>
+                                                <div class="sch-ev-name">@memberName</div>
+                                                <div class="sch-ev-pod">@trainerTag</div>
+                                            </a>
+                                        }
+                                    </td>
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+            else
+            {
+                <table class="sch-cal-table">
+                <thead>
+                    <tr>
+                        <th>TIME</th>
+                        @for (int d = 0; d < 7; d++)
+                        {
+                            var colDate = monday.AddDays(d);
+                            bool isToday = colDate == today;
+                            <th class="@(isToday ? "is-today" : "")">
+                                <div style="font-size:11px; color:@(isToday ? "#ef4444" : "#71717a");">@dayLabels[d]</div>
+                                <div style="font-size:14px; color:@(isToday ? "#ffffff" : "#e4e4e7"); margin-top:2px;">@colDate.ToString("dd")</div>
+                            </th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in timeRows)
+                    {
+                        bool isCurrentRow = nowTime >= row.MinStart && nowTime <= row.MaxStart;
+                        <tr>
+                            <td class="sch-time-cell">
+                                <div class="sch-time-main">@row.Label</div>
+                                <div class="sch-time-tag">@row.Tag</div>
+                            </td>
+                            @for (int d = 0; d < 7; d++)
+                            {
+                                var colDate = monday.AddDays(d);
+                                bool isToday = colDate == today;
+                                var cellBookings = Model
+                                    .Where(b => b.BookingDate == colDate && b.StartTime >= row.MinStart && b.StartTime <= row.MaxStart)
+                                    .OrderBy(b => b.StartTime)
+                                    .ToList();
+
+                                <td class="@(isToday ? "is-today-col" : "")">
+                                    @if (isToday && isCurrentRow)
+                                    {
+                                        <div class="sch-now-line">
+                                            <span class="sch-now-pill">NOW @nowTime.ToString("HH:mm")</span>
+                                        </div>
+                                    }
+
+                                    @foreach (var b in cellBookings)
+                                    {
+                                        bool isDone = b.Status == "Completed";
+                                        bool isLive = !isDone && b.CheckIns != null && b.CheckIns.Any(c => c.CheckOutTime == null);
+                                        string cardCls = isDone ? "is-done" : (isLive ? "is-live" : "");
+                                        string badgeCls = isDone ? "done" : (isLive ? "live" : "wait");
+                                        string badgeTxt = isDone ? "DONE" : (isLive ? "LIVE" : "BOOKED");
+                                        string memberName = b.User?.FullName ?? $"Member #{b.UserId}";
+                                        string podName = b.Pod?.PodName ?? $"Pod #{b.PodId}";
+                                        string trainerTag = b.Trainer?.User?.FullName ?? "Solo";
+
+                                        <a asp-controller="Admin" asp-action="Bookings" asp-route-search="@memberName" class="sch-ev @cardCls" title="คลิกเพื่อจัดการการจองของ @memberName">
+                                            <div class="sch-ev-top">
+                                                <span class="sch-ev-time">@b.StartTime.ToString("HH:mm")</span>
+                                                <span class="sch-ev-badge @badgeCls">@badgeTxt</span>
+                                            </div>
+                                            <div class="sch-ev-name">@memberName</div>
+                                            <div class="sch-ev-pod">@podName • @trainerTag</div>
+                                        </a>
+                                    }
+                                </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            }
+        </div>
+
+        <div class="d-flex flex-column gap-3">
+            <div class="sch-side-card">
+                <div style="font-size:13px; font-weight:600; color:#fafafa;">สรุปคิวประจำสัปดาห์</div>
+                <div style="font-size:11.5px; color:#71717a;">@monday.ToString("dd MMM") - @sunday.ToString("dd MMM yyyy")</div>
+
+                <div class="sch-stat-grid">
+                    <div class="sch-stat-box">
+                        <div style="font-size:10.5px; color:#71717a;">คิวจองทั้งหมด</div>
+                        <div style="font-size:22px; font-weight:700; color:#fafafa; margin-top:2px;">@Model.Count</div>
+                    </div>
+                    <div class="sch-stat-box">
+                        <div style="font-size:10.5px; color:#71717a;">รอเข้าใช้ / LIVE</div>
+                        <div style="font-size:22px; font-weight:700; color:#60a5fa; margin-top:2px;">@(pendingCount + liveCount)</div>
+                    </div>
+                    <div class="sch-stat-box">
+                        <div style="font-size:10.5px; color:#71717a;">PT (1-on-1)</div>
+                        <div style="font-size:22px; font-weight:700; color:#ef4444; margin-top:2px;">@ptCount</div>
+                    </div>
+                    <div class="sch-stat-box">
+                        <div style="font-size:10.5px; color:#71717a;">Solo / เสร็จแล้ว</div>
+                        <div style="font-size:22px; font-weight:700; color:#10b981; margin-top:2px;">@soloCount <span style="font-size:12px; color:#71717a;">/ @doneCount</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sch-side-card">
+                <div style="font-size:13px; font-weight:600; color:#fafafa; margin-bottom:10px;">ความหนาแน่นแยกตามสาขา</div>
+                <div class="d-flex flex-column gap-2">
+                    @foreach (var item in branchStats)
+                    {
+                        <div class="d-flex align-items-center justify-content-between" style="font-size:12px; padding:7px 10px; background:#111114; border:1px solid #18181b; border-radius:8px;">
+                            <span style="color:#d4d4d8;">@item.Branch.BranchName</span>
+                            <span style="font-weight:600; color:#fafafa;">@item.Count คิว</span>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <div class="sch-side-card">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span style="font-size:13px; font-weight:600; color:#fafafa;">สถานะห้องซ้อม Pod</span>
+                    <a asp-controller="Admin" asp-action="Packages" style="font-size:11.5px; color:#ef4444; text-decoration:none;">จัดการห้อง</a>
+                </div>
+                <div class="d-flex align-items-center justify-content-between" style="font-size:12px; color:#a1a1aa;">
+                    <span>พร้อมเปิดให้บริการ</span>
+                    <span class="st-badge st-badge-green">@readyPodsCount ห้อง</span>
+                </div>
+                <div class="d-flex align-items-center justify-content-between mt-2" style="font-size:12px; color:#a1a1aa;">
+                    <span>ปิดปรับปรุง (Maintenance)</span>
+                    <span class="st-badge @(maintPodsCount > 0 ? "st-badge-amber" : "st-badge-blue")">@maintPodsCount ห้อง</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+

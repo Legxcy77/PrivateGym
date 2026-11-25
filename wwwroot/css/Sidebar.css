@@ -1,0 +1,360 @@
+/* =========================================================
+   PRIVATEGYM - ADMIN SIDEBAR & WORKSPACE
+   ========================================================= */
+
+:root {
+    --admin-bg: #0d0d0d;
+    --sidebar-bg: #121212;
+    --sidebar-border: #222222;
+    --primary-red: #e53935;
+    --primary-red-hover: #ff4b47;
+    --text-muted: #757575;
+    --sidebar-width: 250px;
+}
+
+body.admin-body {
+    margin: 0;
+    background-color: var(--admin-bg);
+    color: #ffffff;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: row;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* =========================================================
+   SIDEBAR
+   ========================================================= */
+
+.admin-sidebar {
+    width: var(--sidebar-width);
+    height: 100vh;
+    position: fixed;
+    top: 0;
+    left: 0;
+    background-color: var(--sidebar-bg);
+    border-right: 1px solid var(--sidebar-border);
+    display: flex;
+    flex-direction: column;
+    z-index: 1050;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar-header {
+    height: 65px;
+    padding: 0 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--sidebar-border);
+}
+
+.sidebar-brand {
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+    gap: 8px;
+}
+
+.sidebar-logo-img {
+    width: 120px;
+    height: auto;
+    object-fit: contain;
+}
+
+.badge-admin {
+    background-color: rgba(229, 57, 53, 0.15);
+    color: var(--primary-red);
+    border: 1px solid var(--primary-red);
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 700;
+    
+}
+
+.sidebar-close-btn {
+    background: none;
+    border: none;
+    color: #a0a0a0;
+    font-size: 24px;
+    cursor: pointer;
+    line-height: 1;
+}
+
+/* Navigation List */
+.sidebar-nav-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px 12px;
+}
+
+.sidebar-nav-container::-webkit-scrollbar {
+    width: 4px;
+}
+
+.sidebar-nav-container::-webkit-scrollbar-thumb {
+    background: #242424;
+    border-radius: 4px;
+}
+
+.sidebar-nav {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.nav-category {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    letter-spacing: 0.8px;
+    padding: 12px 10px 6px;
+}
+
+.sidebar-nav .nav-item {
+    margin-bottom: 2px;
+}
+
+.sidebar-nav .nav-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 9px 12px;
+    color: #cccccc;
+    text-decoration: none;
+    border-radius: 7px;
+    font-size: 14px;
+    font-weight: 500;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.sidebar-nav .nav-icon {
+    font-size: 16px;
+    width: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.sidebar-nav .nav-link:hover {
+    color: #ffffff;
+    background-color: #1a1a1a;
+}
+
+.sidebar-nav .nav-link.active {
+    background-color: var(--primary-red);
+    color: #ffffff;
+}
+
+/* Sidebar Footer User */
+.sidebar-user {
+    padding: 12px 14px;
+    border-top: 1px solid var(--sidebar-border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background-color: #0f0f0f;
+}
+
+.sidebar-user .user-avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background-color: var(--primary-red);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.sidebar-user .user-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.sidebar-user .user-name {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sidebar-user .user-role {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.logout-link {
+    color: #888;
+    text-decoration: none;
+    font-size: 16px;
+    transition: 0.2s ease;
+}
+
+.logout-link:hover {
+    color: var(--primary-red);
+}
+
+/* =========================================================
+   TOPBAR & CONTENT AREA
+   ========================================================= */
+
+.admin-wrapper {
+    flex: 1;
+    margin-left: var(--sidebar-width);
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    min-width: 0;
+}
+
+.admin-topbar {
+    height: 65px;
+    background-color: var(--sidebar-bg);
+    border-bottom: 1px solid var(--sidebar-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+.toggle-sidebar-btn {
+    display: none;
+    background: transparent;
+    border: none;
+    color: #fff;
+    font-size: 22px;
+    cursor: pointer;
+    padding: 0;
+    margin-right: 14px;
+}
+
+.topbar-title {
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.btn-visit-site {
+    border: 1px solid #333333;
+    background-color: #1a1a1a;
+    color: #cccccc;
+    text-decoration: none;
+    font-size: 13px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    transition: 0.2s ease;
+}
+
+.btn-visit-site:hover {
+    color: #ffffff;
+    border-color: var(--primary-red);
+}
+
+.admin-main {
+    flex: 1;
+    padding: 24px;
+}
+
+/* =========================================================
+   RESPONSIVE (MOBILE & TABLET <= 991px)
+   ========================================================= */
+
+@media (max-width: 991px) {
+    .admin-sidebar {
+        transform: translateX(-100%);
+    }
+
+    .admin-sidebar.active {
+        transform: translateX(0);
+        box-shadow: 4px 0 20px rgba(0, 0, 0, 0.6);
+    }
+
+    .admin-wrapper {
+        margin-left: 0;
+    }
+
+    .toggle-sidebar-btn {
+        display: block;
+    }
+
+    .sidebar-backdrop {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background-color: rgba(0, 0, 0, 0.7);
+        z-index: 1040;
+    }
+
+    .sidebar-backdrop.active {
+        display: block;
+    }
+
+    .admin-topbar {
+        padding: 0 16px;
+    }
+
+    .admin-main {
+        padding: 16px;
+    }
+
+    /* Badge แสดงสถานะ Staff */
+.badge-staff {
+    background-color: rgba(229, 57, 53, 0.15);
+    color: var(--primary-red);
+    border: 1px solid var(--primary-red);
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 700;
+    
+}
+
+
+/* ปรับสี Avatar ของ Staff แยกจาก Admin (สีส้ม/ทอง ให้สังเกตง่าย) */
+.sidebar-user .staff-avatar {
+    background-color: #ff9800;
+    color: #111111;
+}
+
+badge-trainer {
+    background-color: rgba(0, 188, 212, 0.15);
+    color: #00bcd4;
+    border: 1px solid #00bcd4;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
+.sidebar-user .trainer-avatar {
+    background-color: #00bcd4;
+    color: #111111;
+}
+
+/* ปุ่ม Profile ฟันเฟืองในแถบด้านล่างของ Sidebar */
+.user-footer-btn {
+    color: #888;
+    text-decoration: none;
+    font-size: 15px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s ease;
+}
+
+.user-footer-btn:hover {
+    color: #ffffff;
+}
+}

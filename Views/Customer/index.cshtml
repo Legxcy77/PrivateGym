@@ -1,0 +1,748 @@
+@model PrivateGym.ViewModels.CustomerDashboardViewModel
+
+@{
+    ViewData["Title"] = "หน้าแรกสมาชิก";
+    Layout = "~/Views/Shared/Customer/_CustomerLayout.cshtml";
+
+    string expThai = (Model?.ExperienceLevel ?? "Intermediate") switch
+    {
+        "Beginner" => "ผู้เริ่มต้น (Beginner)",
+        "Advanced" => "ขั้นสูง / นักกีฬา (Advanced)",
+        _ => "ปานกลาง (Intermediate)"
+    };
+
+    string bodySpecText = (Model?.Height != null || Model?.Weight != null)
+        ? $"{(Model.Height.HasValue ? $"{Model.Height:0.#} ซม." : "-")} / {(Model.Weight.HasValue ? $"{Model.Weight:0.#} กก." : "-")}"
+        : "ยังไม่ระบุสัดส่วน";
+
+    string goalText = !string.IsNullOrWhiteSpace(Model?.FitnessGoal)
+        ? Model.FitnessGoal
+        : "เพิ่มมวลกล้ามเนื้อและพัฒนาความแข็งแรง";
+
+    var nextBk = Model?.NextBooking;
+    bool nextBkCheckedIn = nextBk?.CheckIns != null && nextBk.CheckIns.Any();
+    var todayDate = DateOnly.FromDateTime(DateTime.Today);
+    bool isNextToday = nextBk != null && nextBk.BookingDate == todayDate;
+
+    string nextPodShort = "POD 01";
+    if (nextBk?.Pod?.PodName != null)
+    {
+        var raw = nextBk.Pod.PodName;
+        nextPodShort = raw.Contains(":") ? raw.Split(':')[0].Trim().ToUpper() : raw;
+    }
+
+    int daysLeft = Model?.DaysRemaining ?? 30;
+    int progressPct = Math.Clamp((int)Math.Round(daysLeft * 100.0 / 30.0), 8, 100);
+    string? nextCyclePkg = ViewBag.NextCyclePackageName as string;
+    string? nextCycleStart = ViewBag.NextCycleStartDate as string;
+}
+
+<style>
+    .hm-bento-wrap {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    /* Welcome Strip */
+    .hm-welcome-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 22px;
+        flex-wrap: wrap;
+        width: 100%;
+    }
+
+    .hm-welcome-name {
+        font-size: 25px;
+        font-weight: 800;
+        color: #ffffff;
+        letter-spacing: -0.4px;
+        margin: 0 0 4px 0;
+    }
+
+    .hm-welcome-sub {
+        font-size: 13.5px;
+        color: #a1a1aa;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .hm-branch-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        background: #17171c;
+        border: 1px solid #282832;
+        color: #e4e4e7;
+        font-size: 12px;
+        font-weight: 600;
+        padding: 4px 11px;
+        border-radius: 20px;
+    }
+
+    .hm-welcome-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    /* Row 1: Bento 2x2 Grid (2 Cards Side by Side on Mobile & Desktop) */
+    .hm-bento-top-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 18px;
+        margin-bottom: 18px;
+        width: 100%;
+    }
+
+    .hm-bento-card {
+        background: #121216;
+        border: 1px solid #24242c;
+        border-radius: 16px;
+        padding: 24px 26px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        position: relative;
+        overflow: hidden;
+        min-width: 0;
+        transition: border-color 0.2s ease;
+    }
+
+    .hm-bento-card:hover {
+        border-color: #343442;
+    }
+
+    .hm-bento-card.accent-plan {
+        background: linear-gradient(155deg, #171215 0%, #111115 65%);
+        border-color: rgba(229, 9, 20, 0.28);
+    }
+
+    .hm-bento-card.accent-session {
+        background: linear-gradient(155deg, #121716 0%, #111115 65%);
+        border-color: #262630;
+    }
+
+    .hm-bento-card.accent-session.has-active {
+        border-color: rgba(34, 197, 94, 0.35);
+    }
+
+    .hm-bento-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 12px;
+    }
+
+    .hm-bento-label {
+        font-size: 11.5px;
+        font-weight: 700;
+        color: #a1a1aa;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+    }
+
+    .hm-pill-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 11px;
+        font-weight: 700;
+        padding: 3px 9px;
+        border-radius: 20px;
+        white-space: nowrap;
+    }
+
+    .hm-pill-green {
+        background: rgba(34, 197, 94, 0.14);
+        border: 1px solid rgba(34, 197, 94, 0.35);
+        color: #4ade80;
+    }
+
+    .hm-pill-red {
+        background: rgba(229, 9, 20, 0.15);
+        border: 1px solid rgba(229, 9, 20, 0.35);
+        color: #f87171;
+    }
+
+    .hm-pill-dim {
+        background: #1b1b22;
+        border: 1px solid #2c2c36;
+        color: #a1a1aa;
+    }
+
+    .hm-bento-title {
+        font-size: 21px;
+        font-weight: 800;
+        color: #ffffff;
+        line-height: 1.25;
+        margin-bottom: 6px;
+        letter-spacing: -0.3px;
+    }
+
+    .hm-bento-sub {
+        font-size: 12.5px;
+        color: #a1a1aa;
+        line-height: 1.5;
+        margin-bottom: 14px;
+    }
+
+    .hm-mini-progress {
+        height: 5px;
+        background: #23232b;
+        border-radius: 6px;
+        overflow: hidden;
+        margin-bottom: 10px;
+    }
+
+    .hm-mini-progress-bar {
+        height: 100%;
+        background: linear-gradient(90deg, #e50914, #ff4d4d);
+        border-radius: 6px;
+    }
+
+    .hm-next-cycle-tag {
+        background: rgba(245, 158, 11, 0.12);
+        border: 1px solid rgba(245, 158, 11, 0.32);
+        color: #fcd34d;
+        border-radius: 8px;
+        padding: 6px 10px;
+        font-size: 11px;
+        font-weight: 600;
+        margin-bottom: 12px;
+    }
+
+    .hm-bento-foot {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding-top: 12px;
+        border-top: 1px solid rgba(255, 255, 255, 0.07);
+        margin-top: auto;
+    }
+
+    .hm-bento-foot-meta {
+        font-size: 11.5px;
+        color: #71717a;
+    }
+
+    .hm-bento-link {
+        font-size: 12px;
+        font-weight: 700;
+        color: #ffffff;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        background: #1f1f27;
+        border: 1px solid #32323e;
+        padding: 6px 12px;
+        border-radius: 8px;
+        transition: all 0.18s ease;
+        white-space: nowrap;
+    }
+
+    .hm-bento-link:hover {
+        background: #292934;
+        color: #ffffff;
+    }
+
+    .hm-bento-link.primary-red {
+        background: #e50914;
+        border-color: #e50914;
+        color: #ffffff;
+    }
+
+    .hm-bento-link.primary-red:hover {
+        background: #c70812;
+    }
+
+    /* Row 2: 3-Column Quota Strip */
+    .hm-quota-strip-card {
+        width: 100%;
+        background: #121216;
+        border: 1px solid #24242c;
+        border-radius: 16px;
+        padding: 22px 26px;
+        margin-bottom: 18px;
+    }
+
+    .hm-strip-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 14px;
+    }
+
+    .hm-strip-title {
+        font-size: 14.5px;
+        font-weight: 800;
+        color: #ffffff;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .hm-strip-action {
+        font-size: 12.5px;
+        font-weight: 700;
+        color: #e50914;
+        text-decoration: none;
+    }
+
+    .hm-quota-3col {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 14px;
+    }
+
+    .hm-q-box {
+        background: #18181f;
+        border: 1px solid #262631;
+        border-radius: 12px;
+        padding: 16px 14px;
+        text-align: center;
+        min-width: 0;
+    }
+
+    .hm-q-val {
+        font-size: 24px;
+        font-weight: 800;
+        color: #ffffff;
+        line-height: 1.15;
+        margin-bottom: 4px;
+    }
+
+    .hm-q-lbl {
+        font-size: 12.5px;
+        font-weight: 700;
+        color: #d4d4d8;
+        margin-bottom: 2px;
+    }
+
+    .hm-q-sub {
+        font-size: 11.5px;
+        color: #71717a;
+    }
+
+    /* Row 3: Body Profile + Club Announcements */
+    .hm-bottom-grid {
+        width: 100%;
+        display: grid;
+        grid-template-columns: 1.15fr 0.85fr;
+        gap: 18px;
+    }
+
+    .hm-info-grid-2x2 {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+        margin-bottom: 14px;
+    }
+
+    .hm-info-cell {
+        background: #17171d;
+        border: 1px solid #25252f;
+        border-radius: 10px;
+        padding: 11px 13px;
+    }
+
+    .hm-info-cell .k {
+        font-size: 11px;
+        color: #71717a;
+        display: block;
+        margin-bottom: 3px;
+    }
+
+    .hm-info-cell .v {
+        font-size: 13px;
+        font-weight: 700;
+        color: #ffffff;
+        display: block;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .hm-notice-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 10px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .hm-notice-item:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+    }
+
+    .hm-notice-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #e50914;
+        margin-top: 6px;
+        flex-shrink: 0;
+    }
+
+    /* Mobile Adjustments: Keep Bento 2x2 Compact & Scannable */
+    @@media (max-width: 991.98px) {
+        .hm-welcome-actions {
+            display: none;
+        }
+
+        .hm-welcome-name {
+            font-size: 18.5px;
+        }
+
+        .hm-bento-top-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .hm-bento-card {
+            padding: 14px 13px;
+            border-radius: 14px;
+        }
+
+        .hm-bento-label {
+            font-size: 10.5px;
+        }
+
+        .hm-pill-status {
+            font-size: 10px;
+            padding: 2px 7px;
+        }
+
+        .hm-bento-title {
+            font-size: 16px;
+            margin-bottom: 4px;
+        }
+
+        .hm-bento-sub {
+            font-size: 11.5px;
+            margin-bottom: 10px;
+        }
+
+        .hm-bento-foot {
+            padding-top: 10px;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 6px;
+        }
+
+        .hm-bento-foot-meta {
+            font-size: 10.5px;
+        }
+
+        .hm-bento-link {
+            justify-content: center;
+            width: 100%;
+            font-size: 11.5px;
+            padding: 7px 10px;
+        }
+
+        .hm-quota-strip-card {
+            padding: 14px;
+            border-radius: 14px;
+        }
+
+        .hm-quota-3col {
+            gap: 8px;
+        }
+
+        .hm-q-box {
+            padding: 10px 6px;
+        }
+
+        .hm-q-val {
+            font-size: 17px;
+        }
+
+        .hm-q-lbl {
+            font-size: 11px;
+        }
+
+        .hm-q-sub {
+            font-size: 10px;
+        }
+
+        .hm-bottom-grid {
+            grid-template-columns: 1fr;
+            gap: 12px;
+        }
+    }
+</style>
+
+<main class="cd-content">
+    <div class="hm-bento-wrap">
+        <!-- Mobile Top Header Bar: หน้าแรกเอาโลโก้ไว้ตรงกลางบน -->
+        <div class="pg-m-topbar d-flex d-lg-none">
+            <div style="width: 36px;"></div>
+            <a asp-controller="Customer" asp-action="Index" asp-route-email="@ViewBag.Email" class="pg-m-topbar-center">
+                <img src="~/images/logo.png" alt="PrivateGym" />
+            </a>
+            <div class="pg-m-topbar-right"></div>
+        </div>
+
+        <!-- Welcome Header Strip -->
+        <div class="hm-welcome-bar">
+            <div>
+                <h1 class="hm-welcome-name">สวัสดี, @(Model?.FullName ?? "คุณปวริศร์")</h1>
+                <div class="hm-welcome-sub">
+                    <span>สมาชิก @(Model?.MembershipPackage ?? "Starter Experience")</span>
+                    <span class="hm-branch-pill">
+                        <span class="cd-status-dot"></span>
+                        @(Model?.HomeBranch ?? "สาขาทองหล่อ")
+                    </span>
+                </div>
+            </div>
+
+            <div class="hm-welcome-actions">
+                <a asp-controller="Customer" asp-action="ServiceHistory" asp-route-email="@ViewBag.Email" class="cd-btn-secondary">
+                    <span>ประวัติการใช้บริการ</span>
+                </a>
+                <a asp-controller="Customer" asp-action="BookSession" asp-route-email="@ViewBag.Email" class="cd-btn-primary">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    <span>จองห้องซ้อมใหม่</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- ================= BENTO ROW 1: 2x2 EXECUTIVE CARDS (แพ็กเกจปัจจุบัน + เซสชันถัดไป/บัตรผ่าน) ================= -->
+        <div class="hm-bento-top-grid">
+            <!-- Box 1 (Left): Active Plan -->
+            <div class="hm-bento-card accent-plan">
+                <div>
+                    <div class="hm-bento-head">
+                        <span class="hm-bento-label">แพ็กเกจสมาชิก</span>
+                        <span class="hm-pill-status hm-pill-green">เหลือ @daysLeft วัน</span>
+                    </div>
+
+                    <div class="hm-bento-title">@(Model?.MembershipPackage ?? "Starter Experience")</div>
+                    <div class="hm-bento-sub">
+                        รอบบิล @(Model?.CycleDateText ?? "-")
+                    </div>
+
+                    <div class="hm-mini-progress">
+                        <div class="hm-mini-progress-bar" style="width: @progressPct%;"></div>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(nextCyclePkg))
+                    {
+                        <div class="hm-next-cycle-tag">
+                            รอบถัดไป: @nextCyclePkg @( !string.IsNullOrEmpty(nextCycleStart) ? $"(เริ่ม {nextCycleStart})" : "" )
+                        </div>
+                    }
+                </div>
+
+                <div class="hm-bento-foot">
+                    <span class="hm-bento-foot-meta">สถานะปกติ (Active)</span>
+                    <a asp-controller="Customer" asp-action="MyPackages" asp-route-email="@ViewBag.Email" class="hm-bento-link">
+                        <span>ดูแพ็กเกจ</span>
+                        <span>&rarr;</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Box 2 (Right): Next Session / Quick QR Access -->
+            <div class="hm-bento-card accent-session @(nextBk != null ? "has-active" : "")">
+                @if (nextBk != null)
+                {
+                    <div>
+                        <div class="hm-bento-head">
+                            <span class="hm-bento-label">เซสชันถัดไป</span>
+                            @if (nextBkCheckedIn)
+                            {
+                                <span class="hm-pill-status hm-pill-green">เช็กอินแล้ว</span>
+                            }
+                            else if (isNextToday)
+                            {
+                                <span class="hm-pill-status hm-pill-red">วันนี้</span>
+                            }
+                            else
+                            {
+                                <span class="hm-pill-status hm-pill-green">ยืนยันแล้ว</span>
+                            }
+                        </div>
+
+                        <div class="hm-bento-title">
+                            @nextPodShort &bull; @nextBk.StartTime.ToString("HH:mm") น.
+                        </div>
+                        <div class="hm-bento-sub">
+                            วันที่ @nextBk.BookingDate.ToString("dd/MM/yyyy") (@nextBk.StartTime.ToString("HH:mm") - @nextBk.EndTime.ToString("HH:mm") น.)<br />
+                            @if (nextBk.Trainer != null)
+                            {
+                                <span style="color: #4ade80; font-weight: 600;">โค้ช @(nextBk.Trainer.User?.FullName ?? nextBk.Trainer.Specialty)</span>
+                            }
+                            else
+                            {
+                                <span>ฝึกซ้อมเดี่ยวส่วนตัว (Self-Training)</span>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="hm-bento-foot">
+                        <span class="hm-bento-foot-meta">#PG-@nextBk.BookingId.ToString("D5")</span>
+                        <a asp-controller="Customer" asp-action="MyBookings" asp-route-email="@ViewBag.Email" class="hm-bento-link primary-red">
+                            <span>เปิดบัตรผ่าน QR</span>
+                            <span>&rarr;</span>
+                        </a>
+                    </div>
+                }
+                else
+                {
+                    <div>
+                        <div class="hm-bento-head">
+                            <span class="hm-bento-label">บัตรผ่านเข้าห้อง</span>
+                            <span class="hm-pill-status hm-pill-dim">ว่าง • พร้อมจอง</span>
+                        </div>
+
+                        <div class="hm-bento-title">ยังไม่มีรอบซ้อม</div>
+                        <div class="hm-bento-sub">
+                            เลือกจองห้อง Private Pod เก็บเสียงส่วนตัว หรือนัดหมายโค้ช 1-on-1 ได้ทันทีตามเวลาที่คุณสะดวก
+                        </div>
+                    </div>
+
+                    <div class="hm-bento-foot">
+                        <span class="hm-bento-foot-meta">เปิดบริการ 06:00 - 24:00 น.</span>
+                        <a asp-controller="Customer" asp-action="BookSession" asp-route-email="@ViewBag.Email" class="hm-bento-link primary-red">
+                            <span>+ จองเวลาซ้อม</span>
+                        </a>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- ================= BENTO ROW 2: 3-COLUMN QUOTA SUMMARY STRIP ================= -->
+        <div class="hm-quota-strip-card" id="customerQuotaSection">
+            <div class="hm-strip-header">
+                <div class="hm-strip-title">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#e50914" stroke-width="2.2">
+                        <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                        <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                    </svg>
+                    <span>โควต้าคงเหลือพร้อมใช้งาน</span>
+                </div>
+                <a asp-controller="Customer" asp-action="MyPackages" asp-route-email="@ViewBag.Email" class="hm-strip-action">
+                    จัดการ / เติมโควต้า &rarr;
+                </a>
+            </div>
+
+            <div class="hm-quota-3col">
+                <div class="hm-q-box">
+                    <div class="hm-q-val">@(Model?.PodQuotaText ?? "4")</div>
+                    <div class="hm-q-lbl">ห้องซ้อม Pod</div>
+                    <div class="hm-q-sub">จองแล้ว @(ViewBag.UsedPodsCount ?? 0) ครั้ง</div>
+                </div>
+                <div class="hm-q-box">
+                    <div class="hm-q-val">@(Model?.PtQuotaText ?? "0")</div>
+                    <div class="hm-q-lbl">โค้ชส่วนตัว PT</div>
+                    <div class="hm-q-sub">จองแล้ว @(ViewBag.UsedPtCount ?? 0) ครั้ง</div>
+                </div>
+                <div class="hm-q-box">
+                    <div class="hm-q-val">@(Model?.InBodyQuotaText ?? "1")</div>
+                    <div class="hm-q-lbl">วัดมวลร่างกาย</div>
+                    <div class="hm-q-sub">Recovery ไม่จำกัด</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= BENTO ROW 3: BODY PROFILE & CLUB ANNOUNCEMENTS ================= -->
+        <div class="hm-bottom-grid">
+            <!-- Left: ข้อมูลสรีระและเป้าหมายการฝึกจริงจาก DB -->
+            <div class="hm-bento-card">
+                <div>
+                    <div class="hm-strip-header" style="margin-bottom: 12px;">
+                        <div class="hm-strip-title">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.2">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="12" cy="7" r="4"></circle>
+                            </svg>
+                            <span>ข้อมูลสรีระและเป้าหมายการฝึก</span>
+                        </div>
+                        <a asp-controller="Customer" asp-action="EditProfile" asp-route-email="@ViewBag.Email" style="font-size: 12px; font-weight: 700; color: #a1a1aa; text-decoration: none;">
+                            แก้ไขข้อมูล &rarr;
+                        </a>
+                    </div>
+
+                    <div class="hm-info-grid-2x2">
+                        <div class="hm-info-cell">
+                            <span class="k">เป้าหมายหลัก (Fitness Goal)</span>
+                            <span class="v" title="@goalText">@goalText</span>
+                        </div>
+                        <div class="hm-info-cell">
+                            <span class="k">ระดับประสบการณ์</span>
+                            <span class="v">@expThai</span>
+                        </div>
+                        <div class="hm-info-cell">
+                            <span class="k">ส่วนสูง / น้ำหนักปัจจุบัน</span>
+                            <span class="v">@bodySpecText</span>
+                        </div>
+                        <div class="hm-info-cell">
+                            <span class="k">สาขาประจำตัว</span>
+                            <span class="v">@(Model?.HomeBranch ?? "สาขาทองหล่อ")</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="hm-bento-foot" style="flex-direction: row; align-items: center;">
+                    <span class="hm-bento-foot-meta">ซิงค์ข้อมูลกับหน้าโค้ชผู้ฝึกสอนอัตโนมัติ</span>
+                    <a asp-controller="Customer" asp-action="ServiceHistory" asp-route-email="@ViewBag.Email" class="hm-bento-link" style="width: auto;">
+                        <span>ดูประวัติการซ้อม</span>
+                        <span>&rarr;</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Right: ประกาศและมาตรฐานคลับ -->
+            <div class="hm-bento-card">
+                <div>
+                    <div class="hm-strip-header" style="margin-bottom: 8px;">
+                        <div class="hm-strip-title">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#e50914" stroke-width="2.2">
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                            </svg>
+                            <span>มาตรฐานการเข้าใช้งานคลับ</span>
+                        </div>
+                        <span class="hm-pill-status hm-pill-green">เปิดทำการปกติ</span>
+                    </div>
+
+                    <div class="hm-notice-item">
+                        <span class="hm-notice-dot"></span>
+                        <div>
+                            <div style="font-size: 12.5px; font-weight: 700; color: #ffffff;">ระบบประตูอัตโนมัติเปิดสแกนล่วงหน้า 15 นาที</div>
+                            <div style="font-size: 11.5px; color: #a1a1aa; line-height: 1.5;">สแกน QR หรือกดเช็กอินเข้าห้องซ้อมได้ที่หน้าการจองของฉัน และระบบจะตัดรอบเมื่อหมดเวลาซ้อม</div>
+                        </div>
+                    </div>
+
+                    <div class="hm-notice-item">
+                        <span class="hm-notice-dot" style="background: #22c55e;"></span>
+                        <div>
+                            <div style="font-size: 12.5px; font-weight: 700; color: #ffffff;">ระบบกรองอากาศ HEPA H14 &amp; อุณหภูมิ 21°C</div>
+                            <div style="font-size: 11.5px; color: #a1a1aa; line-height: 1.5;">ห้องซ้อมทุกห้องฆ่าเชื้อและระบายอากาศอัตโนมัติระหว่างพักรอบ 15 นาที</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="hm-bento-foot" style="flex-direction: row; align-items: center;">
+                    <span class="hm-bento-foot-meta">ต้องการความช่วยเหลือจากผู้ดูแลสาขา?</span>
+                    <a asp-controller="Customer" asp-action="Support" asp-route-email="@ViewBag.Email" class="hm-bento-link" style="width: auto;">
+                        <span>ติดต่อสอบถาม</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>

@@ -1,0 +1,227 @@
+@model List<PrivateGym.Models.User>
+@using PrivateGym.Models
+@{
+    Layout = "~/Views/Shared/Trainer/_TrainerLayout.cshtml";
+    ViewData["Title"] = "รายชื่อลูกค้าในการดูแล (Clients)";
+
+    string trainerEmail = ViewBag.Email ?? "alex@privategym.club";
+    string search = ViewBag.Search ?? "";
+    string statusFilter = ViewBag.StatusFilter ?? "all";
+    var trainerBookings = ViewBag.TrainerBookings as List<Booking> ?? new List<Booking>();
+    var workoutLogs = ViewBag.WorkoutLogs as List<Dictionary<string, string>> ?? new List<Dictionary<string, string>>();
+
+    int totalClients = ViewBag.TotalClients ?? 0;
+    int avgCompliance = ViewBag.AvgCompliance ?? 100;
+    int quotaAtRisk = ViewBag.QuotaAtRisk ?? 0;
+
+    var today = DateOnly.FromDateTime(DateTime.Today);
+    var nowTime = TimeOnly.FromDateTime(DateTime.Now);
+}
+
+<style>
+    .cl-header {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+        margin-bottom: 22px;
+    }
+    .cl-kpi-strip {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(140px, 1fr));
+        gap: 12px;
+    }
+    .cl-kpi-box {
+        background: #09090b;
+        border: 1px solid #27272a;
+        border-radius: 10px;
+        padding: 12px 16px;
+    }
+    .cl-kpi-lbl {
+        font-size: 10.5px;
+        font-weight: 600;
+        color: #71717a;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+    .cl-kpi-val {
+        font-size: 20px;
+        font-weight: 700;
+        color: #fafafa;
+        margin-top: 2px;
+    }
+    .cl-avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: #18181b;
+        border: 1px solid #27272a;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 13px;
+        font-weight: 700;
+        color: #fafafa;
+        flex-shrink: 0;
+    }
+    @@media (max-width: 900px) {
+        .cl-kpi-strip {
+            width: 100%;
+            grid-template-columns: repeat(3, 1fr);
+        }
+    }
+</style>
+
+<main class="cd-content">
+    <div class="cl-header">
+        <div>
+            <h1 class="cd-page-title">รายชื่อลูกค้าในการดูแล (Clients)</h1>
+            <p class="cd-page-subtext">สมาชิกทั้งหมด @totalClients คนที่ฝึกสอนส่วนตัวและติดตามผลลัพธ์จากข้อมูลจริงในระบบ</p>
+        </div>
+
+        <div class="cl-kpi-strip">
+            <div class="cl-kpi-box">
+                <div class="cl-kpi-lbl">ATHLETES TOTAL</div>
+                <div class="cl-kpi-val">@totalClients <span style="font-size:12px; font-weight:400; color:#71717a;">คน</span></div>
+            </div>
+            <div class="cl-kpi-box">
+                <div class="cl-kpi-lbl">AVG COMPLIANCE</div>
+                <div class="cl-kpi-val" style="color:#10b981;">@avgCompliance%</div>
+            </div>
+            <div class="cl-kpi-box">
+                <div class="cl-kpi-lbl">QUOTA AT RISK (&lt;=2)</div>
+                <div class="cl-kpi-val" style="color:@(quotaAtRisk > 0 ? "#f59e0b" : "#fafafa");">@quotaAtRisk.ToString("D2") <span style="font-size:12px; font-weight:400; color:#71717a;">คน</span></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="st-filter-bar">
+        <div class="st-chips">
+            <a asp-controller="Trainer" asp-action="Clients" asp-route-email="@trainerEmail" asp-route-statusFilter="all" asp-route-search="@search"
+               class="st-chip @(statusFilter == "all" ? "active" : "")">
+                ทั้งหมด (@totalClients)
+            </a>
+            <a asp-controller="Trainer" asp-action="Clients" asp-route-email="@trainerEmail" asp-route-statusFilter="lowquota" asp-route-search="@search"
+               class="st-chip @(statusFilter == "lowquota" ? "active" : "")">
+                โควต้าใกล้หมด (@quotaAtRisk)
+            </a>
+        </div>
+
+        <form asp-controller="Trainer" asp-action="Clients" method="get" class="d-flex gap-2">
+            <input type="hidden" name="email" value="@trainerEmail" />
+            <input type="hidden" name="statusFilter" value="@statusFilter" />
+            <input type="text" name="search" value="@search" class="st-input" style="min-width:250px;" placeholder="ค้นหาชื่อสมาชิก, เบอร์, เป้าหมาย..." />
+            <button type="submit" class="st-btn-primary">ค้นหา</button>
+        </form>
+    </div>
+
+    <div class="st-table-card">
+        @if (!Model.Any())
+        {
+            <div style="padding: 44px; text-align:center; color:#71717a; font-size:14px;">
+                ไม่พบรายชื่อลูกค้าในหมวดหมู่นี้
+            </div>
+        }
+        else
+        {
+            <table class="st-shadcn-table">
+                <thead>
+                    <tr>
+                        <th>สมาชิก (ATHLETE)</th>
+                        <th>แพ็กเกจ &amp; โควต้าคงเหลือ</th>
+                        <th>เป้าหมายหลัก (FOCUS)</th>
+                        <th>เซสชันถัดไป</th>
+                        <th>ความสม่ำเสมอ</th>
+                        <th>อัปเดตล่าสุด</th>
+                        <th style="text-align:right;">การจัดการ</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var client in Model)
+                    {
+                        var clientBookings = trainerBookings.Where(b => b.UserId == client.UserId).ToList();
+                        var activeSub = client.MemberSubscriptions?
+                            .Where(ms => ms.Status == "Active")
+                            .OrderByDescending(ms => ms.EndDate)
+                            .FirstOrDefault();
+
+                        var nextBooking = clientBookings
+                            .Where(b => b.Status == "Confirmed" && (b.BookingDate > today || (b.BookingDate == today && b.EndTime > nowTime)))
+                            .OrderBy(b => b.BookingDate)
+                            .ThenBy(b => b.StartTime)
+                            .FirstOrDefault();
+
+                        int totalClientSessions = clientBookings.Count(b => b.Status != "Cancelled");
+                        int doneClientSessions = clientBookings.Count(b => b.Status == "Completed");
+                        int compliance = totalClientSessions > 0 ? (int)Math.Round(doneClientSessions * 100.0 / totalClientSessions) : 100;
+
+                        var lastLog = workoutLogs.FirstOrDefault(l => l.GetValueOrDefault("UserId") == client.UserId.ToString());
+                        var latestBooking = clientBookings.FirstOrDefault();
+                        char ch = string.IsNullOrWhiteSpace(client.FullName) ? 'M' : client.FullName.TrimStart("คุณ".ToCharArray()).Trim().FirstOrDefault();
+                        if (ch == '\0') ch = 'M';
+
+                        int remPt = activeSub?.RemainingPt ?? 0;
+                        bool isLowQuota = activeSub == null || remPt <= 2;
+
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="cl-avatar">@ch</span>
+                                    <div>
+                                        <div style="font-weight:600; color:#fafafa;">@(client.FullName ?? "-")</div>
+                                        <div style="font-size:11.5px; color:#71717a;">
+                                            #PG-@client.UserId.ToString("D5")
+                                            @if (isLowQuota)
+                                            {
+                                                <span style="color:#ef4444; font-weight:600;">• โควต้าใกล้หมด</span>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div style="font-weight:500; color:#e4e4e7;">@(activeSub?.Package?.PackageName ?? "Single Session")</div>
+                                <div style="font-size:11.5px; color:@(isLowQuota ? "#f59e0b" : "#10b981");">
+                                    @(activeSub != null ? $"เหลือ PT {activeSub.RemainingPt} • Pod {activeSub.RemainingPods}" : "ยังไม่มีแพ็กเกจรายเดือน")
+                                </div>
+                            </td>
+                            <td>
+                                <div style="color:#fafafa;">@(client.FitnessGoal ?? "General Strength")</div>
+                                <div style="font-size:11.5px; color:#71717a;">@(client.HomeBranch?.BranchName ?? "-")</div>
+                            </td>
+                            <td>
+                                @if (nextBooking != null)
+                                {
+                                    <span class="st-badge st-badge-red">@nextBooking.BookingDate.ToString("dd/MM") • @nextBooking.StartTime.ToString("HH:mm") น.</span>
+                                }
+                                else
+                                {
+                                    <span style="font-size:12px; color:#71717a;">ยังไม่มีนัดถัดไป</span>
+                                }
+                            </td>
+                            <td>
+                                <div style="font-weight:600; color:#10b981;">@compliance% <span style="font-size:11px; color:#71717a; font-weight:400;">(@doneClientSessions/@totalClientSessions)</span></div>
+                                <div style="width:90px; height:4px; background:#18181b; border-radius:999px; overflow:hidden; margin-top:4px;">
+                                    <div style="width:@(compliance)%; height:100%; background:#10b981;"></div>
+                                </div>
+                            </td>
+                            <td style="font-size:12px; color:#a1a1aa;">
+                                @(lastLog?.GetValueOrDefault("SavedAt") ?? latestBooking?.BookingDate.ToString("dd/MM/yyyy") ?? "-")
+                            </td>
+                            <td style="text-align:right;">
+                                @if (latestBooking != null)
+                                {
+                                    <a asp-controller="Trainer" asp-action="Index" asp-route-email="@trainerEmail" asp-route-selectedBookingId="@latestBooking.BookingId"
+                                       class="st-btn-outline" style="height:30px; padding:0 10px; font-size:12px;">
+                                        บันทึกผลฝึก
+                                    </a>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</main>

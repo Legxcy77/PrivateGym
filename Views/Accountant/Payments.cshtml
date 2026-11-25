@@ -1,0 +1,179 @@
+@model List<PrivateGym.Models.Payment>
+
+@{
+    ViewData["Title"] = "ตรวจรับชำระเงิน";
+    Layout = "~/Views/Shared/Accountant/_AccountantLayout.cshtml";
+
+    var list = Model ?? new List<PrivateGym.Models.Payment>();
+    string filterStatus = ViewBag.FilterStatus as string ?? "all";
+    string filterMethod = ViewBag.FilterMethod as string ?? "all";
+    string search = ViewBag.Search as string ?? "";
+
+    int allCount = ViewBag.AllCount is int ac ? ac : 0;
+    int pendingCount = ViewBag.PendingCount is int pc ? pc : 0;
+    int successCount = ViewBag.SuccessCount is int sc ? sc : 0;
+    int failedCount = ViewBag.FailedCount is int fc ? fc : 0;
+
+    string FormatMethod(string? m) => m switch
+    {
+        "CreditCard" => "บัตรเครดิต/เดบิต",
+        "BankTransfer" => "โอนผ่านธนาคาร",
+        _ => "QR PromptPay"
+    };
+}
+
+<main class="cd-content">
+    <div class="cd-page-header" style="margin-bottom: 16px;">
+        <div>
+            <h1 class="cd-page-title">ตรวจสอบและอนุมัติรายการชำระเงิน</h1>
+            <p class="cd-page-subtext">
+                ตรวจสอบหลักฐานการชำระเงินจากสมาชิก, อนุมัติบิลค้างชำระรอบถัดไป และจัดการสถานะรายการโอน
+            </p>
+        </div>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success" style="background: rgba(34, 197, 94, 0.15); border: 1px solid #22c55e; color: #fff; border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; font-size: 13px;">
+            @TempData["Success"]
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger" style="background: rgba(239, 68, 68, 0.15); border: 1px solid #ef4444; color: #fff; border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; font-size: 13px;">
+            @TempData["Error"]
+        </div>
+    }
+
+    <!-- Filter Chips & Search Form -->
+    <div class="acc-filter-bar">
+        <div class="acc-chips">
+            <a asp-controller="Accountant" asp-action="Payments" asp-route-email="@ViewBag.Email" asp-route-status="all" asp-route-method="@filterMethod" asp-route-search="@search"
+               class="acc-chip @(filterStatus == "all" ? "active" : "")">
+                ทั้งหมด (@allCount)
+            </a>
+            <a asp-controller="Accountant" asp-action="Payments" asp-route-email="@ViewBag.Email" asp-route-status="Pending" asp-route-method="@filterMethod" asp-route-search="@search"
+               class="acc-chip @(filterStatus == "Pending" ? "active" : "")">
+                รอตรวจสอบ (@pendingCount)
+            </a>
+            <a asp-controller="Accountant" asp-action="Payments" asp-route-email="@ViewBag.Email" asp-route-status="Success" asp-route-method="@filterMethod" asp-route-search="@search"
+               class="acc-chip @(filterStatus == "Success" ? "active" : "")">
+                ชำระสำเร็จ (@successCount)
+            </a>
+            <a asp-controller="Accountant" asp-action="Payments" asp-route-email="@ViewBag.Email" asp-route-status="Failed" asp-route-method="@filterMethod" asp-route-search="@search"
+               class="acc-chip @(filterStatus == "Failed" ? "active" : "")">
+                ยกเลิก/ไม่สำเร็จ (@failedCount)
+            </a>
+        </div>
+
+        <form method="get" asp-controller="Accountant" asp-action="Payments" class="d-flex gap-2 flex-wrap align-items-center">
+            <input type="hidden" name="email" value="@ViewBag.Email" />
+            <input type="hidden" name="status" value="@filterStatus" />
+            <select name="method" class="acc-select" style="width: 165px;" onchange="this.form.submit()">
+                <option value="all" selected="@(filterMethod == "all")">ทุกช่องทางชำระ</option>
+                <option value="PromptPay" selected="@(filterMethod == "PromptPay")">QR PromptPay</option>
+                <option value="CreditCard" selected="@(filterMethod == "CreditCard")">บัตรเครดิต/เดบิต</option>
+                <option value="BankTransfer" selected="@(filterMethod == "BankTransfer")">โอนผ่านธนาคาร</option>
+            </select>
+            <input type="text" name="search" value="@search" placeholder="ค้นหาชื่อ, อีเมล, เลขที่อ้างอิง..." class="acc-input" style="width: 240px;" />
+            <button type="submit" class="acc-btn-primary">ค้นหา</button>
+        </form>
+    </div>
+
+    <!-- Payments Table -->
+    <div class="acc-table-card">
+        <div style="overflow-x: auto;">
+            <table class="acc-shadcn-table">
+                <thead>
+                    <tr>
+                        <th>เลขที่รายการ / อ้างอิง</th>
+                        <th>ข้อมูลสมาชิก</th>
+                        <th>แพ็กเกจ</th>
+                        <th>ช่องทางชำระ</th>
+                        <th>ยอดเงิน</th>
+                        <th>วันที่บันทึก</th>
+                        <th>สถานะ</th>
+                        <th style="text-align: right;">การจัดการ</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!list.Any())
+                    {
+                        <tr>
+                            <td colspan="8" class="text-center py-5" style="color: #71717a;">ไม่พบรายการชำระเงินตามเงื่อนไขที่เลือก</td>
+                        </tr>
+                    }
+                    else
+                    {
+                        foreach (var item in list)
+                        {
+                            <tr>
+                                <td class="py-3 px-4">
+                                    <div style="font-weight: 700; color: #ffffff;">#PAY-@item.PaymentId.ToString("D5")</div>
+                                    <div style="font-size: 11px; color: #71717a;">@(item.SlipReference ?? "-")</div>
+                                </td>
+                                <td class="py-3">
+                                    <div style="font-weight: 700; color: #ffffff;">@(item.User?.FullName ?? "-")</div>
+                                    <div style="font-size: 11.5px; color: #71717a;">@(item.User?.Email ?? "") &bull; @(item.User?.HomeBranch?.BranchName ?? "สาขาทองหล่อ")</div>
+                                </td>
+                                <td class="py-3 text-white">@(item.Package?.PackageName ?? "-")</td>
+                                <td class="py-3 text-white-50">@FormatMethod(item.PaymentMethod)</td>
+                                <td class="py-3 fw-bold text-white">฿@item.Amount.ToString("N0")</td>
+                                <td class="py-3 text-white-50">
+                                    @(item.PaymentDate.HasValue ? item.PaymentDate.Value.ToString("dd/MM/yyyy HH:mm") : "-")
+                                </td>
+                                <td class="py-3">
+                                    @if (item.Status == "Success")
+                                    {
+                                        <span class="acc-badge acc-badge-green">ชำระสำเร็จ</span>
+                                    }
+                                    else if (item.Status == "Pending")
+                                    {
+                                        <span class="acc-badge acc-badge-amber">รอตรวจสอบ</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="acc-badge acc-badge-red">ไม่สำเร็จ/ยกเลิก</span>
+                                    }
+                                </td>
+                                <td class="py-3 px-4 text-end">
+                                    @if (item.Status == "Pending")
+                                    {
+                                        <div class="d-inline-flex gap-2">
+                                            <form method="post" asp-controller="Accountant" asp-action="ApprovePayment" onsubmit="return confirm('ยืนยันว่าได้รับชำระเงินรายการ #PAY-@item.PaymentId.ToString("D5") เรียบร้อยแล้ว?');">
+                                                <input type="hidden" name="paymentId" value="@item.PaymentId" />
+                                                <input type="hidden" name="email" value="@ViewBag.Email" />
+                                                <button type="submit" class="btn btn-sm btn-success fw-semibold px-3" style="font-size: 12px;">
+                                                    อนุมัติรับเงิน
+                                                </button>
+                                            </form>
+                                            <form method="post" asp-controller="Accountant" asp-action="RejectPayment" onsubmit="return confirm('ยืนยันปฏิเสธ/ยกเลิกรายการชำระเงินนี้?');">
+                                                <input type="hidden" name="paymentId" value="@item.PaymentId" />
+                                                <input type="hidden" name="email" value="@ViewBag.Email" />
+                                                <button type="submit" class="btn btn-sm btn-outline-danger fw-semibold px-2" style="font-size: 12px;">
+                                                    ปฏิเสธ
+                                                </button>
+                                            </form>
+                                        </div>
+                                    }
+                                    else if (item.Status == "Success")
+                                    {
+                                        <a asp-controller="Accountant" asp-action="TaxInvoices" asp-route-email="@ViewBag.Email" asp-route-search="@item.SlipReference"
+                                           class="btn btn-sm btn-outline-light" style="font-size: 11.5px; border-color: #343442;">
+                                            ดูใบเสร็จ
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <span style="font-size: 11.5px; color: #52525b;">ปิดรายการแล้ว</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</main>
+

@@ -1,0 +1,171 @@
+@model PrivateGym.Models.User
+@{
+    ViewData["Title"] = "My profile";
+    Layout = "~/Views/Shared/Customer/_CustomerLayout.cshtml";
+    string username = !string.IsNullOrEmpty(Model.Email) ? Model.Email.Split('@')[0] : "member";
+    string initialChar = !string.IsNullOrEmpty(Model.FullName) ? Model.FullName.TrimStart("คุณ".ToCharArray()).Trim().FirstOrDefault().ToString() : "P";
+}
+
+<div class="pg-app-container">
+    <!-- Top Bar: My profile, Fire Streak, Settings Gear -->
+    <header class="pg-app-header">
+        <h1 class="pg-app-title">My profile</h1>
+        <div class="pg-header-actions">
+            <div class="pg-streak-badge" title="Daily Workout Streak">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="#f59e0b" stroke="#f59e0b" stroke-width="1">
+                    <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path>
+                </svg>
+                <span>5</span>
+            </div>
+            <a asp-controller="Customer" asp-action="Settings" asp-route-email="@Model.Email" class="pg-icon-circle-btn" aria-label="Settings" title="Settings">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                </svg>
+            </a>
+            <button type="button" class="btn text-white p-2 border-0" onclick="openSidebar()" aria-label="Open Menu">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <line x1="3" y1="12" x2="21" y2="12"></line>
+                    <line x1="3" y1="6" x2="21" y2="6"></line>
+                    <line x1="3" y1="18" x2="21" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+    </header>
+
+    <!-- Profile Hero: Centered Avatar, Name with Lime Verified Badge, Stats -->
+    <div class="pg-profile-hero">
+        <div class="pg-avatar-wrapper">
+            <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=260&q=80" 
+                 alt="@Model.FullName" 
+                 class="pg-avatar-img" 
+                 onerror="this.style.display='none'; document.getElementById('heroAvatarFallback').style.display='flex';" />
+            <div id="heroAvatarFallback" class="pg-avatar-fallback" style="display: none;">
+                @initialChar
+            </div>
+        </div>
+
+        <div class="pg-user-title">
+            <span>@Model.FullName</span>
+            <!-- Electric Lime Verified Badge -->
+            <svg class="pg-verified-icon" viewBox="0 0 24 24">
+                <path fill-rule="evenodd" clip-rule="evenodd" d="M8.6 2.25A2.25 2.25 0 0 0 6.67 3.53l-.97 1.85a2.25 2.25 0 0 1-1.32 1.09l-2.03.49A2.25 2.25 0 0 0 .8 8.94l.43 2.05a2.25 2.25 0 0 1 0 1.72l-.43 2.05a2.25 2.25 0 0 0 1.55 1.98l2.03.49a2.25 2.25 0 0 1 1.32 1.09l.97 1.85a2.25 2.25 0 0 0 2.27 1.07l2.07-.31a2.25 2.25 0 0 1 1.68.51l1.69 1.25a2.25 2.25 0 0 0 2.5 0l1.69-1.25a2.25 2.25 0 0 1 1.68-.51l2.07.31a2.25 2.25 0 0 0 2.27-1.07l.97-1.85a2.25 2.25 0 0 1 1.32-1.09l2.03-.49a2.25 2.25 0 0 0 1.55-1.98l-.43-2.05a2.25 2.25 0 0 1 0-1.72l.43-2.05a2.25 2.25 0 0 0-1.55-1.98l-2.03-.49a2.25 2.25 0 0 1-1.32-1.09l-.97-1.85a2.25 2.25 0 0 0-2.27-1.07l-2.07.31a2.25 2.25 0 0 1-1.68-.51l-1.69-1.25a2.25 2.25 0 0 0-2.5 0l-1.69 1.25a2.25 2.25 0 0 1-1.68.51l-2.07-.31zm7.15 7.45a.75.75 0 0 0-1.06-1.06L10.2 13.14l-1.89-1.89a.75.75 0 1 0-1.06 1.06l2.42 2.42a.75.75 0 0 0 1.06 0l4.98-4.98z"/>
+            </svg>
+        </div>
+
+        <div class="pg-stats-subtext">
+            <strong>10.2k</strong> followers &bull; <strong>142</strong> following
+        </div>
+    </div>
+
+    <!-- Tab Pills: Feed (Active), Challenge, Badge -->
+    <div class="pg-tab-pill-group">
+        <button type="button" class="pg-pill-btn active" id="tabFeed">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+                <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+                <polyline points="2 17 12 22 22 17"></polyline>
+                <polyline points="2 12 12 17 22 12"></polyline>
+            </svg>
+            <span>Feed</span>
+        </button>
+
+        <button type="button" class="pg-pill-btn" id="tabChallenge">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+            </svg>
+            <span>Challenge</span>
+        </button>
+
+        <button type="button" class="pg-pill-btn" id="tabBadge">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path>
+                <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path>
+                <path d="M4 22h16"></path>
+                <path d="M10 14.66V17c0 .55-.45 1-1 1H7c-.55 0-1-.45-1-1v-2.34"></path>
+                <path d="M14 14.66V17c0 .55.45 1 1 1h2c.55 0 1-.45 1-1v-2.34"></path>
+                <path d="M18 2H6v7a6 6 0 0 0 12 0V2z"></path>
+            </svg>
+            <span>Badge</span>
+        </button>
+    </div>
+
+    <!-- Feed Card (Matching screenshot: landscape photo, caption, like/comment counts) -->
+    <div class="pg-feed-card">
+        <div class="pg-feed-header">
+            <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&q=80" 
+                 alt="@Model.FullName" 
+                 class="pg-feed-avatar" />
+            <div class="pg-feed-meta">
+                <div class="pg-feed-name">@Model.FullName</div>
+                <div class="pg-feed-time">3h ago</div>
+            </div>
+            <button class="btn btn-link text-white-50 p-0 border-0" aria-label="More options">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                    <circle cx="12" cy="12" r="2"></circle>
+                    <circle cx="19" cy="12" r="2"></circle>
+                    <circle cx="5" cy="12" r="2"></circle>
+                </svg>
+            </button>
+        </div>
+
+        <div class="pg-feed-caption">
+        </div>
+
+        <div class="pg-feed-media">
+            <img src="https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80" 
+                 alt="Landscape post" 
+                 class="pg-feed-img" />
+        </div>
+
+        <div class="pg-feed-footer">
+            <div class="pg-feed-actions">
+                <span class="pg-feed-pill">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                    <span>12</span>
+                </span>
+                <span class="pg-feed-pill">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                    </svg>
+                    <span>40</span>
+                </span>
+            </div>
+
+            <button class="btn btn-link text-white-50 p-0 border-0" aria-label="Share">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                    <circle cx="12" cy="12" r="1.5"></circle>
+                    <circle cx="17" cy="12" r="1.5"></circle>
+                    <circle cx="7" cy="12" r="1.5"></circle>
+                </svg>
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Sync any demo profile changes saved in localStorage
+    document.addEventListener('DOMContentLoaded', () => {
+        const saved = localStorage.getItem('pg_user_profile_demo');
+        if (saved) {
+            try {
+                const data = JSON.parse(saved);
+                if (data.fullName) {
+                    const titleName = document.querySelector('.pg-user-title span');
+                    if (titleName) titleName.textContent = data.fullName;
+                    const feedName = document.querySelector('.pg-feed-name');
+                    if (feedName) feedName.textContent = data.fullName;
+                }
+                if (data.avatarUrl) {
+                    const heroAvatar = document.querySelector('.pg-avatar-img');
+                    if (heroAvatar) heroAvatar.src = data.avatarUrl;
+                    const feedAvatar = document.querySelector('.pg-feed-avatar');
+                    if (feedAvatar) feedAvatar.src = data.avatarUrl;
+                }
+            } catch (err) {
+                console.error('Error syncing localStorage:', err);
+            }
+        }
+    });
+</script>

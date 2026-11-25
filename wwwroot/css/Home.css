@@ -1,0 +1,1179 @@
+/* ==========================================================================
+   PRIVATEGYM - HOME PAGE STYLES
+   ดีไซน์ระดับพรีเมียม (Dark Luxury Athletic)
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root {
+    --pg-bg: #0a0a0a;
+    --pg-bg-alt: #0e0e0e;
+    --pg-card-bg: #121212;
+    --pg-card-border: #202020;
+    --pg-card-border-hover: #2c2c2c;
+    --pg-primary-red: #e50914;
+    --pg-primary-red-hover: #c70812;
+    --pg-text-white: #ffffff;
+    --pg-text-muted: #9c9c9c;
+    --pg-text-dim: #5c5c5c;
+    --pg-input-bg: #181818;
+    --pg-input-border: #262626;
+    --pg-radius-sm: 6px;
+    --pg-radius-md: 12px;
+    --pg-radius-lg: 16px;
+}
+
+body.home-page-body {
+    background-color: var(--pg-bg);
+    color: var(--pg-text-white);
+    font-family: 'Inter', 'Loma', -apple-system, BlinkMacSystemFont, sans-serif;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+}
+
+/* =========================================================
+   NAVBAR (HEADER)
+   ========================================================= */
+.pg-navbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 1000;
+    background: rgba(7, 8, 11, 0.88);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 20px 0;
+    opacity: 1;
+    visibility: visible;
+    will-change: transform, opacity;
+    transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+                opacity 0.5s ease,
+                visibility 0.6s;
+}
+
+/* ซ่อน navbar เมื่อเลื่อนหน้าจอขึ้น (scroll up) ให้ค่อยๆ เลื่อนหุบขึ้นไปนุ่มนวล */
+.pg-navbar.nav-hidden {
+    transform: translateY(-100%);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.pg-navbar-container {
+    width: 100%;
+    max-width: 100%;
+    padding: 0 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.pg-nav-brand {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    text-decoration: none;
+    color: #fff;
+}
+
+.pg-nav-logo-img {
+    height: 48px;
+    width: auto;
+    object-fit: contain;
+}
+
+.pg-nav-menu {
+    display: flex;
+    align-items: center;
+    gap: 36px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.pg-nav-menu li a {
+    color: var(--pg-text-muted);
+    text-decoration: none;
+    font-size: 15.5px;
+    font-weight: 500;
+    transition: color 0.2s ease;
+    padding: 8px 4px;
+    position: relative;
+}
+
+.pg-nav-menu li a:hover,
+.pg-nav-menu li a.active {
+    color: var(--pg-text-white);
+}
+
+.pg-nav-actions {
+    display: flex;
+    align-items: center;
+    gap: 22px;
+}
+
+.pg-nav-login-link {
+    color: var(--pg-text-white);
+    text-decoration: none;
+    font-size: 15px;
+    font-weight: 500;
+    transition: color 0.2s ease;
+}
+
+.pg-nav-login-link:hover {
+    color: var(--pg-primary-red);
+}
+
+.pg-nav-register-btn {
+    background-color: var(--pg-primary-red);
+    color: #fff;
+    font-size: 14.5px;
+    font-weight: 600;
+    padding: 11px 24px;
+    border-radius: var(--pg-radius-sm);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.pg-nav-register-btn:hover {
+    background-color: var(--pg-primary-red-hover);
+    color: #fff;
+}
+
+/* =========================================================
+   COMMON CONTAINER & SECTION HEADERS
+   ========================================================= */
+.pg-section {
+    padding: 100px 0;
+    position: relative;
+}
+
+.pg-container {
+    width: 100%;
+    max-width: 100%;
+    padding: 0 48px;
+    margin: 0;
+}
+
+.pg-tag-red {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--pg-primary-red);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+}
+
+.pg-tag-red::before {
+    content: "";
+    display: inline-block;
+    width: 14px;
+    height: 2px;
+    background-color: var(--pg-primary-red);
+}
+
+.pg-section-heading {
+    font-size: 34px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    color: var(--pg-text-white);
+    margin-bottom: 14px;
+}
+
+.pg-section-subtext {
+    font-size: 14px;
+    color: var(--pg-text-muted);
+    line-height: 1.7;
+    max-width: 600px;
+}
+
+/* =========================================================
+   1. HERO SECTION
+   ========================================================= */
+.pg-hero {
+    position: relative;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    padding: 100px 0 60px 0;
+    background-color: #07080b;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+/* 
+ * จุดใส่รูปภาพ Hero Background ของคุณ:
+ * ใส่ path รูปภาพใน style="background-image: url('...');" ของ .pg-hero-bg ได้เลยครับ
+ */
+.pg-hero-bg {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 65%;
+    height: 100%;
+    background-size: cover;
+    background-position: center right;
+    background-repeat: no-repeat;
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: high-quality;
+    /* ปล่อยว่างไว้ตามคำสั่ง */
+    background-image: none;
+    z-index: 1;
+}
+
+.pg-hero-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(to right, #07080b 0%, #07080b 35%, rgba(7, 8, 11, 0.6) 55%, transparent 80%),
+                linear-gradient(to top, #07080b 0%, transparent 25%);
+    z-index: 2;
+}
+
+.pg-hero-content {
+    position: relative;
+    z-index: 10;
+    max-width: 680px;
+}
+
+.pg-hero-title {
+    font-size: 64px;
+    font-weight: 600;
+    line-height: 1.08;
+    letter-spacing: -1px;
+    color: #fff;
+    margin-bottom: 22px;
+    text-transform: uppercase;
+}
+
+.pg-hero-desc {
+    font-size: 15px;
+    line-height: 1.8;
+    color: var(--pg-text-muted);
+    margin-bottom: 28px;
+}
+
+.pg-hero-bullets {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 22px;
+    margin-bottom: 36px;
+}
+
+.pg-hero-bullet-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #fff;
+}
+
+.pg-hero-bullet-item svg {
+    color: var(--pg-primary-red);
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+
+.pg-hero-cta-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 60px;
+}
+
+.pg-btn-primary {
+    background-color: var(--pg-primary-red);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 13px 26px;
+    border-radius: var(--pg-radius-sm);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.pg-btn-primary:hover {
+    background-color: var(--pg-primary-red-hover);
+    color: #fff;
+}
+
+.pg-btn-outline {
+    background-color: transparent;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 500;
+    padding: 13px 24px;
+    border-radius: var(--pg-radius-sm);
+    border: 1px solid var(--pg-card-border);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s ease;
+}
+
+.pg-btn-outline:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+    border-color: var(--pg-text-dim);
+    color: #fff;
+}
+
+/* Stats Pill Bar at bottom of Hero */
+.pg-hero-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+    padding-top: 32px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.pg-hero-stat-item .stat-num {
+    font-size: 26px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 2px;
+}
+
+.pg-hero-stat-item .stat-label {
+    font-size: 12px;
+    color: var(--pg-text-dim);
+    line-height: 1.4;
+}
+
+/* =========================================================
+   2. THE PRIVATE ADVANTAGE SECTION (3 CARDS)
+   ========================================================= */
+.pg-advantage-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 48px;
+    gap: 32px;
+}
+
+.pg-advantage-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+}
+
+.pg-advantage-card {
+    background-color: var(--pg-card-bg);
+    border: 1px solid var(--pg-card-border);
+    border-radius: var(--pg-radius-md);
+    padding: 36px 30px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.pg-advantage-card:hover {
+    transform: translateY(-4px);
+    border-color: var(--pg-card-border-hover);
+}
+
+.pg-advantage-icon-box {
+    width: 44px;
+    height: 44px;
+    background-color: rgba(229, 9, 20, 0.1);
+    border: 1px solid rgba(229, 9, 20, 0.2);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--pg-primary-red);
+    margin-bottom: 24px;
+}
+
+.pg-advantage-title {
+    font-size: 19px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 4px;
+}
+
+.pg-advantage-subtitle {
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    color: var(--pg-primary-red);
+    text-transform: uppercase;
+    margin-bottom: 16px;
+}
+
+.pg-advantage-desc {
+    font-size: 13.5px;
+    line-height: 1.7;
+    color: var(--pg-text-muted);
+    margin-bottom: 28px;
+    flex: 1;
+}
+
+.pg-advantage-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--pg-text-white);
+    text-decoration: none;
+    transition: color 0.2s ease, gap 0.2s ease;
+}
+
+.pg-advantage-link:hover {
+    color: var(--pg-primary-red);
+    gap: 10px;
+}
+
+/* =========================================================
+   3. MEMBERSHIP PACKAGES (3 PRICING CARDS)
+   ========================================================= */
+.pg-pricing-header {
+    text-align: center;
+    max-width: 700px;
+    margin: 0 auto 56px auto;
+}
+
+.pg-pricing-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+    align-items: stretch;
+}
+
+.pg-pricing-card {
+    background-color: var(--pg-card-bg);
+    border: 1px solid var(--pg-card-border);
+    border-radius: var(--pg-radius-lg);
+    padding: 36px 30px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    position: relative;
+    transition: all 0.2s ease;
+}
+
+.pg-pricing-card:hover {
+    border-color: var(--pg-card-border-hover);
+}
+
+/* การ์ดแนะนำตรงกลาง - ไฮไลต์ขอบแดงเรืองแสง */
+.pg-pricing-card.featured {
+    border-color: var(--pg-primary-red);
+    box-shadow: 0 0 35px rgba(229, 9, 20, 0.15);
+    background: linear-gradient(180deg, #161219 0%, #10131b 100%);
+}
+
+.pg-pricing-badge-top {
+    position: absolute;
+    top: -14px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: var(--pg-primary-red);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    padding: 4px 14px;
+    border-radius: 20px;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.pg-pricing-top-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.pg-pricing-tier-tag {
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    color: var(--pg-text-dim);
+    text-transform: uppercase;
+}
+
+.pg-pricing-card.featured .pg-pricing-tier-tag {
+    color: var(--pg-primary-red);
+}
+
+.pg-pricing-pill {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background-color: rgba(255, 255, 255, 0.06);
+    color: var(--pg-text-muted);
+}
+
+.pg-pricing-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 6px;
+}
+
+.pg-pricing-desc {
+    font-size: 12.5px;
+    color: var(--pg-text-muted);
+    margin-bottom: 24px;
+    min-height: 38px;
+}
+
+.pg-pricing-amount-row {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    margin-bottom: 28px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--pg-card-border);
+}
+
+.pg-pricing-currency {
+    font-size: 18px;
+    font-weight: 700;
+    color: #fff;
+}
+
+.pg-pricing-number {
+    font-size: 38px;
+    font-weight: 600;
+    color: #fff;
+    line-height: 1;
+}
+
+.pg-pricing-period {
+    font-size: 12px;
+    color: var(--pg-text-dim);
+    margin-left: 4px;
+}
+
+.pg-pricing-features {
+    list-style: none;
+    margin: 0 0 32px 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    flex: 1;
+}
+
+.pg-pricing-feature-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--pg-text-muted);
+}
+
+.pg-pricing-feature-item.included svg {
+    color: var(--pg-primary-red);
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.pg-pricing-feature-item.excluded {
+    color: var(--pg-text-dim);
+}
+
+.pg-pricing-feature-item.excluded svg {
+    color: var(--pg-text-dim);
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.pg-pricing-btn {
+    width: 100%;
+    height: 44px;
+    border-radius: var(--pg-radius-sm);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.pg-pricing-btn-outline {
+    background-color: transparent;
+    border: 1px solid var(--pg-card-border);
+    color: #fff;
+}
+
+.pg-pricing-btn-outline:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+    border-color: var(--pg-text-dim);
+}
+
+.pg-pricing-btn-red {
+    background-color: var(--pg-primary-red);
+    border: none;
+    color: #fff;
+}
+
+.pg-pricing-btn-red:hover {
+    background-color: var(--pg-primary-red-hover);
+}
+
+.pg-pricing-footnote {
+    text-align: center;
+    font-size: 12px;
+    color: var(--pg-text-dim);
+    margin-top: 36px;
+}
+
+/* =========================================================
+   4. FACILITIES & RECOVERY (4 CARDS)
+   ========================================================= */
+.pg-facilities-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 44px;
+    gap: 32px;
+}
+
+.pg-facilities-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+}
+
+.pg-facility-card {
+    background-color: var(--pg-card-bg);
+    border: 1px solid var(--pg-card-border);
+    border-radius: var(--pg-radius-md);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.pg-facility-card:hover {
+    border-color: var(--pg-card-border-hover);
+    transform: translateY(-3px);
+}
+
+/*
+ * จุดใส่รูปภาพสำหรับแต่ละ Facility:
+ * กำหนด style="background-image: url('...');" ใน .pg-facility-img ได้เลยครับ
+ */
+.pg-facility-img {
+    height: 180px;
+    width: 100%;
+    background-size: cover;
+    background-position: center;
+    background-color: #161922;
+    /* เว้นว่างตามคำสั่ง */
+    background-image: none;
+    position: relative;
+}
+
+.pg-facility-img::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(to top, rgba(16, 19, 27, 0.9) 0%, rgba(16, 19, 27, 0.2) 60%, transparent 100%);
+}
+
+.pg-facility-body {
+    padding: 20px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.pg-facility-tag {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    color: var(--pg-primary-red);
+    text-transform: uppercase;
+    margin-bottom: 6px;
+}
+
+.pg-facility-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 8px;
+}
+
+.pg-facility-desc {
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--pg-text-muted);
+}
+
+/* =========================================================
+   5. TRIAL BOOKING SECTION (PROMO BOX)
+   ========================================================= */
+.pg-trial-box {
+    background-color: var(--pg-card-bg);
+    border: 1px solid var(--pg-card-border);
+    border-radius: var(--pg-radius-lg);
+    padding: 48px;
+    display: grid;
+    grid-template-columns: 1.1fr 1fr;
+    gap: 48px;
+    align-items: center;
+    position: relative;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+}
+
+.pg-trial-title {
+    font-size: 32px;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 12px;
+    line-height: 1.2;
+}
+
+.pg-trial-desc {
+    font-size: 13.5px;
+    color: var(--pg-text-muted);
+    line-height: 1.7;
+    margin-bottom: 28px;
+}
+
+.pg-trial-offer-badge {
+    background: linear-gradient(135deg, rgba(229, 9, 20, 0.08) 0%, #16161b 100%);
+    border: 1px solid rgba(229, 9, 20, 0.28);
+    border-radius: var(--pg-radius-sm);
+    padding: 18px 22px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.pg-trial-price-col {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+}
+
+.pg-trial-old-price {
+    font-size: 13.5px;
+    color: #71717a;
+    text-decoration: line-through;
+}
+
+.pg-trial-new-price {
+    font-size: 30px;
+    font-weight: 700;
+    color: #ff4d58;
+}
+
+.pg-trial-session-text {
+    font-size: 12.5px;
+    color: #a1a1aa;
+}
+
+.pg-trial-specs {
+    font-size: 12px;
+    color: #d4d4d8;
+    text-align: right;
+    line-height: 1.55;
+}
+
+.pg-trial-bullets {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.pg-trial-bullet-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12.5px;
+    color: #fff;
+}
+
+.pg-trial-bullet-item svg {
+    color: #22c55e;
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+}
+
+/* Trial Booking Form */
+.pg-trial-form {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.pg-trial-input {
+    width: 100%;
+    height: 44px;
+    background-color: var(--pg-input-bg);
+    border: 1px solid var(--pg-input-border);
+    border-radius: var(--pg-radius-sm);
+    padding: 0 16px;
+    color: #fff;
+    font-family: inherit;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s ease;
+}
+
+.pg-trial-input:focus {
+    border-color: var(--pg-primary-red);
+}
+
+.pg-trial-row-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.pg-trial-submit-btn {
+    width: 100%;
+    height: 46px;
+    background-color: var(--pg-primary-red);
+    color: #fff;
+    border: none;
+    border-radius: var(--pg-radius-sm);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: background-color 0.2s ease;
+}
+
+.pg-trial-submit-btn:hover {
+    background-color: var(--pg-primary-red-hover);
+}
+
+.pg-trial-form-footnote {
+    text-align: center;
+    font-size: 11px;
+    color: var(--pg-text-dim);
+    margin-top: 4px;
+}
+
+/* =========================================================
+   6. KEY METRICS BAR (4 STATS)
+   ========================================================= */
+.pg-metrics-bar {
+    padding: 60px 0;
+    border-top: 1px solid var(--pg-card-border);
+    border-bottom: 1px solid var(--pg-card-border);
+}
+
+.pg-metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 32px;
+}
+
+.pg-metric-item .metric-val {
+    font-size: 42px;
+    font-weight: 600;
+    color: #fff;
+    line-height: 1;
+    margin-bottom: 6px;
+}
+
+.pg-metric-item .metric-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 2px;
+}
+
+.pg-metric-item .metric-sub {
+    font-size: 11px;
+    color: var(--pg-text-dim);
+}
+
+/* =========================================================
+   7. LOCATION & BRANCHES
+   ========================================================= */
+.pg-location-grid {
+    display: grid;
+    grid-template-columns: 1.1fr 1fr;
+    gap: 48px;
+    align-items: center;
+}
+
+.pg-location-info {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.pg-location-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    font-size: 13.5px;
+    line-height: 1.6;
+    color: var(--pg-text-muted);
+}
+
+.pg-location-item svg {
+    color: var(--pg-primary-red);
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    margin-top: 3px;
+}
+
+.pg-location-item strong {
+    color: #fff;
+}
+
+.pg-location-map-box {
+    border-radius: var(--pg-radius-md);
+    overflow: hidden;
+    border: 1px solid var(--pg-card-border);
+    height: 320px;
+    position: relative;
+}
+
+.pg-location-map-box iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    filter: invert(90%) hue-rotate(180deg) brightness(85%) contrast(90%);
+}
+
+.pg-map-badge {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    background: rgba(16, 19, 27, 0.92);
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--pg-card-border);
+    padding: 12px 18px;
+    border-radius: 8px;
+    color: #fff;
+    z-index: 5;
+}
+
+.pg-map-badge-title {
+    font-size: 12.5px;
+    font-weight: 700;
+}
+
+.pg-map-badge-sub {
+    font-size: 10px;
+    color: var(--pg-text-dim);
+}
+
+/* =========================================================
+   8. FOOTER
+   ========================================================= */
+.pg-footer {
+    background-color: #050608;
+    border-top: 1px solid var(--pg-card-border);
+    padding: 80px 0 32px 0;
+}
+
+.pg-footer-grid {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr 1fr 1.2fr;
+    gap: 48px;
+    margin-bottom: 60px;
+}
+
+.pg-footer-col .footer-brand-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.pg-footer-badge {
+    font-size: 10px;
+    font-weight: 700;
+    background-color: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    padding: 2px 6px;
+    border-radius: 3px;
+}
+
+.pg-footer-col .footer-desc {
+    font-size: 12.5px;
+    color: var(--pg-text-dim);
+    line-height: 1.7;
+}
+
+.pg-footer-title {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 18px;
+}
+
+.pg-footer-links {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.pg-footer-links li a {
+    font-size: 12.5px;
+    color: var(--pg-text-muted);
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.pg-footer-links li a:hover {
+    color: #fff;
+}
+
+.pg-footer-contact-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    font-size: 12px;
+    color: var(--pg-text-dim);
+    line-height: 1.5;
+}
+
+.pg-footer-contact-list li strong {
+    color: var(--pg-text-muted);
+}
+
+.pg-footer-bottom-bar {
+    padding-top: 32px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    color: var(--pg-text-dim);
+}
+
+.pg-footer-policy-links {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.pg-footer-policy-links a {
+    color: var(--pg-text-dim);
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.pg-footer-policy-links a:hover {
+    color: var(--pg-text-muted);
+}
+
+/* =========================================================
+   RESPONSIVE (MOBILE & TABLETS)
+   ========================================================= */
+@media (max-width: 1024px) {
+    .pg-advantage-grid,
+    .pg-pricing-grid {
+        grid-template-columns: 1fr;
+        gap: 32px;
+    }
+
+    .pg-facilities-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .pg-trial-box,
+    .pg-location-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .pg-metrics-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 24px;
+    }
+
+    .pg-footer-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .pg-nav-menu {
+        display: none; /* Hide on mobile or integrate with toggle */
+    }
+
+    .pg-hero-title {
+        font-size: 40px;
+    }
+
+    .pg-hero-stats {
+        grid-template-columns: 1fr;
+    }
+
+    .pg-facilities-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .pg-footer-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .pg-footer-bottom-bar {
+        flex-direction: column;
+        gap: 12px;
+        text-align: center;
+    }
+
+    .pg-trial-row-2 {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Dark theme form placeholder readability */
+.pg-dark-body .form-control::placeholder,
+.pg-dark-body input::placeholder,
+.pg-dark-body textarea::placeholder {
+    color: #8e8e9e !important;
+    opacity: 1 !important;
+}

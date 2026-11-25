@@ -1,0 +1,802 @@
+@model List<PrivateGym.Models.Booking>
+
+@{
+    ViewData["Title"] = "ประวัติการใช้บริการ";
+    Layout = "~/Views/Shared/Customer/_CustomerLayout.cshtml";
+
+    var allItems = Model ?? new List<PrivateGym.Models.Booking>();
+    var todayDate = DateOnly.FromDateTime(DateTime.Today);
+    var nowTime = TimeOnly.FromDateTime(DateTime.Now);
+    string currentFilter = (ViewBag.Filter as string ?? "all").ToLower();
+    var workoutLogsByBooking = ViewBag.WorkoutLogsByBooking as Dictionary<int, Dictionary<string, string>>
+                               ?? new Dictionary<int, Dictionary<string, string>>();
+
+    bool IsExpired(PrivateGym.Models.Booking b) =>
+        b.BookingDate < todayDate || (b.BookingDate == todayDate && b.EndTime <= nowTime);
+
+    bool HasCheckedIn(PrivateGym.Models.Booking b) =>
+        b.CheckIns != null && b.CheckIns.Any();
+
+    string FormatShortThaiDate(DateOnly d)
+    {
+        string[] months = { "", "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค." };
+        return $"{d.Day} {months[d.Month]} {d.Year}";
+    }
+
+    // นับเฉพาะเซสชันที่เข้าฝึกซ้อมจริง (Completed หรือมีการเช็กอินเข้าห้องจริง) ไม่นับรวมรายการที่ไม่ได้เข้าใช้งาน (No-Show)
+    var attendedSessions = allItems
+        .Where(b => b.Status == "Completed" || (b.Status == "Confirmed" && HasCheckedIn(b)))
+        .ToList();
+
+    var noShowSessions = allItems
+        .Where(b => b.Status == "Confirmed" && IsExpired(b) && !HasCheckedIn(b))
+        .ToList();
+
+    int totalAttendedCount = attendedSessions.Count;
+    double totalHours = Math.Round(totalAttendedCount * 1.25, 1); // 75 นาที = 1.25 ชม./ครั้ง
+    int ptSessionsCount = attendedSessions.Count(b => b.TrainerId.HasValue);
+    int soloSessionsCount = attendedSessions.Count(b => !b.TrainerId.HasValue);
+
+    int dueSessionsCount = attendedSessions.Count + noShowSessions.Count;
+    int completionRate = dueSessionsCount > 0
+        ? (int)Math.Round((double)attendedSessions.Count * 100 / dueSessionsCount)
+        : 100;
+
+    var displayItems = currentFilter switch
+    {
+        "solo" => allItems.Where(b => !b.TrainerId.HasValue).ToList(),
+        "pt" => allItems.Where(b => b.TrainerId.HasValue).ToList(),
+        "noshow" => noShowSessions,
+        _ => allItems
+    };
+}
+
+<style>
+    .sh-wrap {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    /* 4 Mini Stat Boxes (2x2 on Mobile, 4 Cols Full-Width on Desktop) */
+    .sh-stats-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+        margin-bottom: 22px;
+        width: 100%;
+    }
+
+    .sh-stat-box {
+        background: #121216;
+        border: 1px solid #24242c;
+        border-radius: 14px;
+        padding: 20px 22px;
+        min-width: 0;
+    }
+
+    .sh-stat-lbl {
+        font-size: 12.5px;
+        font-weight: 600;
+        color: #a1a1aa;
+        margin-bottom: 8px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .sh-stat-val {
+        font-size: 30px;
+        font-weight: 800;
+        color: #ffffff;
+        line-height: 1.15;
+    }
+
+    .sh-stat-val span {
+        font-size: 13.5px;
+        font-weight: 500;
+        color: #71717a;
+    }
+
+    .sh-stat-sub {
+        font-size: 12px;
+        color: #71717a;
+        margin-top: 6px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* Filter Chips */
+    .sh-filter-bar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 18px;
+        flex-wrap: wrap;
+        width: 100%;
+    }
+
+    .sh-chip {
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: 700;
+        text-decoration: none;
+        border: 1px solid #282832;
+        background: #141418;
+        color: #a1a1aa;
+        transition: all 0.18s ease;
+    }
+
+    .sh-chip:hover {
+        color: #ffffff;
+        border-color: #383846;
+    }
+
+    .sh-chip.active-red {
+        background: rgba(229, 9, 20, 0.16);
+        border-color: #e50914;
+        color: #ffffff;
+    }
+
+    .sh-chip.active-green {
+        background: rgba(34, 197, 94, 0.16);
+        border-color: #22c55e;
+        color: #ffffff;
+    }
+
+    .sh-chip.active-amber {
+        background: rgba(245, 158, 11, 0.16);
+        border-color: #f59e0b;
+        color: #ffffff;
+    }
+
+    /* รูปแบบที่ 3: Compact Expandable History Rows */
+    .sh-list-container {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        width: 100%;
+    }
+
+    .sh-acc-item {
+        width: 100%;
+        max-width: 100%;
+        background: #121216;
+        border: 1px solid #23232c;
+        border-radius: 14px;
+        overflow: hidden;
+        transition: border-color 0.2s ease, background 0.2s ease;
+    }
+
+    .sh-acc-item:hover {
+        border-color: #32323f;
+    }
+
+    .sh-acc-item.is-noshow {
+        background: #101013;
+        border-color: rgba(245, 158, 11, 0.24);
+    }
+
+    .sh-acc-item.open {
+        border-color: #3f3f4e;
+        background: #15151b;
+    }
+
+    .sh-acc-header {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        padding: 16px 22px;
+        cursor: pointer;
+        user-select: none;
+    }
+
+    .sh-acc-left {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        min-width: 0;
+        flex: 1;
+    }
+
+    .sh-date-pill {
+        background: #1a1a21;
+        border: 1px solid #2b2b36;
+        border-radius: 10px;
+        padding: 8px 14px;
+        text-align: center;
+        min-width: 112px;
+        flex-shrink: 0;
+    }
+
+    .sh-date-pill .d-txt {
+        font-size: 13px;
+        font-weight: 800;
+        color: #ffffff;
+        display: block;
+        line-height: 1.25;
+    }
+
+    .sh-date-pill .t-txt {
+        font-size: 11.5px;
+        color: #a1a1aa;
+        display: block;
+        margin-top: 2px;
+    }
+
+    .sh-main-info {
+        min-width: 0;
+        flex: 1;
+        overflow: hidden;
+    }
+
+    .sh-mobile-datetime {
+        display: none;
+    }
+
+    .sh-row-title {
+        font-size: 15px;
+        font-weight: 800;
+        color: #ffffff;
+        margin-bottom: 3px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .sh-row-sub {
+        font-size: 13px;
+        color: #a1a1aa;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .sh-strike {
+        text-decoration: line-through;
+        color: #71717a !important;
+    }
+
+    .sh-acc-right {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-shrink: 0;
+    }
+
+    .sh-status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 12px;
+        font-weight: 700;
+        padding: 6px 13px;
+        border-radius: 20px;
+        white-space: nowrap;
+    }
+
+    .sh-status-green {
+        background: rgba(34, 197, 94, 0.14);
+        border: 1px solid rgba(34, 197, 94, 0.35);
+        color: #4ade80;
+    }
+
+    .sh-status-amber {
+        background: rgba(245, 158, 11, 0.14);
+        border: 1px solid rgba(245, 158, 11, 0.38);
+        color: #fcd34d;
+    }
+
+    .sh-status-red {
+        background: rgba(239, 68, 68, 0.14);
+        border: 1px solid rgba(239, 68, 68, 0.35);
+        color: #f87171;
+    }
+
+    .sh-status-dim {
+        background: #1b1b22;
+        border: 1px solid #2d2d38;
+        color: #a1a1aa;
+    }
+
+    .sh-chevron {
+        color: #71717a;
+        transition: transform 0.22s ease;
+        flex-shrink: 0;
+    }
+
+    .sh-acc-item.open .sh-chevron {
+        transform: rotate(180deg);
+        color: #ffffff;
+    }
+
+    /* Expanded Body */
+    .sh-acc-body {
+        display: none;
+        padding: 0 22px 18px 22px;
+        border-top: 1px dashed #272732;
+    }
+
+    .sh-acc-item.open .sh-acc-body {
+        display: block;
+    }
+
+    .sh-detail-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+        padding-top: 16px;
+        margin-bottom: 14px;
+    }
+
+    .sh-detail-cell {
+        background: #191920;
+        border: 1px solid #262631;
+        border-radius: 10px;
+        padding: 12px 14px;
+        min-width: 0;
+    }
+
+    .sh-detail-cell .k {
+        font-size: 11.5px;
+        color: #71717a;
+        display: block;
+        margin-bottom: 4px;
+    }
+
+    .sh-detail-cell .v {
+        font-size: 13px;
+        font-weight: 700;
+        color: #ffffff;
+        display: block;
+        word-break: break-word;
+    }
+
+    .sh-acc-foot {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+        padding-top: 12px;
+        border-top: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .sh-acc-note {
+        font-size: 12.5px;
+        color: #a1a1aa;
+    }
+
+    .sh-btn-rebook {
+        background: #1f1f28;
+        border: 1px solid #323240;
+        color: #ffffff;
+        font-size: 12.5px;
+        font-weight: 700;
+        padding: 8px 16px;
+        border-radius: 8px;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.18s ease;
+    }
+
+    .sh-btn-rebook:hover {
+        background: #e50914;
+        border-color: #e50914;
+        color: #ffffff;
+    }
+
+    /* ================= MOBILE LAYOUT (< 992px): พอดีจอ 100% ไม่ล้นขอบขวา ================= */
+    @@media (max-width: 991.98px) {
+        .sh-stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .sh-stat-box {
+            padding: 13px 12px;
+            border-radius: 12px;
+        }
+
+        .sh-stat-lbl {
+            font-size: 11px;
+            margin-bottom: 4px;
+        }
+
+        .sh-stat-val {
+            font-size: 21px;
+        }
+
+        .sh-stat-val span {
+            font-size: 11.5px;
+        }
+
+        .sh-stat-sub {
+            font-size: 10.5px;
+            margin-top: 4px;
+        }
+
+        .sh-filter-bar {
+            gap: 6px;
+            margin-bottom: 14px;
+        }
+
+        .sh-chip {
+            padding: 6px 11px;
+            font-size: 11.5px;
+        }
+
+        .sh-acc-header {
+            padding: 12px 13px;
+            gap: 8px;
+        }
+
+        /* บนมือถือ ซ่อนกล่องวันที่ด้านซ้าย แล้วรวมวันที่+เวลาไว้เหนือชื่อห้อง เพื่อไม่ให้เบียดป้ายสถานะตกขอบจอ */
+        .sh-date-pill {
+            display: none;
+        }
+
+        .sh-mobile-datetime {
+            display: block;
+            font-size: 11px;
+            font-weight: 700;
+            color: #a1a1aa;
+            margin-bottom: 2px;
+        }
+
+        .sh-row-title {
+            font-size: 13.5px;
+            margin-bottom: 2px;
+        }
+
+        .sh-row-sub {
+            font-size: 11.5px;
+        }
+
+        .sh-acc-right {
+            gap: 6px;
+        }
+
+        .sh-status-badge {
+            font-size: 10.5px;
+            padding: 4px 9px;
+        }
+
+        .sh-acc-body {
+            padding: 0 13px 14px 13px;
+        }
+
+        .sh-detail-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            padding-top: 12px;
+        }
+
+        .sh-detail-cell {
+            padding: 9px 10px;
+        }
+
+        .sh-detail-cell .k {
+            font-size: 10.5px;
+        }
+
+        .sh-detail-cell .v {
+            font-size: 11.5px;
+        }
+
+        .sh-acc-foot {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 10px;
+        }
+
+        .sh-acc-note {
+            font-size: 11.5px;
+        }
+
+        .sh-btn-rebook {
+            justify-content: center;
+            width: 100%;
+            padding: 9px 14px;
+        }
+    }
+</style>
+
+<main class="cd-content">
+    <div class="sh-wrap">
+        <!-- Mobile Top Bar: โลโก้อยู่ทางซ้าย ชื่อหน้าอยู่ตรงกลาง -->
+        <div class="pg-m-topbar d-flex d-lg-none">
+            <a asp-controller="Customer" asp-action="Index" asp-route-email="@ViewBag.Email" class="pg-m-topbar-logo-left">
+                <img src="~/images/logo.png" alt="PrivateGym" />
+            </a>
+            <span class="pg-m-topbar-center">ประวัติการใช้บริการ</span>
+            <div class="pg-m-topbar-right"></div>
+        </div>
+
+        <!-- Desktop Header -->
+        <div class="cd-page-header d-none d-lg-flex" style="margin-bottom: 20px;">
+            <div>
+                <h1 class="cd-page-title">ประวัติการใช้บริการและบันทึกการฝึก</h1>
+                <p class="cd-page-subtext">
+                    สรุปสถิติการเช็กอินเข้าใช้งานห้องซ้อมจริง และรายการนัดหมายย้อนหลังทั้งหมด (คลิกที่แถวเพื่อดูเวลาเข้า-ออกห้องซ้อม)
+                </p>
+            </div>
+        </div>
+
+        <!-- 4 Mini Stat Boxes -->
+        <div class="sh-stats-grid">
+            <div class="sh-stat-box">
+                <div class="sh-stat-lbl">เข้าฝึกซ้อมสำเร็จจริง</div>
+                <div class="sh-stat-val">@totalAttendedCount <span>ครั้ง</span></div>
+                <div class="sh-stat-sub" style="color: #4ade80;">เช็กอินเข้าใช้งานห้องซ้อมจริง</div>
+            </div>
+            <div class="sh-stat-box">
+                <div class="sh-stat-lbl">เวลาฝึกสะสมรวม</div>
+                <div class="sh-stat-val">@totalHours <span>ชม.</span></div>
+                <div class="sh-stat-sub">เฉพาะรอบที่เช็กอิน (75 นาที/รอบ)</div>
+            </div>
+            <div class="sh-stat-box">
+                <div class="sh-stat-lbl">ฝึกพร้อมเทรนเนอร์ 1-on-1</div>
+                <div class="sh-stat-val" style="color: #4ade80;">@ptSessionsCount <span>ครั้ง</span></div>
+                <div class="sh-stat-sub">ฝึกซ้อมเดี่ยวส่วนตัว @soloSessionsCount ครั้ง</div>
+            </div>
+            <div class="sh-stat-box">
+                <div class="sh-stat-lbl">อัตราการมาซ้อมตามนัด</div>
+                <div class="sh-stat-val">@completionRate%</div>
+                <div class="sh-stat-sub" style="color: #fcd34d;">ไม่ได้เข้าใช้งาน @noShowSessions.Count ครั้ง</div>
+            </div>
+        </div>
+
+        <!-- Filter Chips -->
+        <div class="sh-filter-bar">
+            <a asp-controller="Customer" asp-action="ServiceHistory" asp-route-email="@ViewBag.Email" asp-route-filter="all"
+               class="sh-chip @(currentFilter == "all" ? "active-red" : "")">
+                ทั้งหมด (@allItems.Count)
+            </a>
+            <a asp-controller="Customer" asp-action="ServiceHistory" asp-route-email="@ViewBag.Email" asp-route-filter="solo"
+               class="sh-chip @(currentFilter == "solo" ? "active-red" : "")">
+                ห้องซ้อมเดี่ยว (@allItems.Count(b => !b.TrainerId.HasValue))
+            </a>
+            <a asp-controller="Customer" asp-action="ServiceHistory" asp-route-email="@ViewBag.Email" asp-route-filter="pt"
+               class="sh-chip @(currentFilter == "pt" ? "active-green" : "")">
+                เทรนเนอร์ 1-on-1 (@allItems.Count(b => b.TrainerId.HasValue))
+            </a>
+            <a asp-controller="Customer" asp-action="ServiceHistory" asp-route-email="@ViewBag.Email" asp-route-filter="noshow"
+               class="sh-chip @(currentFilter == "noshow" ? "active-amber" : "")">
+                ไม่ได้เข้าใช้งาน (@noShowSessions.Count)
+            </a>
+        </div>
+
+        <!-- รูปแบบที่ 3: Compact Expandable History Rows (พับเก็บทุกแถวเป็นค่าเริ่มต้น กดแล้วค่อยกางออก) -->
+        @if (!displayItems.Any())
+        {
+            <div class="cd-card" style="padding: 44px 20px; text-align: center; background: #121216; border: 1px dashed #2d2d38; border-radius: 14px;">
+                <div style="font-size: 15px; font-weight: 700; color: #ffffff; margin-bottom: 6px;">ยังไม่มีประวัติการเข้าใช้งานในหมวดหมู่นี้</div>
+                <p style="font-size: 12.5px; color: #71717a; margin-bottom: 16px;">เมื่อคุณเช็กอินเข้าฝึกซ้อมหรือสิ้นสุดเวลานัดหมาย ข้อมูลจะแสดงในหน้านี้อัตโนมัติ</p>
+                <a asp-controller="Customer" asp-action="BookSession" asp-route-email="@ViewBag.Email" class="cd-btn-primary" style="display: inline-flex; text-decoration: none;">
+                    + จองเวลาซ้อมรอบใหม่
+                </a>
+            </div>
+        }
+        else
+        {
+            <div class="sh-list-container">
+                @foreach (var item in displayItems)
+                {
+                    bool itemExpired = IsExpired(item);
+                    bool itemCheckedIn = HasCheckedIn(item);
+                    var ci = item.CheckIns?.OrderByDescending(c => c.CheckInId).FirstOrDefault();
+                    string ciInTime = ci?.CheckInTime != null ? ci.CheckInTime.Value.ToString("HH:mm น.") : "";
+                    string ciOutTime = ci?.CheckOutTime != null ? ci.CheckOutTime.Value.ToString("HH:mm น.") : "";
+
+                    bool itemNoShow = (item.Status == "Confirmed" && itemExpired && !itemCheckedIn);
+                    bool itemCompleted = (item.Status == "Completed" || (itemExpired && itemCheckedIn));
+                    bool itemActiveNow = (item.Status == "Confirmed" && !itemExpired && itemCheckedIn);
+
+                    string podFull = item.Pod?.PodName ?? "Pod 01: Solo Precision";
+                    string modeShort = item.Trainer != null
+                        ? $"PT 1-on-1 • {item.Trainer.User?.FullName ?? item.Trainer.Specialty}"
+                        : "ฝึกซ้อมเดี่ยวส่วนตัว";
+                    string branchName = item.Pod?.Branch?.BranchName ?? "สาขาทองหล่อ";
+
+                    <div class="sh-acc-item @(itemNoShow ? "is-noshow" : "")" onclick="toggleHistoryRow(this)">
+                        <!-- Collapsed Single-Line Row -->
+                        <div class="sh-acc-header">
+                            <div class="sh-acc-left">
+                                <div class="sh-date-pill">
+                                    <span class="d-txt @(itemNoShow ? "sh-strike" : "")">@FormatShortThaiDate(item.BookingDate)</span>
+                                    <span class="t-txt @(itemNoShow ? "sh-strike" : "")">@item.StartTime.ToString("HH:mm") - @item.EndTime.ToString("HH:mm")</span>
+                                </div>
+
+                                <div class="sh-main-info">
+                                    <div class="sh-mobile-datetime @(itemNoShow ? "sh-strike" : "")">
+                                        @FormatShortThaiDate(item.BookingDate) &bull; @item.StartTime.ToString("HH:mm") - @item.EndTime.ToString("HH:mm") น.
+                                    </div>
+                                    <div class="sh-row-title @(itemNoShow ? "sh-strike" : "")">@podFull</div>
+                                    <div class="sh-row-sub">
+                                        <span>@modeShort</span>
+                                        <span>&bull; @branchName</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="sh-acc-right">
+                                @if (itemCompleted)
+                                {
+                                    <span class="sh-status-badge sh-status-green">
+                                        เข้าฝึกซ้อมสำเร็จ
+                                    </span>
+                                }
+                                else if (itemActiveNow)
+                                {
+                                    <span class="sh-status-badge sh-status-green">
+                                        กำลังใช้งานห้องซ้อม
+                                    </span>
+                                }
+                                else if (itemNoShow)
+                                {
+                                    <span class="sh-status-badge sh-status-amber">
+                                        ไม่ได้เข้าใช้งาน
+                                    </span>
+                                }
+                                else if (item.Status == "Cancelled")
+                                {
+                                    <span class="sh-status-badge sh-status-red">
+                                        ยกเลิกแล้ว
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="sh-status-badge sh-status-dim">
+                                        รอเช็กอิน
+                                    </span>
+                                }
+
+                                <svg class="sh-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                                    <polyline points="6 9 12 15 18 9"></polyline>
+                                </svg>
+                                @{
+                                    bool hasCoachLog = workoutLogsByBooking.ContainsKey(item.BookingId);
+                                }
+                                @if (hasCoachLog)
+                                {
+                                    <span style="padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 600; background: rgba(229, 9, 20, 0.14); border: 1px solid rgba(229, 9, 20, 0.4); color: #fca5a5;">
+                                        มีบันทึกโค้ช
+                                    </span>
+                                }
+                            </div>
+                        </div>
+
+                        <!-- Expanded Drawer -->
+                        <div class="sh-acc-body" onclick="event.stopPropagation();">
+                            <div class="sh-detail-grid">
+                                <div class="sh-detail-cell">
+                                    <span class="k">รหัสอ้างอิงการจอง</span>
+                                    <span class="v" style="font-family: monospace;">#BK-@item.BookingId.ToString("D5")</span>
+                                </div>
+                                <div class="sh-detail-cell">
+                                    <span class="k">เวลาเข้า-ออกห้องซ้อมจริง</span>
+                                    @if (itemCheckedIn)
+                                    {
+                                        <span class="v" style="color: #4ade80;">
+                                            เข้า @ciInTime @( !string.IsNullOrEmpty(ciOutTime) ? $" / ออก {ciOutTime}" : " (กำลังซ้อม)" )
+                                        </span>
+                                    }
+                                    else if (itemNoShow)
+                                    {
+                                        <span class="v" style="color: #fcd34d;">ไม่ได้สแกนเช็กอินเข้าห้อง</span>
+                                    }
+                                    else if (item.Status == "Cancelled")
+                                    {
+                                        <span class="v" style="color: #f87171;">ยกเลิกก่อนเวลาเริ่ม</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="v" style="color: #a1a1aa;">รอถึงเวลาเช็กอิน</span>
+                                    }
+                                </div>
+                                <div class="sh-detail-cell">
+                                    <span class="k">รูปแบบการฝึกสอน</span>
+                                    <span class="v">@modeShort</span>
+                                </div>
+                                <div class="sh-detail-cell">
+                                    <span class="k">สาขาที่ให้บริการ</span>
+                                    <span class="v">@branchName</span>
+                                </div>
+                            </div>
+
+                            @if (workoutLogsByBooking.TryGetValue(item.BookingId, out var coachLog))
+                            {
+                                <div style="margin-top: 14px; padding: 14px 16px; border-radius: 10px; background: #0c0c10; border: 1px solid rgba(229, 9, 20, 0.35);">
+                                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
+                                        <span style="font-size:13px; font-weight:700; color:#fafafa;">บันทึกผลการฝึกและคำแนะนำจากโค้ช</span>
+                                        <span style="font-size:11.5px; font-weight:600; color:#ef4444;">
+                                            @coachLog.GetValueOrDefault("SetsSummary", "-") • Top: @coachLog.GetValueOrDefault("TopLoad", "-") • RPE @coachLog.GetValueOrDefault("Rpe", "8.0")
+                                        </span>
+                                    </div>
+
+                                    @{
+                                        string exJson = coachLog.GetValueOrDefault("ExercisesJson", "[]");
+                                        System.Text.Json.JsonDocument? exDoc = null;
+                                        try { exDoc = System.Text.Json.JsonDocument.Parse(exJson); } catch { exDoc = null; }
+                                    }
+                                    @if (exDoc != null && exDoc.RootElement.ValueKind == System.Text.Json.JsonValueKind.Array && exDoc.RootElement.GetArrayLength() > 0)
+                                    {
+                                        <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:10px;">
+                                            @foreach (var exEl in exDoc.RootElement.EnumerateArray())
+                                            {
+                                                string exName = exEl.TryGetProperty("name", out var nEl) ? (nEl.GetString() ?? "ท่าฝึก") : "ท่าฝึก";
+                                                <div style="background:#111116; border:1px solid #24242c; border-radius:8px; padding:8px 12px;">
+                                                    <div style="font-size:12.5px; font-weight:600; color:#fafafa; margin-bottom:4px;">@exName</div>
+                                                    @if (exEl.TryGetProperty("sets", out var setsEl) && setsEl.ValueKind == System.Text.Json.JsonValueKind.Array)
+                                                    {
+                                                        <div style="display:flex; flex-wrap:wrap; gap:6px;">
+                                                            @{ int setNo = 1; }
+                                                            @foreach (var stEl in setsEl.EnumerateArray())
+                                                            {
+                                                                double w = stEl.TryGetProperty("weight", out var wEl) && wEl.TryGetDouble(out var wV) ? wV : 0;
+                                                                int r = stEl.TryGetProperty("reps", out var rEl) && rEl.TryGetInt32(out var rV) ? rV : 0;
+                                                                string tp = stEl.TryGetProperty("type", out var tEl) ? (tEl.GetString() ?? "Working") : "Working";
+                                                                <span style="font-size:11.5px; padding:3px 8px; border-radius:6px; background:#18181f; border:1px solid #2a2a36; color:#d4d4d8;">
+                                                                    Set @setNo: <strong style="color:#fafafa;">@w.ToString("0.#")kg × @r</strong> (@tp)
+                                                                </span>
+                                                                setNo++;
+                                                            }
+                                                        </div>
+                                                    }
+                                                </div>
+                                            }
+                                        </div>
+                                        exDoc.Dispose();
+                                    }
+
+                                    <div style="font-size:12.5px; color:#e4e4e7; background:#141418; border-radius:8px; padding:10px 12px; white-space:pre-line; line-height:1.5;">
+                                        <strong style="color:#a1a1aa; display:block; font-size:11px; margin-bottom:3px;">คำแนะนำจากโค้ช (Coach's Feedback &amp; Homework)</strong>@coachLog.GetValueOrDefault("FeedbackNote", "-")
+                                    </div>
+                                </div>
+                            }
+
+                            <div class="sh-acc-foot">
+                                <div class="sh-acc-note">
+                                    @if (itemCompleted)
+                                    {
+                                        <span>บันทึกสถิติเวลาฝึกซ้อม 75 นาที ลงในระบบสำเร็จเรียบร้อยแล้ว</span>
+                                    }
+                                    else if (itemNoShow)
+                                    {
+                                        <span style="color: #fcd34d;">รายการนี้เลยกำหนดเวลาสิ้นสุดเซสชันโดยไม่มีการกดเช็กอิน ระบบจึงแยกออกจากสถิติเวลาซ้อมจริง</span>
+                                    }
+                                    else if (item.Status == "Cancelled")
+                                    {
+                                        <span>รายการนี้ถูกยกเลิกและคืนโควต้ากลับเข้าบัญชีสมาชิกเรียบร้อยแล้ว</span>
+                                    }
+                                    else
+                                    {
+                                        <span>สามารถสแกน QR หรือกดเช็กอินเข้าห้องซ้อมได้ที่หน้าการจองของฉัน</span>
+                                    }
+                                </div>
+
+                                <a asp-controller="Customer" asp-action="BookSession" asp-route-email="@ViewBag.Email" class="sh-btn-rebook">
+                                    <span>+ จองห้องซ้อมนี้อีกครั้ง</span>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</main>
+
+<script>
+    function toggleHistoryRow(cardEl) {
+        if (!cardEl) return;
+        cardEl.classList.toggle('open');
+    }
+</script>

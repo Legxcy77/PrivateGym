@@ -1,0 +1,384 @@
+@model PrivateGym.ViewModels.AdminDashboardViewModel
+@{
+    ViewData["Title"] = "แดชบอร์ดบริหารและจัดการระบบ";
+    Layout = "~/Views/Shared/Admin/_AdminLayout.cshtml";
+}
+
+<div class="container-fluid py-3 px-4">
+
+    <!-- 1. Header Section -->
+    <div class="adm-header-wrap">
+        <div class="adm-title-block">
+            <h1>
+                <span style="color: var(--adm-red);">&#x25A0;</span> แดชบอร์ดบริหารและจัดการระบบ
+                <span style="font-size: 13px; font-weight: 400; color: var(--adm-text-dim);">(Executive & Member Management)</span>
+            </h1>
+            <p class="adm-subtitle">
+                ข้อมูลภาพรวมธุรกิจ สมาชิก และการปฏิบัติการประจำวันที่ @DateTime.Now.ToString("dd เม.ย. yyyy") &bull; สถานะโหนดศูนย์กรุงเทพฯ (Thonglor HQ)
+            </p>
+        </div>
+
+        <div class="adm-header-actions">
+            <a asp-controller="Admin" asp-action="ExportDashboardCsv" class="adm-btn-ghost">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                ส่งออกรายงาน CSV
+            </a>
+            <a asp-controller="Admin" asp-action="AddUser" class="adm-btn-red">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                + เพิ่มสมาชิกใหม่ (Add Member)
+            </a>
+        </div>
+    </div>
+
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success" style="background: rgba(16, 185, 129, 0.14); border: 1px solid rgba(16, 185, 129, 0.35); color: #fafafa; border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; font-size: 13px;">
+            @TempData["SuccessMessage"]
+        </div>
+    }
+
+    <!-- 2. Top Executive KPI Row -->
+    <div class="adm-kpi-grid">
+        <!-- รายได้รวมเดือนนี้ -->
+        <div class="adm-kpi-card">
+            <div class="adm-kpi-header">
+                <span class="adm-kpi-label">รายได้รวมเดือนนี้</span>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--adm-text-dim);"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+            </div>
+            <div class="adm-kpi-value-row">
+                <span class="adm-kpi-val">฿@Model.MonthlyRevenue.ToString("N0")</span>
+            </div>
+            <div class="adm-kpi-meta">
+                <span style="color: var(--adm-green); font-weight: 600;">&uarr; +@Model.MomGrowthPercent% MoM</span>
+                <span>(เป้า ฿@Model.RevenueTarget.ToString("N0").Substring(0, 3)k)</span>
+            </div>
+        </div>
+
+        <!-- สมาชิกที่กำลังใช้งาน -->
+        <div class="adm-kpi-card">
+            <div class="adm-kpi-header">
+                <span class="adm-kpi-label">สมาชิกที่กำลังใช้งาน</span>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--adm-text-dim);"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </div>
+            <div class="adm-kpi-value-row">
+                <span class="adm-kpi-val">@Model.ActiveClients</span>
+                <span class="adm-kpi-val-sub">/ @Model.MaxSlots สูงสุด</span>
+            </div>
+            <div class="adm-kpi-meta">
+                <div class="adm-kpi-bar" style="width: 50px;">
+                    <div class="adm-kpi-bar-fill green" style="width: @Model.CapacityPercent%;"></div>
+                </div>
+                <span>@Model.CapacityPercent% Capacity</span>
+            </div>
+        </div>
+
+        <!-- การจองใช้งานวันนี้ -->
+        <div class="adm-kpi-card">
+            <div class="adm-kpi-header">
+                <span class="adm-kpi-label">การจองใช้งานวันนี้</span>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--adm-text-dim);"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            </div>
+            <div class="adm-kpi-value-row">
+                <span class="adm-kpi-val">@Model.TodayBookings</span>
+                <span class="adm-kpi-val-sub">รอบจัดสรร</span>
+            </div>
+            <div class="adm-kpi-meta">
+                <span style="color: var(--adm-green);">&#x25CF; Check-in สำเร็จ @Model.CheckInDone รอบ (@Model.CheckInPercent%)</span>
+            </div>
+        </div>
+
+        <!-- แพ็กเกจใกล้หมดอายุ -->
+        <div class="adm-kpi-card">
+            <div class="adm-kpi-header">
+                <span class="adm-kpi-label">แพ็กเกจใกล้หมดอายุ</span>
+                <span class="adm-kpi-dot orange"></span>
+            </div>
+            <div class="adm-kpi-value-row">
+                <span class="adm-kpi-val" style="color: #fbbf24;">@Model.ExpiringIn7Days</span>
+                <span class="adm-kpi-val-sub">ท่านใน 7 วันนี้</span>
+            </div>
+            <div class="adm-kpi-meta">
+                <span style="color: var(--adm-amber);">! @Model.ExpiringToday รายหมดอายุวันนี้</span>
+            </div>
+        </div>
+
+        <!-- ข้อขัดข้อง / รอจัดการ -->
+        <div class="adm-kpi-card">
+            <div class="adm-kpi-header">
+                <span class="adm-kpi-label">ข้อขัดข้อง / รอจัดการ</span>
+                <span class="adm-kpi-dot red"></span>
+            </div>
+            <div class="adm-kpi-value-row">
+                <span class="adm-kpi-val" style="color: #f87171;">@Model.IssueCount</span>
+                <span class="adm-kpi-val-sub">รายการฉุกเฉิน</span>
+            </div>
+            <div class="adm-kpi-meta">
+                <span style="color: #fca5a5;">@Model.IssueSummary</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. Two-Column Dashboard Content Layout -->
+    <div class="row g-3">
+
+        <!-- ================= LEFT COLUMN: Directory Table (65%) ================= -->
+        <div class="col-xl-8 col-lg-7">
+
+            <!-- Directory Toolbar -->
+            <div class="adm-filter-bar">
+                <div class="d-flex align-items-center gap-2 me-2" style="font-weight: 600; font-size: 13px; color: #fff;">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                    <span>จัดการและตรวจสอบสถานะสมาชิก (Directory)</span>
+                </div>
+                <span class="adm-kpi-label ms-auto">แสดง 6 จากทั้งหมด @Model.TotalCount สมาชิก</span>
+            </div>
+
+            <!-- Search inputs row -->
+            <form method="get" asp-controller="Admin" asp-action="Index" class="adm-filter-bar" style="margin-top: -4px;">
+                <div class="adm-search-input-wrap">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                    <input type="text" name="search" class="adm-search-input" placeholder="ค้นหาชื่อสมาชิก, รหัส PG, เบอร์โทร..." />
+                </div>
+                <select name="status" class="adm-select" onchange="this.form.submit()">
+                    <option value="all">สถานะ: ทั้งหมด</option>
+                    <option value="active">ปกติ Active</option>
+                    <option value="warning">ใกล้หมดอายุ</option>
+                    <option value="suspended">ระงับชั่วคราว</option>
+                </select>
+                <select name="pkg" class="adm-select" onchange="this.form.submit()">
+                    <option value="all">แพ็กเกจ: ทั้งหมด</option>
+                    <option value="elite">Elite Concierge</option>
+                    <option value="pro">Performance Pro</option>
+                    <option value="essential">Essential Access</option>
+                </select>
+            </form>
+
+            <!-- Mini Directory Table -->
+            <div class="adm-table-container">
+                <div class="table-responsive">
+                    <table class="adm-table">
+                        <thead>
+                            <tr>
+                                <th>สมาชิก (MEMBER)</th>
+                                <th>แพ็กเกจ (TIER)</th>
+                                <th>วันหมดอายุ (EXPIRY)</th>
+                                <th>สิทธิ์คงเหลือ (QUOTA)</th>
+                                <th>ยอดชำระล่าสุด</th>
+                                <th>สถานะ</th>
+                                <th style="text-align: right;">จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var m in Model.Members.Take(6))
+                            {
+                                <tr>
+                                    <td>
+                                        <div class="adm-member-cell">
+                                            <div class="adm-avatar">@m.AvatarInitials</div>
+                                            <div class="adm-member-info">
+                                                <div class="adm-member-name">
+                                                    @m.FullName
+                                                    @if (m.IsVerified)
+                                                    {
+                                                        <span class="adm-verify-badge">&#10003;</span>
+                                                    }
+                                                </div>
+                                                <div class="adm-member-id-phone">@m.MemberCode &bull; @m.Phone</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="adm-pkg-badge @m.PackageTierClass">
+                                            @m.PackageName
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="adm-date-main">@m.EndDateFormatted</div>
+                                        @if (m.StatusClass == "warning")
+                                        {
+                                            <div class="adm-date-sub orange" style="font-weight: 600;">เหลืออีก @m.DaysRemaining วัน</div>
+                                        }
+                                        else if (m.DaysRemaining <= 0)
+                                        {
+                                            <div class="adm-date-sub red" style="font-weight: 600;">@m.ExpiryNote</div>
+                                        }
+                                    </td>
+                                    <td>
+                                        <div style="font-size: 11.5px; color: #fff;">
+                                            Pod: @m.RemainingPods / @m.TotalPods รอบ
+                                        </div>
+                                        <div style="font-size: 10.5px; color: var(--adm-text-dim);">
+                                            PT Session: @m.RemainingPt ครั้ง
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div style="font-weight: 600; color: #fff;">@m.LastPaymentText</div>
+                                        <div style="font-size: 10.5px; color: var(--adm-text-dim);">@m.PaymentMethodText</div>
+                                    </td>
+                                    <td>
+                                        @if (m.StatusClass == "active")
+                                        {
+                                            <span class="adm-status-item active"><span class="dot"></span> ปกติ Active</span>
+                                        }
+                                        else if (m.StatusClass == "warning")
+                                        {
+                                            <span class="adm-status-item warning"><span class="dot"></span> ใกล้หมดอายุ</span>
+                                        }
+                                        else if (m.StatusClass == "expired")
+                                        {
+                                            <span class="adm-status-item suspended"><span class="dot"></span> หมดอายุ / ยังไม่มีแพ็กเกจ</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="adm-status-item suspended"><span class="dot"></span> ระงับการใช้งาน</span>
+                                        }
+                                    </td>
+                                    <td style="text-align: right; white-space: nowrap;">
+                                        @if (!string.IsNullOrEmpty(m.PrimaryActionText) && m.StatusClass != "suspended")
+                                        {
+                                            <button type="button"
+                                                    class="adm-action-btn-ghost"
+                                                    style="border:1px solid #27272a;"
+                                                    onclick="openRenewPaymentModal(@m.UserId, '@m.FullName', '@m.PackageName', '@m.ExpiryNote', 'Index')">
+                                                @m.PrimaryActionText
+                                            </button>
+                                        }
+                                        <a asp-controller="Admin" asp-action="EditUser" asp-route-id="@m.UserId" class="adm-action-btn-ghost">แก้ไข</a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination footer -->
+                <div class="adm-pagination-wrap">
+                    <span>แสดง @Math.Min(6, Model.Members.Count) รายการล่าสุด จากสมาชิกทั้งหมด @Model.TotalCount ท่าน</span>
+                    <div class="d-flex align-items-center gap-2">
+                        <a asp-controller="Admin" asp-action="UserList" class="adm-action-btn-ghost" style="padding: 5px 12px;">เปิดรายชื่อสมาชิกทั้งหมด &rarr;</a>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ================= RIGHT COLUMN: Action Items, Revenue & Resources (35%) ================= -->
+        <div class="col-xl-4 col-lg-5">
+
+            <!-- 1. การแจ้งเตือนงานปฏิบัติการ (Action Items) -->
+            <div class="adm-rail-card">
+                <div class="adm-rail-header">
+                    <div class="adm-rail-title">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: #ef4444;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                        <span>การแจ้งเตือนงานปฏิบัติการ (Action Items)</span>
+                    </div>
+                    <span class="badge" style="background: rgba(229,9,20,0.2); color: #f87171; font-size: 10px;">@Model.ActionItems.Count ค้าง</span>
+                </div>
+
+                <div class="d-flex flex-column gap-2">
+                    @foreach (var item in Model.ActionItems)
+                    {
+                        <div class="adm-action-item-box">
+                            <div class="adm-action-item-top">
+                                <span class="adm-action-item-title">@item.Title</span>
+                                <span class="adm-action-item-badge @item.BadgeClass">@item.BadgeText</span>
+                            </div>
+                            <div class="adm-action-item-desc">
+                                @item.Description
+                            </div>
+                            @if (item.Links.Any())
+                            {
+                                <div class="adm-action-links">
+                                    @foreach (var link in item.Links)
+                                    {
+                                        <a href="@link.Url" class="adm-action-link">
+                                            @if (link.Label.Contains("WhatsApp"))
+                                            {
+                                                <span style="color: var(--adm-green);">&#9658;</span>
+                                            }
+                                            else if (link.Label.Contains("ลิงก์"))
+                                            {
+                                                <span>&#9881;</span>
+                                            }
+                                            @link.Label
+                                        </a>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- 2. สัดส่วนรายได้ตามแพ็กเกจ (Revenue Share) -->
+            <div class="adm-rail-card">
+                <div class="adm-rail-header">
+                    <div class="adm-rail-title">
+                        <span>สัดส่วนรายได้ตามแพ็กเกจ (Revenue Share)</span>
+                    </div>
+                    <span style="font-size: 11px; color: var(--adm-text-dim);">฿@Model.MonthlyRevenue.ToString("N0") TOTAL</span>
+                </div>
+
+                <div class="d-flex flex-column gap-3 mb-3">
+                    @foreach (var rev in Model.RevenueShare)
+                    {
+                        <div>
+                            <div class="d-flex justify-content-between small mb-1" style="font-size: 11.5px;">
+                                <span style="color: #fff; font-weight: 500;">
+                                    <span style="color: @(rev.BarClass == "red" ? "var(--adm-red)" : "#10b981");">&#x25A0;</span> @rev.PackageName
+                                </span>
+                                <span style="font-weight: 600; color: #fff;">฿@rev.Amount.ToString("N0") (@rev.Percentage%)</span>
+                            </div>
+                            <div class="adm-kpi-bar" style="height: 4px;">
+                                <div class="adm-kpi-bar-fill @rev.BarClass" style="width: @(rev.Percentage)%;"></div>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                <div class="pt-2 border-top border-secondary border-opacity-25 d-flex justify-content-between align-items-center" style="font-size: 11px;">
+                    <span style="color: var(--adm-text-dim);">ARPU เฉลี่ย: ฿@Model.AverageArpu.ToString("N0") / สมาชิก</span>
+                    <a asp-controller="Admin" asp-action="Payments" style="color: var(--adm-green); font-weight: 600; text-decoration: none;">ดูรายการชำระเงิน &rarr;</a>
+                </div>
+            </div>
+
+            <!-- 3. สถานะทรัพยากรจริงในฐานข้อมูล (Real DB Resource Monitor) -->
+            <div class="adm-rail-card">
+                <div class="adm-rail-header">
+                    <div class="adm-rail-title">
+                        <span>สถานะทรัพยากรและสาขาในระบบจริง</span>
+                    </div>
+                    <span class="adm-status-item active" style="font-size: 10.5px;"><span class="dot"></span> LIVE DB</span>
+                </div>
+
+                <div class="adm-resource-grid">
+                    <div class="adm-resource-tile">
+                        <div class="adm-resource-label">PRIVATE PODS READY</div>
+                        <div class="adm-resource-val">@(ViewBag.AvailablePodsCount ?? 0) / @(ViewBag.TotalPodsCount ?? 0)</div>
+                        <div class="adm-resource-note">ห้องพร้อมเปิดให้บริการ</div>
+                    </div>
+                    <div class="adm-resource-tile">
+                        <div class="adm-resource-label">TRAINERS IN SYSTEM</div>
+                        <div class="adm-resource-val">@(ViewBag.TotalTrainersCount ?? 0) ท่าน</div>
+                        <div class="adm-resource-note">มีคิวสอนวันนี้ @(ViewBag.BusyTrainersToday ?? 0) ท่าน</div>
+                    </div>
+                    <div class="adm-resource-tile">
+                        <div class="adm-resource-label">ACTIVE BRANCHES</div>
+                        <div class="adm-resource-val">@(ViewBag.TotalBranchesCount ?? 0) สาขา</div>
+                        <div class="adm-resource-note">เปิดให้บริการทุกสาขา</div>
+                    </div>
+                    <div class="adm-resource-tile">
+                        <div class="adm-resource-label">CHECK-IN TODAY</div>
+                        <div class="adm-resource-val" style="color: var(--adm-green);">@Model.CheckInDone / @Model.TodayBookings</div>
+                        <div class="adm-resource-note">อัตราเช็กอิน @Model.CheckInPercent%</div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+@await Html.PartialAsync("~/Views/Shared/Admin/_RenewPaymentModal.cshtml")
+
+</div>

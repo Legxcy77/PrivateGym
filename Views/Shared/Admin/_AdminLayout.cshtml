@@ -1,0 +1,476 @@
+@{
+    var adminName = ViewData["Username"] ?? "Admin";
+    string currentAct = ViewContext.RouteData.Values["Action"]?.ToString() ?? "Index";
+}
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - PrivateGym Admin</title>
+    <link rel="icon" type="image/png" href="~/IconPrivate.png" asp-append-version="true" />
+
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/Sidebar.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/AdminDashboard.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/PrivateGym.styles.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/UnifiedWorkspace.css" asp-append-version="true" />
+    <style>
+        body.admin-body,
+        body.admin-body input,
+        body.admin-body select,
+        body.admin-body button,
+        body.admin-body textarea,
+        body.admin-body table {
+            font-family: 'Inter', 'Loma', -apple-system, BlinkMacSystemFont, sans-serif !important;
+        }
+
+        .sidebar-nav .nav-link.active {
+            background: rgba(229, 9, 20, 0.14);
+            color: #ffffff !important;
+            border-left: 3px solid #e50914;
+            font-weight: 600;
+        }
+
+        /* Unified shadcn/ui Dark Components for Admin Pages */
+        .adm-page {
+            padding: 20px 24px 36px;
+        }
+        .adm-page-head {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-bottom: 22px;
+        }
+        .adm-page-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: #fafafa;
+            letter-spacing: -0.015em;
+            margin: 0;
+        }
+        .adm-page-sub {
+            font-size: 13px;
+            color: #a1a1aa;
+            margin: 4px 0 0 0;
+        }
+        .adm-kpi-4 {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 14px;
+            margin-bottom: 20px;
+        }
+        .adm-stat-card {
+            background: #09090b;
+            border: 1px solid #27272a;
+            border-radius: 12px;
+            padding: 16px 18px;
+        }
+        .adm-stat-lbl {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: #71717a;
+            margin-bottom: 6px;
+        }
+        .adm-stat-val {
+            font-size: 24px;
+            font-weight: 700;
+            color: #fafafa;
+            line-height: 1.15;
+        }
+        .adm-stat-sub {
+            font-size: 12px;
+            color: #a1a1aa;
+            margin-top: 4px;
+        }
+
+        .st-filter-bar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .st-chips {
+            display: inline-flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 6px;
+            background: #09090b;
+            border: 1px solid #27272a;
+            border-radius: 10px;
+            padding: 4px;
+        }
+        .st-chip {
+            padding: 6px 12px;
+            border-radius: 7px;
+            font-size: 12.5px;
+            font-weight: 500;
+            text-decoration: none;
+            border: 1px solid transparent;
+            background: transparent;
+            color: #a1a1aa;
+            transition: all 0.15s ease;
+            white-space: nowrap;
+            cursor: pointer;
+        }
+        .st-chip:hover {
+            color: #fafafa;
+            background: #18181b;
+        }
+        .st-chip.active {
+            background: #18181b;
+            border-color: rgba(229, 9, 20, 0.55);
+            color: #ffffff;
+        }
+        .st-input {
+            height: 36px;
+            background: #09090b !important;
+            border: 1px solid #27272a !important;
+            border-radius: 8px !important;
+            color: #fafafa !important;
+            font-size: 13px !important;
+            padding: 0 12px !important;
+            outline: none;
+        }
+        .st-input:focus {
+            border-color: #e50914 !important;
+        }
+        .st-btn-primary {
+            height: 36px;
+            padding: 0 16px;
+            border-radius: 8px;
+            background: #e50914;
+            border: 1px solid #e50914;
+            color: #ffffff;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            white-space: nowrap;
+        }
+        .st-btn-primary:hover {
+            background: #b91c1c;
+            border-color: #b91c1c;
+            color: #ffffff;
+        }
+        .st-btn-outline {
+            height: 36px;
+            padding: 0 14px;
+            border-radius: 8px;
+            background: #09090b;
+            border: 1px solid #27272a;
+            color: #e4e4e7;
+            font-size: 12.5px;
+            font-weight: 500;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            white-space: nowrap;
+        }
+        .st-btn-outline:hover {
+            background: #18181b;
+            border-color: #3f3f46;
+            color: #fafafa;
+        }
+        .st-table-card {
+            background: #09090b;
+            border: 1px solid #27272a;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .st-shadcn-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .st-shadcn-table thead th {
+            padding: 12px 16px;
+            font-size: 11.5px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: #71717a;
+            border-bottom: 1px solid #27272a;
+            text-align: left;
+            background: #0c0c0f;
+        }
+        .st-shadcn-table tbody td {
+            padding: 13px 16px;
+            font-size: 13px;
+            color: #d4d4d8;
+            border-bottom: 1px solid #18181b;
+            vertical-align: middle;
+        }
+        .st-shadcn-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+        .st-shadcn-table tbody tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+        .st-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 3px 9px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 600;
+            border: 1px solid transparent;
+            white-space: nowrap;
+        }
+        .st-badge-green {
+            background: rgba(16, 185, 129, 0.12);
+            color: #10b981;
+            border-color: rgba(16, 185, 129, 0.3);
+        }
+        .st-badge-amber {
+            background: rgba(245, 158, 11, 0.12);
+            color: #f59e0b;
+            border-color: rgba(245, 158, 11, 0.3);
+        }
+        .st-badge-red {
+            background: rgba(239, 68, 68, 0.12);
+            color: #ef4444;
+            border-color: rgba(239, 68, 68, 0.3);
+        }
+        .st-badge-blue {
+            background: rgba(59, 130, 246, 0.12);
+            color: #60a5fa;
+            border-color: rgba(59, 130, 246, 0.3);
+        }
+        @@media (max-width: 1024px) {
+            .adm-kpi-4 {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        @@media (max-width: 640px) {
+            .adm-kpi-4 {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body class="admin-body">
+    <!-- ================= ADMIN SIDEBAR ================= -->
+    <aside class="admin-sidebar" id="adminSidebar">
+        <div class="sidebar-header">
+            <a asp-controller="Admin" asp-action="Index" class="sidebar-brand">
+                <img src="~/images/logo.png" alt="PrivateGym" class="sidebar-logo-img" />
+                <span class="badge-admin">ADMIN</span>
+            </a>
+            <button type="button" class="sidebar-close-btn d-lg-none" id="sidebarCloseBtn" aria-label="Close Sidebar">
+                &times;
+            </button>
+        </div>
+
+        <div class="sidebar-nav-container">
+            <ul class="sidebar-nav">
+                <li class="nav-category">Overview</li>
+                <li class="nav-item">
+                    <a class="nav-link @(currentAct == "Index" ? "active" : "")" asp-controller="Admin" asp-action="Index">
+                        <span class="nav-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span>
+                        <span>Dashboard (ภาพรวม)</span>
+                    </a>
+                </li>
+
+                <li class="nav-category">Management</li>
+                <li class="nav-item">
+                    <a class="nav-link @(currentAct == "UserList" || currentAct == "Members" || currentAct == "AddUser" || currentAct == "EditUser" ? "active" : "")" asp-controller="Admin" asp-action="UserList">
+                        <span class="nav-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+                        <span>สมาชิก (Members)</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link @(currentAct == "Staff" ? "active" : "")" asp-controller="Admin" asp-action="Staff">
+                        <span class="nav-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></svg></span>
+                        <span>พนักงาน (Staff)</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link @(currentAct == "Trainers" ? "active" : "")" asp-controller="Admin" asp-action="Trainers">
+                        <span class="nav-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
+                        <span>เทรนเนอร์ (Trainers)</span>
+                    </a>
+                </li>
+
+                <li class="nav-category">Operations</li>
+                <li class="nav-item">
+                    <a class="nav-link @(currentAct == "Schedule" ? "active" : "")" asp-controller="Admin" asp-action="Schedule">
+                        <span class="nav-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="9" y1="10" x2="9" y2="22"/><line x1="15" y1="10" x2="15" y2="22"/></svg></span>
+                        <span>ตารางเวลา (Schedule)</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link @(currentAct == "Packages" ? "active" : "")" asp-controller="Admin" asp-action="Packages">
+                        <span class="nav-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></span>
+                        <span>แพ็กเกจ &amp; ห้อง Pod</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link @(currentAct == "Bookings" ? "active" : "")" asp-controller="Admin" asp-action="Bookings">
+                        <span class="nav-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span>
+                        <span>การจอง (Bookings)</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link @(currentAct == "CheckIn" ? "active" : "")" asp-controller="Admin" asp-action="CheckIn">
+                        <span class="nav-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span>
+                        <span>เช็กอิน (Check-in)</span>
+                    </a>
+                </li>
+
+                <li class="nav-category">Finance &amp; Reports</li>
+                <li class="nav-item">
+                    <a class="nav-link @(currentAct == "Payments" ? "active" : "")" asp-controller="Admin" asp-action="Payments">
+                        <span class="nav-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg></span>
+                        <span>การชำระเงิน (Payments)</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link @(currentAct == "Reports" ? "active" : "")" asp-controller="Admin" asp-action="Reports">
+                        <span class="nav-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span>
+                        <span>รายงาน (Reports)</span>
+                    </a>
+                </li>
+
+                <li class="nav-category">System</li>
+                <li class="nav-item">
+                    <a class="nav-link @(currentAct == "UsersAndRoles" ? "active" : "")" asp-controller="Admin" asp-action="UsersAndRoles">
+                        <span class="nav-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>
+                        <span>Users &amp; Roles</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link @(currentAct == "Settings" ? "active" : "")" asp-controller="Admin" asp-action="Settings">
+                        <span class="nav-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
+                        <span>การตั้งค่า (Settings)</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        <div class="pg-sb-user">
+            <div class="pg-sb-user-left">
+                <div class="pg-sb-avatar">
+                    @(adminName?.ToString()?.Length > 0 ? adminName.ToString()!.Substring(0, 1).ToUpper() : "A")
+                </div>
+                <div class="pg-sb-info">
+                    <span class="pg-sb-name">@adminName</span>
+                    <span class="pg-sb-role">Admin • Super Admin</span>
+                </div>
+            </div>
+            <a asp-controller="Login" asp-action="Logout" class="pg-sb-logout" title="ออกจากระบบ" aria-label="ออกจากระบบ">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            </a>
+        </div>
+    </aside>
+
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+    <div class="admin-wrapper">
+        <header class="admin-topbar">
+            <div class="d-flex align-items-center">
+                <button type="button" class="toggle-sidebar-btn" id="sidebarToggleBtn" aria-label="Toggle Sidebar">
+                    &#9776;
+                </button>
+                <div class="topbar-title">
+                    @(ViewData["Title"] ?? "Dashboard")
+                </div>
+            </div>
+            <div class="topbar-actions">
+                <a asp-controller="Home" asp-action="Index" class="btn-visit-site" target="_blank">
+                    ดูหน้าเว็บไซต์หลัก
+                </a>
+            </div>
+        </header>
+
+        <main class="admin-main">
+            @RenderBody()
+        </main>
+    </div>
+
+    <!-- Global Business-Logic Confirmation Modal -->
+    <div class="modal fade" id="pgConfirmModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 420px;">
+            <div class="modal-content" style="background:#09090b; border:1px solid #27272a; border-radius:14px; color:#fafafa;">
+                <div class="modal-header" style="border-bottom:1px solid #18181b; padding:16px 20px;">
+                    <h5 class="modal-title" id="pgConfirmTitle" style="font-size:15px; font-weight:600; margin:0;">ยืนยันการดำเนินการ</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" style="padding:18px 20px; font-size:13.5px; color:#d4d4d8; line-height:1.6;" id="pgConfirmMessage">
+                    คุณต้องการดำเนินการรายการนี้ใช่หรือไม่?
+                </div>
+                <div class="modal-footer" style="border-top:1px solid #18181b; padding:12px 20px; gap:8px;">
+                    <button type="button" class="st-btn-outline" data-bs-dismiss="modal">ยกเลิก</button>
+                    <button type="button" class="st-btn-primary" id="pgConfirmProceedBtn">ยืนยันดำเนินการ</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const sidebar = document.getElementById('adminSidebar');
+        const backdrop = document.getElementById('sidebarBackdrop');
+        const toggleBtn = document.getElementById('sidebarToggleBtn');
+        const closeBtn = document.getElementById('sidebarCloseBtn');
+
+        function toggleSidebar() {
+            sidebar.classList.toggle('active');
+            backdrop.classList.toggle('active');
+        }
+
+        if (toggleBtn) toggleBtn.addEventListener('click', toggleSidebar);
+        if (backdrop) backdrop.addEventListener('click', toggleSidebar);
+        if (closeBtn) closeBtn.addEventListener('click', toggleSidebar);
+
+        // Global confirmation guard for critical POST forms
+        (function () {
+            let pendingForm = null;
+            const modalEl = document.getElementById('pgConfirmModal');
+            const msgEl = document.getElementById('pgConfirmMessage');
+            const titleEl = document.getElementById('pgConfirmTitle');
+            const proceedBtn = document.getElementById('pgConfirmProceedBtn');
+
+            document.addEventListener('submit', function (e) {
+                const form = e.target;
+                if (!form || !form.dataset || !form.dataset.confirm) return;
+                if (form.dataset.confirmed === 'true') {
+                    form.dataset.confirmed = '';
+                    return;
+                }
+                e.preventDefault();
+                pendingForm = form;
+                titleEl.textContent = form.dataset.confirmTitle || 'ยืนยันการดำเนินการ';
+                msgEl.textContent = form.dataset.confirm;
+                proceedBtn.disabled = false;
+                proceedBtn.textContent = 'ยืนยันดำเนินการ';
+                bootstrap.Modal.getOrCreateInstance(modalEl).show();
+            });
+
+            if (proceedBtn) {
+                proceedBtn.addEventListener('click', function () {
+                    if (!pendingForm) return;
+                    proceedBtn.disabled = true;
+                    proceedBtn.textContent = 'กำลังบันทึก...';
+                    pendingForm.dataset.confirmed = 'true';
+                    bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+                    pendingForm.submit();
+                });
+            }
+        })();
+    </script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

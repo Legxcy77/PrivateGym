@@ -1,0 +1,799 @@
+@model List<PrivateGym.Models.Booking>
+@using PrivateGym.Models
+@{
+    Layout = "~/Views/Shared/Staff/_StaffLayout.cshtml";
+    ViewData["Title"] = "หน้างานและเช็กอิน (Operations Desk)";
+    ViewData["ActiveMenu"] = "Dashboard";
+
+    string staffEmail = ViewBag.Email ?? "staff@privategym.club";
+    string currentTab = ViewBag.Tab ?? "today";
+    string search = ViewBag.Search ?? "";
+
+    var branches = ViewBag.Branches as List<Branch> ?? new List<Branch>();
+    int selectedBranchId = ViewBag.SelectedBranchId != null ? (int)ViewBag.SelectedBranchId : 0;
+    var pods = ViewBag.Pods as List<Pod> ?? new List<Pod>();
+    var todayBookings = ViewBag.TodayBookings as List<Booking> ?? new List<Booking>();
+    var slotLocks = ViewBag.SlotLocks as List<Booking> ?? new List<Booking>();
+    var maintenanceLogs = ViewBag.MaintenanceLogs as List<Dictionary<string, string>> ?? new List<Dictionary<string, string>>();
+    var handoverNotes = ViewBag.HandoverNotes as List<Dictionary<string, string>> ?? new List<Dictionary<string, string>>();
+
+    int todayCount = ViewBag.TodayCount ?? 0;
+    int todayTotalCount = ViewBag.TodayTotalCount ?? 0;
+    int todayCheckedInCount = ViewBag.TodayCheckedInCount ?? 0;
+    int inRoomCount = ViewBag.InRoomCount ?? 0;
+    int upcomingCount = ViewBag.UpcomingCount ?? 0;
+    int availablePods = ViewBag.AvailablePods ?? 0;
+    int maintenancePods = ViewBag.MaintenancePods ?? 0;
+    int totalPods = ViewBag.TotalPods ?? 0;
+
+    int checkInPct = todayTotalCount > 0 ? (int)Math.Round(todayCheckedInCount * 100.0 / todayTotalCount) : 0;
+    int occupancyPct = totalPods > 0 ? (int)Math.Round(inRoomCount * 100.0 / totalPods) : 0;
+    int readyPct = totalPods > 0 ? (int)Math.Round(availablePods * 100.0 / totalPods) : 0;
+    int queuePct = upcomingCount > 0 ? (int)Math.Round(todayCount * 100.0 / upcomingCount) : 0;
+
+    var nowTime = TimeOnly.FromDateTime(DateTime.Now);
+    var selectedBranchObj = branches.FirstOrDefault(b => b.BranchId == selectedBranchId);
+    string branchLabel = selectedBranchObj != null ? selectedBranchObj.BranchName : $"ทุกสาขา ({branches.Count} สาขา)";
+}
+
+<style>
+    .ops-header {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+        margin-bottom: 24px;
+    }
+    .ops-branch-select {
+        height: 36px;
+        background: #09090b;
+        border: 1px solid #27272a;
+        border-radius: 8px;
+        color: #fafafa;
+        font-size: 13px;
+        font-weight: 500;
+        padding: 0 12px;
+        outline: none;
+        cursor: pointer;
+    }
+    .ops-branch-select:focus {
+        border-color: #e50914;
+    }
+
+    /* 4-Column KPI Grid */
+    .ops-kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 16px;
+        margin-bottom: 28px;
+    }
+    .ops-kpi-card {
+        background: #09090b;
+        border: 1px solid #27272a;
+        border-radius: 12px;
+        padding: 18px 20px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        gap: 12px;
+    }
+    .ops-kpi-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 11.5px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: #a1a1aa;
+    }
+    .ops-kpi-tag {
+        font-size: 10.5px;
+        font-weight: 600;
+        padding: 2px 8px;
+        border-radius: 999px;
+        border: 1px solid #27272a;
+        background: #18181b;
+        color: #d4d4d8;
+    }
+    .ops-kpi-tag.green {
+        border-color: rgba(16, 185, 129, 0.3);
+        background: rgba(16, 185, 129, 0.12);
+        color: #10b981;
+    }
+    .ops-kpi-tag.red {
+        border-color: rgba(239, 68, 68, 0.3);
+        background: rgba(239, 68, 68, 0.12);
+        color: #ef4444;
+    }
+    .ops-kpi-tag.amber {
+        border-color: rgba(245, 158, 11, 0.3);
+        background: rgba(245, 158, 11, 0.12);
+        color: #f59e0b;
+    }
+    .ops-kpi-value-row {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+    }
+    .ops-kpi-val {
+        font-size: 28px;
+        font-weight: 700;
+        color: #fafafa;
+        line-height: 1;
+        letter-spacing: -0.02em;
+    }
+    .ops-kpi-sub {
+        font-size: 12.5px;
+        color: #71717a;
+    }
+    .ops-kpi-bar {
+        width: 100%;
+        height: 4px;
+        background: #18181b;
+        border-radius: 999px;
+        overflow: hidden;
+    }
+    .ops-kpi-bar-fill {
+        height: 100%;
+        border-radius: 999px;
+    }
+
+    /* Section Spacing & Headers */
+    .ops-section {
+        margin-bottom: 28px;
+    }
+    .ops-section-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 14px;
+    }
+    .ops-section-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: #fafafa;
+        margin: 0;
+    }
+    .ops-section-sub {
+        font-size: 12.5px;
+        color: #a1a1aa;
+        margin-top: 2px;
+    }
+    .ops-link-btn {
+        font-size: 12.5px;
+        font-weight: 500;
+        color: #d4d4d8;
+        text-decoration: none;
+        padding: 7px 12px;
+        border: 1px solid #27272a;
+        border-radius: 8px;
+        background: #09090b;
+        white-space: nowrap;
+        transition: all 0.15s;
+    }
+    .ops-link-btn:hover {
+        color: #fafafa;
+        background: #18181b;
+        border-color: #3f3f46;
+    }
+
+    /* Action Buttons in Table */
+    .ops-btn-action {
+        padding: 7px 14px;
+        border-radius: 8px;
+        font-size: 12.5px;
+        font-weight: 600;
+        cursor: pointer;
+        border: 1px solid transparent;
+        transition: all 0.15s;
+        white-space: nowrap;
+    }
+    .ops-btn-checkin {
+        background: #e50914;
+        color: #ffffff;
+    }
+    .ops-btn-checkin:hover {
+        background: #b91c1c;
+    }
+    .ops-btn-checkout {
+        background: rgba(16, 185, 129, 0.14);
+        color: #10b981;
+        border-color: rgba(16, 185, 129, 0.35);
+    }
+    .ops-btn-checkout:hover {
+        background: rgba(16, 185, 129, 0.24);
+    }
+
+    /* Full-Width Pod Matrix Grid (Spacious 3-Column) */
+    .ops-pod-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+    }
+    .ops-pod-card {
+        background: #09090b;
+        border: 1px solid #27272a;
+        border-radius: 12px;
+        padding: 16px 18px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+    .ops-pod-card.in-session {
+        border-color: rgba(239, 68, 68, 0.45);
+        background: linear-gradient(180deg, rgba(239, 68, 68, 0.07) 0%, #09090b 100%);
+    }
+    .ops-pod-card.maintenance {
+        border-color: rgba(245, 158, 11, 0.4);
+        background: linear-gradient(180deg, rgba(245, 158, 11, 0.06) 0%, #09090b 100%);
+    }
+    .ops-pod-top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 8px;
+    }
+    .ops-pod-name {
+        font-size: 14px;
+        font-weight: 600;
+        color: #fafafa;
+    }
+    .ops-pod-branch {
+        font-size: 12px;
+        color: #71717a;
+        margin-top: 2px;
+    }
+    .ops-pod-state {
+        font-size: 10.5px;
+        font-weight: 700;
+        letter-spacing: 0.03em;
+        padding: 3px 9px;
+        border-radius: 999px;
+        white-space: nowrap;
+        border: 1px solid transparent;
+    }
+    .ops-pod-state.session {
+        background: rgba(239, 68, 68, 0.14);
+        color: #ef4444;
+        border-color: rgba(239, 68, 68, 0.35);
+    }
+    .ops-pod-state.ready {
+        background: rgba(16, 185, 129, 0.12);
+        color: #10b981;
+        border-color: rgba(16, 185, 129, 0.3);
+    }
+    .ops-pod-state.maint {
+        background: rgba(245, 158, 11, 0.12);
+        color: #f59e0b;
+        border-color: rgba(245, 158, 11, 0.3);
+    }
+    .ops-pod-detail {
+        font-size: 12.5px;
+        color: #a1a1aa;
+        border-top: 1px solid #18181b;
+        padding-top: 10px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+    }
+    .ops-pod-member {
+        color: #fafafa;
+        font-weight: 500;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    /* Bottom 50/50 Grid: Maintenance & Shift Handover */
+    .ops-bottom-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+        align-items: stretch;
+    }
+    .ops-panel {
+        background: #09090b;
+        border: 1px solid #27272a;
+        border-radius: 12px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+    .ops-panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 16px 20px;
+        border-bottom: 1px solid #27272a;
+    }
+    .ops-panel-body {
+        padding: 16px 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        flex: 1;
+    }
+    .ops-alert-item {
+        padding: 11px 14px;
+        border-radius: 8px;
+        border: 1px solid #27272a;
+        background: #111114;
+    }
+    .ops-alert-item.warn {
+        border-color: rgba(245, 158, 11, 0.35);
+        background: rgba(245, 158, 11, 0.06);
+    }
+    .ops-alert-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: #fafafa;
+        margin-bottom: 2px;
+    }
+    .ops-alert-meta {
+        font-size: 12px;
+        color: #a1a1aa;
+    }
+    .ops-handover-form {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 4px;
+    }
+    .ops-note-item {
+        padding: 10px 14px;
+        background: #111114;
+        border: 1px solid #27272a;
+        border-radius: 8px;
+    }
+    .ops-note-text {
+        font-size: 13px;
+        color: #e4e4e7;
+        line-height: 1.45;
+        margin-bottom: 4px;
+    }
+    .ops-note-meta {
+        font-size: 11.5px;
+        color: #71717a;
+        display: flex;
+        justify-content: space-between;
+    }
+
+    @@media (max-width: 1150px) {
+        .ops-kpi-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+        .ops-pod-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+        .ops-bottom-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+    @@media (max-width: 680px) {
+        .ops-kpi-grid,
+        .ops-pod-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<main class="cd-content">
+<!-- Header (Matching Other Staff Pages) -->
+<div class="ops-header">
+    <div>
+        <h1 class="cd-page-title">หน้างานและเช็กอิน (Operations Desk)</h1>
+        <p class="cd-page-subtext">ตรวจสอบคิวสมาชิก กดเช็กอิน/เช็กเอาต์หน้าเคาน์เตอร์ และดูสถานะห้อง Pod แบบเรียลไทม์ (@branchLabel)</p>
+    </div>
+
+    <form asp-controller="Staff" asp-action="Index" method="get" style="display:flex; align-items:center; gap:8px;">
+        <input type="hidden" name="email" value="@staffEmail" />
+        <input type="hidden" name="tab" value="@currentTab" />
+        <input type="hidden" name="search" value="@search" />
+        <select name="branchId" class="ops-branch-select" onchange="this.form.submit()">
+            @if (selectedBranchId == 0)
+            {
+                <option value="0" selected>ทุกสาขา (@branches.Count สาขา)</option>
+            }
+            else
+            {
+                <option value="0">ทุกสาขา (@branches.Count สาขา)</option>
+            }
+            @foreach (var br in branches)
+            {
+                if (selectedBranchId == br.BranchId)
+                {
+                    <option value="@br.BranchId" selected>@br.BranchName (@br.Pods.Count ห้อง)</option>
+                }
+                else
+                {
+                    <option value="@br.BranchId">@br.BranchName (@br.Pods.Count ห้อง)</option>
+                }
+            }
+        </select>
+    </form>
+</div>
+
+<!-- 1. 4-Column KPI Summary -->
+<div class="ops-kpi-grid">
+    <div class="ops-kpi-card">
+        <div class="ops-kpi-head">
+            <span>CHECK-IN วันนี้</span>
+            <span class="ops-kpi-tag green">@checkInPct% LOAD</span>
+        </div>
+        <div class="ops-kpi-value-row">
+            <span class="ops-kpi-val">@todayCheckedInCount</span>
+            <span class="ops-kpi-sub">/ @todayTotalCount คิวทั้งหมดวันนี้</span>
+        </div>
+        <div class="ops-kpi-bar">
+            <div class="ops-kpi-bar-fill" style="width: @(checkInPct)%; background: #10b981;"></div>
+        </div>
+    </div>
+
+    <div class="ops-kpi-card">
+        <div class="ops-kpi-head">
+            <span>กำลังฝึกในห้อง POD</span>
+            <span class="ops-kpi-tag @(inRoomCount > 0 ? "red" : "")">@occupancyPct% OCCUPIED</span>
+        </div>
+        <div class="ops-kpi-value-row">
+            <span class="ops-kpi-val">@inRoomCount</span>
+            <span class="ops-kpi-sub">/ @totalPods ห้อง (IN SESSION)</span>
+        </div>
+        <div class="ops-kpi-bar">
+            <div class="ops-kpi-bar-fill" style="width: @(occupancyPct)%; background: #ef4444;"></div>
+        </div>
+    </div>
+
+    <div class="ops-kpi-card">
+        <div class="ops-kpi-head">
+            <span>คิวรอเช็กอิน &amp; ล่วงหน้า</span>
+            <span class="ops-kpi-tag">QUEUE</span>
+        </div>
+        <div class="ops-kpi-value-row">
+            <span class="ops-kpi-val">@todayCount</span>
+            <span class="ops-kpi-sub">คิววันนี้ / @upcomingCount คิวทั้งหมด</span>
+        </div>
+        <div class="ops-kpi-bar">
+            <div class="ops-kpi-bar-fill" style="width: @(queuePct)%; background: #3b82f6;"></div>
+        </div>
+    </div>
+
+    <div class="ops-kpi-card">
+        <div class="ops-kpi-head">
+            <span>ห้อง POD พร้อมบริการ</span>
+            <span class="ops-kpi-tag @(maintenancePods > 0 ? "amber" : "green")">
+                @(maintenancePods > 0 ? $"{maintenancePods} ปรับปรุง" : "READY 100%")
+            </span>
+        </div>
+        <div class="ops-kpi-value-row">
+            <span class="ops-kpi-val" style="color:#10b981;">@availablePods</span>
+            <span class="ops-kpi-sub">/ @totalPods ห้องเปิดใช้งาน</span>
+        </div>
+        <div class="ops-kpi-bar">
+            <div class="ops-kpi-bar-fill" style="width: @(readyPct)%; background: #10b981;"></div>
+        </div>
+    </div>
+</div>
+
+<!-- 2. Full-Width Bookings & Check-in Queue -->
+<div class="ops-section">
+    <div class="ops-section-head">
+        <div>
+            <h2 class="ops-section-title">คิวจองและเช็กอินหน้าเคาน์เตอร์ (Bookings &amp; Check-in Queue)</h2>
+            <div class="ops-section-sub">กดเช็กอินเมื่อสมาชิกมาถึงสาขา และกดเช็กเอาต์เมื่อจบเซสชันเพื่อคืนห้อง</div>
+        </div>
+        <a asp-controller="Staff" asp-action="Schedule" asp-route-email="@staffEmail" class="ops-link-btn">
+            เปิดตาราง Master Schedule Grid
+        </a>
+    </div>
+
+    <div class="st-filter-bar">
+        <div class="st-chips">
+            <a asp-controller="Staff" asp-action="Index" asp-route-email="@staffEmail" asp-route-tab="today" asp-route-search="@search" asp-route-branchId="@selectedBranchId"
+               class="st-chip @(currentTab == "today" ? "active" : "")">
+                คิววันนี้ (@todayCount)
+            </a>
+            <a asp-controller="Staff" asp-action="Index" asp-route-email="@staffEmail" asp-route-tab="active" asp-route-search="@search" asp-route-branchId="@selectedBranchId"
+               class="st-chip @(currentTab == "active" ? "active" : "")">
+                กำลังใช้งาน (@inRoomCount)
+            </a>
+            <a asp-controller="Staff" asp-action="Index" asp-route-email="@staffEmail" asp-route-tab="upcoming" asp-route-search="@search" asp-route-branchId="@selectedBranchId"
+               class="st-chip @(currentTab == "upcoming" ? "active" : "")">
+                ทั้งหมดที่รอ (@upcomingCount)
+            </a>
+        </div>
+
+        <form asp-controller="Staff" asp-action="Index" method="get" class="st-search-box">
+            <input type="hidden" name="email" value="@staffEmail" />
+            <input type="hidden" name="tab" value="@currentTab" />
+            <input type="hidden" name="branchId" value="@selectedBranchId" />
+            <input type="text" name="search" value="@search" class="st-input" style="min-width:240px;" placeholder="ค้นหาชื่อสมาชิก, เบอร์, #PG-..." />
+            <button type="submit" class="st-btn-primary">ค้นหา</button>
+        </form>
+    </div>
+
+    <div class="st-table-card">
+        @if (!Model.Any())
+        {
+            <div style="padding: 44px; text-align:center; color:#71717a; font-size:14px;">
+                ไม่พบรายการจองในหมวดหมู่นี้
+            </div>
+        }
+        else
+        {
+            <table class="st-shadcn-table">
+                <thead>
+                    <tr>
+                        <th>รหัส &amp; เวลา</th>
+                        <th>สมาชิก</th>
+                        <th>แพ็กเกจ / โควต้า</th>
+                        <th>บริการ &amp; ห้อง POD</th>
+                        <th>สถานะ</th>
+                        <th style="text-align:right;">แอ็กชันเคาน์เตอร์</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var b in Model)
+                    {
+                        bool isCheckedIn = b.CheckIns != null && b.CheckIns.Any();
+                        var activeSub = b.User?.MemberSubscriptions?
+                            .Where(ms => ms.Status == "Active")
+                            .OrderByDescending(ms => ms.EndDate)
+                            .FirstOrDefault();
+
+                        string pkgLabel = activeSub?.Package?.PackageName ?? "Single Session";
+                        string quotaLabel = activeSub != null
+                            ? $"Pod คงเหลือ {activeSub.RemainingPods} • PT {activeSub.RemainingPt}"
+                            : "รายครั้ง";
+
+                        <tr>
+                            <td>
+                                <div style="font-weight:600; color:#fafafa;">@b.BookingDate.ToString("dd/MM/yyyy")</div>
+                                <div style="font-size:12px; color:#a1a1aa;">@b.StartTime.ToString("HH:mm") - @b.EndTime.ToString("HH:mm") น.</div>
+                                <div style="font-size:11px; color:#71717a;">#PG-@b.BookingId.ToString("D5")</div>
+                            </td>
+                            <td>
+                                <div style="font-weight:600; color:#fafafa;">@(b.User?.FullName ?? "ไม่ระบุชื่อ")</div>
+                                <div style="font-size:12px; color:#a1a1aa;">@(b.User?.Phone ?? b.User?.Email ?? "-")</div>
+                            </td>
+                            <td>
+                                <div style="font-weight:500; color:#e4e4e7;">@pkgLabel</div>
+                                <div style="font-size:12px; color:#a1a1aa;">@quotaLabel</div>
+                            </td>
+                            <td>
+                                <div style="font-weight:500; color:#fafafa;">@(b.Pod?.PodName ?? "Pod") • @(b.Pod?.Branch?.BranchName ?? "-")</div>
+                                <div style="font-size:12px; color:#a1a1aa;">
+                                    @(b.Trainer?.User?.FullName != null ? "เทรนเนอร์: " + b.Trainer.User.FullName : "Private Solo Session")
+                                </div>
+                            </td>
+                            <td>
+                                @if (isCheckedIn)
+                                {
+                                    <span class="st-badge st-badge-green">IN ROOM</span>
+                                }
+                                else
+                                {
+                                    <span class="st-badge st-badge-amber">CONFIRMED</span>
+                                }
+                            </td>
+                            <td style="text-align:right;">
+                                @if (!isCheckedIn)
+                                {
+                                    <form asp-controller="Staff" asp-action="CheckInMember" method="post" style="display:inline;">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="bookingId" value="@b.BookingId" />
+                                        <input type="hidden" name="email" value="@staffEmail" />
+                                        <button type="submit" class="ops-btn-action ops-btn-checkin">เช็กอินเข้าห้อง</button>
+                                    </form>
+                                }
+                                else
+                                {
+                                    <form asp-controller="Staff" asp-action="CheckOutMember" method="post" style="display:inline;">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="bookingId" value="@b.BookingId" />
+                                        <input type="hidden" name="email" value="@staffEmail" />
+                                        <button type="submit" class="ops-btn-action ops-btn-checkout">เช็กเอาต์ / จบเซสชัน</button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>
+
+<!-- 3. Full-Width Autonomous Pod Matrix -->
+<div class="ops-section">
+    <div class="ops-section-head">
+        <div>
+            <h2 class="ops-section-title">สถานะห้องออกกำลังกายอัตโนมัติ (Autonomous Pod Matrix)</h2>
+            <div class="ops-section-sub">แสดงสถานะห้องฝึกจริงจากฐานข้อมูล (@pods.Count ห้องในมุมมองปัจจุบัน)</div>
+        </div>
+        <a asp-controller="Staff" asp-action="Pods" asp-route-email="@staffEmail" class="ops-link-btn">
+            จัดการสถานะห้องทั้งหมด
+        </a>
+    </div>
+
+    @if (!pods.Any())
+    {
+        <div class="st-table-card" style="padding: 36px; text-align:center; color:#71717a; font-size:13px;">
+            ไม่พบข้อมูลห้อง Pod ในสาขาที่เลือก
+        </div>
+    }
+    else
+    {
+        <div class="ops-pod-grid">
+            @foreach (var pod in pods)
+            {
+                var activeSession = todayBookings.FirstOrDefault(b =>
+                    b.PodId == pod.PodId &&
+                    b.CheckIns != null &&
+                    b.CheckIns.Any());
+
+                var nextQueue = todayBookings
+                    .Where(b => b.PodId == pod.PodId && (b.CheckIns == null || !b.CheckIns.Any()))
+                    .OrderBy(b => b.StartTime)
+                    .FirstOrDefault();
+
+                var currentLock = slotLocks.FirstOrDefault(l =>
+                    l.PodId == pod.PodId &&
+                    l.StartTime <= nowTime &&
+                    l.EndTime > nowTime);
+
+                bool isInSession = activeSession != null;
+                bool isMaint = pod.Status != "Available" || currentLock != null;
+                string cardCls = isInSession ? "in-session" : (isMaint ? "maintenance" : "");
+
+                <div class="ops-pod-card @cardCls">
+                    <div class="ops-pod-top">
+                        <div>
+                            <div class="ops-pod-name">@pod.PodName</div>
+                            <div class="ops-pod-branch">@(pod.Branch?.BranchName ?? "-")</div>
+                        </div>
+                        @if (isInSession)
+                        {
+                            <span class="ops-pod-state session">IN SESSION</span>
+                        }
+                        else if (isMaint)
+                        {
+                            <span class="ops-pod-state maint">MAINTENANCE</span>
+                        }
+                        else
+                        {
+                            <span class="ops-pod-state ready">READY // CLEANED</span>
+                        }
+                    </div>
+
+                    <div class="ops-pod-detail">
+                        @if (isInSession && activeSession != null)
+                        {
+                            <span class="ops-pod-member">@(activeSession.User?.FullName ?? "สมาชิก")</span>
+                            <span style="color:#ef4444; font-weight:600; white-space:nowrap;">
+                                @activeSession.StartTime.ToString("HH:mm")-@activeSession.EndTime.ToString("HH:mm")
+                            </span>
+                        }
+                        else if (isMaint)
+                        {
+                            <span class="ops-pod-member" style="color:#f59e0b;">
+                                @(pod.Status != "Available" ? "ปิดปรับปรุงทั้งห้อง" : "ปิดซ่อมบำรุงช่วงเวลานี้")
+                            </span>
+                            <span style="color:#71717a; white-space:nowrap;">
+                                @(currentLock != null ? $"{currentLock.StartTime:HH:mm}-{currentLock.EndTime:HH:mm}" : "LOCKED")
+                            </span>
+                        }
+                        else if (nextQueue != null)
+                        {
+                            <span class="ops-pod-member" style="color:#a1a1aa;">ถัดไป: @(nextQueue.User?.FullName ?? "-")</span>
+                            <span style="color:#3b82f6; font-weight:600; white-space:nowrap;">@nextQueue.StartTime.ToString("HH:mm") น.</span>
+                        }
+                        else
+                        {
+                            <span style="color:#71717a;">พร้อมรองรับสมาชิกเข้าใช้งาน</span>
+                            <span style="color:#10b981; font-weight:600;">ว่าง</span>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<!-- 4. Balanced 50/50 Bottom Panels: Alerts & Shift Handover Log -->
+<div class="ops-bottom-grid">
+    <!-- Left: Maintenance & Lock Alerts -->
+    <div class="ops-panel">
+        <div class="ops-panel-header">
+            <div>
+                <h2 class="ops-section-title" style="font-size:15px;">การแจ้งเตือนและห้องปิดปรับปรุง</h2>
+                <div class="ops-section-sub">อ้างอิงสถานะห้องและการล็อกช่วงเวลาจริง</div>
+            </div>
+            <a asp-controller="Staff" asp-action="Pods" asp-route-email="@staffEmail" class="ops-link-btn">ตั้งค่าซ่อมบำรุง</a>
+        </div>
+        <div class="ops-panel-body">
+            @{
+                var maintPodsList = pods.Where(p => p.Status != "Available").ToList();
+            }
+            @if (!maintPodsList.Any() && !slotLocks.Any() && !maintenanceLogs.Any())
+            {
+                <div class="ops-alert-item">
+                    <div class="ops-alert-title" style="color:#10b981;">ระบบปฏิบัติการปกติทุกห้อง</div>
+                    <div class="ops-alert-meta">ไม่มีห้อง Pod หรือช่วงเวลาที่ถูกล็อกซ่อมบำรุงในขณะนี้</div>
+                </div>
+            }
+            else
+            {
+                @foreach (var mp in maintPodsList.Take(4))
+                {
+                    <div class="ops-alert-item warn">
+                        <div class="ops-alert-title">@mp.PodName — ปิดปรับปรุงชั่วคราว</div>
+                        <div class="ops-alert-meta">สาขา @(mp.Branch?.BranchName ?? "-") (สถานะ: @mp.Status)</div>
+                    </div>
+                }
+                @foreach (var lk in slotLocks.Take(4))
+                {
+                    <div class="ops-alert-item warn">
+                        <div class="ops-alert-title">ล็อกช่วงเวลา @(lk.Pod?.PodName ?? "-")</div>
+                        <div class="ops-alert-meta">เวลา @lk.StartTime.ToString("HH:mm") - @lk.EndTime.ToString("HH:mm") น. (@(lk.Pod?.Branch?.BranchName ?? "-"))</div>
+                    </div>
+                }
+                @if (!maintPodsList.Any() && !slotLocks.Any())
+                {
+                    @foreach (var log in maintenanceLogs.Take(3))
+                    {
+                        <div class="ops-alert-item">
+                            <div class="ops-alert-title">@log.GetValueOrDefault("PodName", "-") — @log.GetValueOrDefault("Action", "-")</div>
+                            <div class="ops-alert-meta">@log.GetValueOrDefault("Reason", "-") • @log.GetValueOrDefault("Timestamp", "")</div>
+                        </div>
+                    }
+                }
+            }
+        </div>
+    </div>
+
+    <!-- Right: Shift Handover Log -->
+    <div class="ops-panel">
+        <div class="ops-panel-header">
+            <div>
+                <h2 class="ops-section-title" style="font-size:15px;">บันทึกส่งเวร (Shift Handover Log)</h2>
+                <div class="ops-section-sub">บันทึกข้อความสื่อสารระหว่างกะพนักงาน</div>
+            </div>
+        </div>
+        <div class="ops-panel-body">
+            <form asp-controller="Staff" asp-action="AddHandoverNote" method="post" class="ops-handover-form">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="email" value="@staffEmail" />
+                <input type="hidden" name="tab" value="@currentTab" />
+                <input type="hidden" name="branchId" value="@selectedBranchId" />
+                <input type="text" name="note" class="st-input" style="flex:1; min-width:0;" placeholder="พิมพ์บันทึกส่งเวร เช่น แจ้งเช็กอุปกรณ์ Pod..." required />
+                <button type="submit" class="st-btn-primary">บันทึก</button>
+            </form>
+
+            @if (!handoverNotes.Any())
+            {
+                <div style="font-size:12.5px; color:#71717a; text-align:center; padding:18px 0;">
+                    ยังไม่มีบันทึกส่งเวรในระบบ พิมพ์ด้านบนเพื่อเพิ่มรายการแรก
+                </div>
+            }
+            else
+            {
+                @foreach (var hn in handoverNotes.Take(5))
+                {
+                    <div class="ops-note-item">
+                        <div class="ops-note-text">@hn.GetValueOrDefault("Note", "")</div>
+                        <div class="ops-note-meta">
+                            <span>@hn.GetValueOrDefault("StaffName", "Staff")</span>
+                            <span>@hn.GetValueOrDefault("Timestamp", "")</span>
+                        </div>
+                    </div>
+                }
+            }
+        </div>
+    </div>
+</div>
+</main>

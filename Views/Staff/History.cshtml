@@ -1,0 +1,101 @@
+@model List<PrivateGym.Models.Booking>
+
+@{
+    ViewData["Title"] = "ประวัติเข้า-ออกสาขา";
+    Layout = "~/Views/Shared/Staff/_StaffLayout.cshtml";
+
+    var list = Model ?? new List<PrivateGym.Models.Booking>();
+}
+
+<main class="cd-content">
+    <!-- Mobile Top Bar -->
+    <div class="pg-m-topbar d-flex d-lg-none">
+        <a asp-controller="Staff" asp-action="Index" asp-route-email="@ViewBag.Email" class="pg-m-topbar-logo-left">
+            <img src="~/images/logo.png" alt="PrivateGym" />
+        </a>
+        <span class="pg-m-topbar-center">ประวัติเข้า-ออกสาขา</span>
+        <div class="pg-m-topbar-right">
+            <button type="button" class="btn text-white p-1 border-0" onclick="openStaffSidebar()" aria-label="เปิดเมนู">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <line x1="3" y1="12" x2="21" y2="12"></line>
+                    <line x1="3" y1="6" x2="21" y2="6"></line>
+                    <line x1="3" y1="18" x2="21" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <div class="cd-page-header d-none d-lg-flex" style="margin-bottom: 18px;">
+        <div>
+            <h1 class="cd-page-title">บันทึกการเข้า-ออกสาขาย้อนหลัง</h1>
+            <p class="cd-page-subtext">ประวัติการเช็กอินเข้าห้องซ้อม เวลาเข้า-ออกจริง และรายการที่สมาชิกไม่ได้เข้าใช้งาน</p>
+        </div>
+    </div>
+
+    <div class="st-table-card">
+        <div style="overflow-x: auto;">
+            <table class="st-shadcn-table">
+                <thead>
+                    <tr>
+                        <th>รหัสจอง</th>
+                        <th>วันที่ / รอบเวลา</th>
+                        <th>สมาชิก</th>
+                        <th>ห้องซ้อม Pod</th>
+                        <th>เวลาเช็กอิน / เช็กเอาต์</th>
+                        <th>สถานะ</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!list.Any())
+                    {
+                        <tr>
+                            <td colspan="6" class="text-center py-5" style="color: #71717a;">ยังไม่มีประวัติการใช้บริการ</td>
+                        </tr>
+                    }
+                    else
+                    {
+                        foreach (var item in list)
+                        {
+                            var ci = item.CheckIns?.OrderByDescending(c => c.CheckInId).FirstOrDefault();
+                            bool hasCi = ci != null;
+                            bool isNoShow = item.Status == "Confirmed" && !hasCi;
+                            string ciTime = ci?.CheckInTime != null ? ci.CheckInTime.Value.ToString("HH:mm") : "-";
+                            string coTime = ci?.CheckOutTime != null ? ci.CheckOutTime.Value.ToString("HH:mm") : "-";
+
+                            <tr>
+                                <td style="color: #a1a1aa; font-weight: 500;">#PG-@item.BookingId.ToString("D5")</td>
+                                <td class="text-white">
+                                    @item.BookingDate.ToString("dd/MM/yyyy") &bull; @item.StartTime.ToString("HH:mm")-@item.EndTime.ToString("HH:mm")
+                                </td>
+                                <td style="font-weight: 500; color: #ffffff;">@(item.User?.FullName ?? "-")</td>
+                                <td class="text-white-50">@(item.Pod?.PodName ?? "-")</td>
+                                <td class="text-white-50">
+                                    @(hasCi ? $"เข้า {ciTime} น. / ออก {coTime} น." : "ไม่ได้เช็กอิน")
+                                </td>
+                                <td>
+                                    @if (item.Status == "Completed")
+                                    {
+                                        <span class="st-badge st-badge-green">เสร็จสิ้น</span>
+                                    }
+                                    else if (isNoShow)
+                                    {
+                                        <span class="st-badge st-badge-amber">ไม่ได้เข้าใช้งาน</span>
+                                    }
+                                    else if (item.Status == "Cancelled")
+                                    {
+                                        <span class="st-badge st-badge-red">ยกเลิกแล้ว</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="st-badge st-badge-green">กำลังใช้งาน</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</main>
+

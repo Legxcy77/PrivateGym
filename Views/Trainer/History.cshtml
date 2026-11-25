@@ -1,0 +1,250 @@
+@model List<PrivateGym.Models.Booking>
+@using PrivateGym.Models
+@{
+    Layout = "~/Views/Shared/Trainer/_TrainerLayout.cshtml";
+    ViewData["Title"] = "ประวัติการทำงานและเซสชันที่ผ่านมา";
+
+    string trainerEmail = ViewBag.Email ?? "alex@privategym.club";
+    string currentFilter = ViewBag.Filter ?? "all";
+    string search = ViewBag.Search ?? "";
+
+    int allCount = ViewBag.AllCount ?? 0;
+    int completedCount = ViewBag.CompletedCount ?? 0;
+    int noShowCount = ViewBag.NoShowCount ?? 0;
+    int cancelledCount = ViewBag.CancelledCount ?? 0;
+
+    decimal ratePerSession = ViewBag.RatePerSession != null ? Convert.ToDecimal(ViewBag.RatePerSession) : 800m;
+    decimal estPayout = ViewBag.EstPayout != null ? Convert.ToDecimal(ViewBag.EstPayout) : 0m;
+    int attendanceRate = ViewBag.AttendanceRate ?? 100;
+    var workoutLogs = ViewBag.WorkoutLogs as List<Dictionary<string, string>> ?? new List<Dictionary<string, string>>();
+
+    int tierTarget = 60;
+    int tierPct = Math.Min(100, (int)Math.Round(completedCount * 100.0 / tierTarget));
+}
+
+<style>
+    .hi-kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 14px;
+        margin-bottom: 22px;
+    }
+    .hi-kpi-card {
+        background: #09090b;
+        border: 1px solid #27272a;
+        border-radius: 12px;
+        padding: 16px 18px;
+    }
+    .hi-kpi-lbl {
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: #71717a;
+        margin-bottom: 8px;
+    }
+    .hi-kpi-val {
+        font-size: 24px;
+        font-weight: 700;
+        color: #fafafa;
+        line-height: 1.1;
+    }
+    .hi-kpi-sub {
+        font-size: 12px;
+        color: #a1a1aa;
+        margin-top: 4px;
+    }
+    .hi-bottom-grid {
+        display: grid;
+        grid-template-columns: 1.35fr 1fr;
+        gap: 16px;
+        margin-top: 22px;
+    }
+    .hi-protocol-card {
+        background: #09090b;
+        border: 1px solid #27272a;
+        border-radius: 12px;
+        padding: 18px 20px;
+    }
+    @@media (max-width: 1050px) {
+        .hi-kpi-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        .hi-bottom-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+    @@media (max-width: 640px) {
+        .hi-kpi-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<main class="cd-content">
+    <div class="d-flex justify-content-between align-items-end flex-wrap gap-3 mb-4">
+        <div>
+            <h1 class="cd-page-title">ประวัติการทำงานและเซสชันที่ผ่านมา (History)</h1>
+            <p class="cd-page-subtext">ประวัติการสอนครบวงจร ยอดรวมชั่วโมงสอน และค่าตอบแทนสะสมจากข้อมูลจริง</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a asp-controller="Trainer" asp-action="ExportHistoryCsv" asp-route-email="@trainerEmail" class="st-btn-outline">ส่งออก CSV</a>
+        </div>
+    </div>
+
+    <!-- 4-Column KPI Row -->
+    <div class="hi-kpi-grid">
+        <div class="hi-kpi-card">
+            <div class="hi-kpi-lbl">SESSIONS_TOTAL</div>
+            <div class="hi-kpi-val">@completedCount <span style="font-size:13px; font-weight:400; color:#71717a;">เซสชัน</span></div>
+            <div class="hi-kpi-sub">จากประวัติทั้งหมด @allCount รายการ</div>
+        </div>
+        <div class="hi-kpi-card">
+            <div class="hi-kpi-lbl">ATTENDANCE RATE</div>
+            <div class="hi-kpi-val" style="color:#10b981;">@attendanceRate%</div>
+            <div class="hi-kpi-sub">ยกเลิก @cancelledCount • ไม่มาตามนัด @noShowCount</div>
+        </div>
+        <div class="hi-kpi-card">
+            <div class="hi-kpi-lbl">RATE PER SESSION</div>
+            <div class="hi-kpi-val">฿@ratePerSession.ToString("N0")</div>
+            <div class="hi-kpi-sub">อัตราค่าสอนตามโปรไฟล์โค้ช</div>
+        </div>
+        <div class="hi-kpi-card">
+            <div class="hi-kpi-lbl">EST. PAYOUT</div>
+            <div class="hi-kpi-val" style="color:#fafafa;">฿@estPayout.ToString("N0")</div>
+            <div class="hi-kpi-sub">คำนวณจาก @completedCount เซสชันที่เสร็จสมบูรณ์</div>
+        </div>
+    </div>
+
+    <!-- Filter & Search -->
+    <div class="st-filter-bar">
+        <div class="st-chips">
+            <a asp-controller="Trainer" asp-action="History" asp-route-email="@trainerEmail" asp-route-filter="all" asp-route-search="@search"
+               class="st-chip @(currentFilter == "all" ? "active" : "")">ทั้งหมด (@allCount)</a>
+            <a asp-controller="Trainer" asp-action="History" asp-route-email="@trainerEmail" asp-route-filter="completed" asp-route-search="@search"
+               class="st-chip @(currentFilter == "completed" ? "active" : "")">เสร็จสมบูรณ์ (@completedCount)</a>
+            <a asp-controller="Trainer" asp-action="History" asp-route-email="@trainerEmail" asp-route-filter="noshow" asp-route-search="@search"
+               class="st-chip @(currentFilter == "noshow" ? "active" : "")">ไม่มาตามนัด (@noShowCount)</a>
+            <a asp-controller="Trainer" asp-action="History" asp-route-email="@trainerEmail" asp-route-filter="cancelled" asp-route-search="@search"
+               class="st-chip @(currentFilter == "cancelled" ? "active" : "")">ยกเลิก (@cancelledCount)</a>
+        </div>
+
+        <form asp-controller="Trainer" asp-action="History" method="get" class="d-flex gap-2">
+            <input type="hidden" name="email" value="@trainerEmail" />
+            <input type="hidden" name="filter" value="@currentFilter" />
+            <input type="text" name="search" value="@search" class="st-input" style="min-width:230px;" placeholder="ค้นหาชื่อลูกค้า, ห้องฝึก, #PG-..." />
+            <button type="submit" class="st-btn-primary">ค้นหา</button>
+        </form>
+    </div>
+
+    <!-- History Table -->
+    <div class="st-table-card">
+        @if (!Model.Any())
+        {
+            <div style="padding: 44px; text-align:center; color:#71717a; font-size:14px;">
+                ไม่พบประวัติการสอนในหมวดหมู่นี้
+            </div>
+        }
+        else
+        {
+            <table class="st-shadcn-table">
+                <thead>
+                    <tr>
+                        <th>วันที่ &amp; เวลา</th>
+                        <th>รหัสเซสชัน</th>
+                        <th>สมาชิก (ATHLETE)</th>
+                        <th>แผนการฝึก / โฟกัส</th>
+                        <th>ห้องฝึก (POD)</th>
+                        <th>ค่าตอบแทน</th>
+                        <th>สถานะ</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var b in Model)
+                    {
+                        bool isDone = b.Status == "Completed";
+                        bool isCancel = b.Status == "Cancelled";
+                        var log = workoutLogs.FirstOrDefault(l => l.GetValueOrDefault("BookingId") == b.BookingId.ToString());
+                        decimal sessionPay = isDone ? ratePerSession : 0m;
+
+                        <tr>
+                            <td>
+                                <div style="font-weight:600; color:#fafafa;">@b.BookingDate.ToString("dd MMM yyyy")</div>
+                                <div style="font-size:12px; color:#71717a;">@b.StartTime.ToString("HH:mm") - @b.EndTime.ToString("HH:mm") น.</div>
+                            </td>
+                            <td>
+                                <span style="font-family:monospace; color:#a1a1aa;">#PG-@b.BookingId.ToString("D5")</span>
+                            </td>
+                            <td>
+                                <div style="font-weight:600; color:#fafafa;">@(b.User?.FullName ?? "-")</div>
+                                <div style="font-size:11.5px; color:#71717a;">@(b.User?.Phone ?? "-")</div>
+                            </td>
+                            <td>
+                                <div style="color:#e4e4e7;">@(log?.GetValueOrDefault("PrimaryMovement") ?? b.User?.FitnessGoal ?? "Personal Training")</div>
+                                @if (log != null)
+                                {
+                                    <div style="font-size:11.5px; color:#10b981;">บันทึกผลแล้ว (RPE @log.GetValueOrDefault("Rpe"))</div>
+                                }
+                            </td>
+                            <td>
+                                <span class="st-badge" style="background:#18181b; border-color:#27272a; color:#d4d4d8;">@(b.Pod?.PodName ?? "-")</span>
+                            </td>
+                            <td style="font-weight:600; color:#fafafa;">
+                                @(isDone ? $"฿{sessionPay:N0}" : "-")
+                            </td>
+                            <td>
+                                @if (isDone)
+                                {
+                                    <span class="st-badge st-badge-green">เสร็จสมบูรณ์</span>
+                                }
+                                else if (isCancel)
+                                {
+                                    <span class="st-badge st-badge-red">ยกเลิก</span>
+                                }
+                                else
+                                {
+                                    <span class="st-badge st-badge-amber">ไม่มาตามนัด</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+
+    <!-- Bottom Payout Protocol & Tier Target -->
+    <div class="hi-bottom-grid">
+        <div class="hi-protocol-card">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h2 style="font-size:14px; font-weight:600; color:#fafafa; margin:0;">ข้อกำหนดและรอบการโอนค่าตอบแทนครูฝึก (Trainer Payout Protocol)</h2>
+                <span class="st-badge st-badge-green">ACTIVE CYCLE</span>
+            </div>
+            <p style="font-size:12.5px; color:#a1a1aa; margin-bottom:10px;">ระบบ PrivateGym คำนวณยอดจากเซสชันสถานะ Completed โดยตัดรอบเบิกจ่ายเดือนละ 2 ครั้ง:</p>
+            <ul style="font-size:12.5px; color:#d4d4d8; padding-left:18px; margin-bottom:0;">
+                <li>รอบที่ 1: ปฏิบัติงานวันที่ 1 - 15 ของเดือน -&gt; โอนเข้าบัญชีทุกวันที่ 16 ของเดือน</li>
+                <li>รอบที่ 2: ปฏิบัติงานวันที่ 16 - วันสิ้นเดือน -&gt; โอนเข้าบัญชีทุกวันที่ 1 ของเดือนถัดไป</li>
+            </ul>
+        </div>
+
+        <div class="hi-protocol-card">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span style="font-size:11px; font-weight:600; color:#71717a; text-transform:uppercase;">TIER BONUS TARGET</span>
+                <span style="font-size:11.5px; font-weight:600; color:#10b981;">@tierPct% ACHIEVED</span>
+            </div>
+            <div style="font-size:17px; font-weight:700; color:#fafafa; margin-bottom:4px;">Elite Tier (@tierTarget เซสชัน)</div>
+            <div style="font-size:12px; color:#a1a1aa; margin-bottom:12px;">
+                @(completedCount >= tierTarget
+                    ? "บรรลุเป้าหมาย Elite Tier เรียบร้อยแล้ว"
+                    : $"อีก {tierTarget - completedCount} เซสชัน เพื่อถึงเป้าหมาย Elite Tier")
+            </div>
+            <div style="height:6px; background:#18181b; border-radius:999px; overflow:hidden; margin-bottom:8px;">
+                <div style="width:@(tierPct)%; height:100%; background:#e50914;"></div>
+            </div>
+            <div class="d-flex justify-content-between" style="font-size:11px; color:#71717a;">
+                <span>@completedCount SESSIONS</span>
+                <span>GOAL: @tierTarget</span>
+            </div>
+        </div>
+    </div>
+</main>

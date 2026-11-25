@@ -1,0 +1,534 @@
+@model PrivateGym.Models.User
+@using PrivateGym.Models
+
+@{
+    ViewData["Title"] = "ติดต่อสอบถาม";
+    Layout = "~/Views/Shared/Customer/_CustomerLayout.cshtml";
+    var branches = ViewBag.Branches as List<Branch> ?? new List<Branch>();
+    string homeBranchName = Model?.HomeBranch?.BranchName ?? "สาขาทองหล่อ";
+}
+
+<style>
+    .sp-wrap {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    /* Top Direct Contact Strip (3 Cards) */
+    .sp-contact-strip {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+
+    .sp-channel-card {
+        background: #121216;
+        border: 1px solid #24242c;
+        border-radius: 14px;
+        padding: 16px 18px;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        text-decoration: none;
+        transition: border-color 0.2s ease, background 0.2s ease;
+    }
+
+    .sp-channel-card:hover {
+        border-color: #363644;
+        background: #16161c;
+    }
+
+    .sp-channel-icon {
+        width: 42px;
+        height: 42px;
+        border-radius: 11px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .sp-channel-icon.red {
+        background: rgba(229, 9, 20, 0.14);
+        border: 1px solid rgba(229, 9, 20, 0.32);
+        color: #f87171;
+    }
+
+    .sp-channel-icon.green {
+        background: rgba(34, 197, 94, 0.14);
+        border: 1px solid rgba(34, 197, 94, 0.32);
+        color: #4ade80;
+    }
+
+    .sp-channel-icon.zinc {
+        background: #1b1b22;
+        border: 1px solid #2e2e3a;
+        color: #d4d4d8;
+    }
+
+    .sp-channel-lbl {
+        font-size: 11.5px;
+        color: #a1a1aa;
+        margin-bottom: 2px;
+    }
+
+    .sp-channel-val {
+        font-size: 15px;
+        font-weight: 800;
+        color: #ffffff;
+        line-height: 1.2;
+    }
+
+    .sp-channel-sub {
+        font-size: 11px;
+        color: #71717a;
+        margin-top: 2px;
+    }
+
+    /* Main Grid: Left FAQ Accordion + Right Concierge Form */
+    .sp-main-grid {
+        display: grid;
+        grid-template-columns: 1.05fr 0.95fr;
+        gap: 18px;
+        align-items: start;
+    }
+
+    .sp-panel {
+        background: #121216;
+        border: 1px solid #24242c;
+        border-radius: 16px;
+        padding: 22px;
+    }
+
+    .sp-panel-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 16px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    }
+
+    .sp-panel-title {
+        font-size: 16px;
+        font-weight: 800;
+        color: #ffffff;
+        margin: 0;
+    }
+
+    .sp-panel-tag {
+        font-size: 11px;
+        font-weight: 700;
+        color: #a1a1aa;
+        background: #1a1a22;
+        border: 1px solid #2c2c38;
+        padding: 3px 9px;
+        border-radius: 20px;
+    }
+
+    /* FAQ Accordion Items */
+    .sp-faq-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .sp-faq-item {
+        background: #17171d;
+        border: 1px solid #262631;
+        border-radius: 12px;
+        overflow: hidden;
+        transition: border-color 0.2s ease;
+    }
+
+    .sp-faq-item.open {
+        border-color: #e50914;
+        background: #191921;
+    }
+
+    .sp-faq-q {
+        width: 100%;
+        background: transparent;
+        border: none;
+        padding: 14px 16px;
+        text-align: left;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        color: #ffffff;
+        font-size: 13.5px;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    .sp-faq-chevron {
+        color: #71717a;
+        transition: transform 0.2s ease;
+        flex-shrink: 0;
+    }
+
+    .sp-faq-item.open .sp-faq-chevron {
+        transform: rotate(180deg);
+        color: #e50914;
+    }
+
+    .sp-faq-a {
+        display: none;
+        padding: 0 16px 14px 16px;
+        font-size: 12.5px;
+        color: #a1a1aa;
+        line-height: 1.65;
+        border-top: 1px dashed rgba(255, 255, 255, 0.08);
+        padding-top: 12px;
+    }
+
+    .sp-faq-item.open .sp-faq-a {
+        display: block;
+    }
+
+    /* Concierge Form & Quick Topic Chips */
+    .sp-topic-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+        margin-bottom: 14px;
+    }
+
+    .sp-topic-chip {
+        background: #181820;
+        border: 1px solid #2a2a36;
+        color: #d4d4d8;
+        font-size: 11.5px;
+        font-weight: 600;
+        padding: 6px 11px;
+        border-radius: 20px;
+        cursor: pointer;
+        transition: all 0.16s ease;
+    }
+
+    .sp-topic-chip.active {
+        background: rgba(229, 9, 20, 0.16);
+        border-color: #e50914;
+        color: #ffffff;
+    }
+
+    .sp-input {
+        background: #17171e !important;
+        border: 1px solid #292935 !important;
+        color: #ffffff !important;
+        border-radius: 10px !important;
+        font-size: 13px !important;
+        padding: 10px 13px !important;
+    }
+
+    .sp-input:focus {
+        border-color: #e50914 !important;
+        box-shadow: 0 0 0 2px rgba(229, 9, 20, 0.2) !important;
+    }
+
+    .sp-submit-btn {
+        width: 100%;
+        background: #e50914;
+        border: none;
+        color: #ffffff;
+        font-size: 13.5px;
+        font-weight: 700;
+        padding: 12px 18px;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: background 0.18s ease;
+    }
+
+    .sp-submit-btn:hover {
+        background: #c70812;
+    }
+
+    .sp-success-box {
+        display: none;
+        background: rgba(34, 197, 94, 0.13);
+        border: 1px solid rgba(34, 197, 94, 0.45);
+        border-radius: 12px;
+        padding: 14px 16px;
+        margin-bottom: 16px;
+        color: #ffffff;
+        font-size: 12.5px;
+        line-height: 1.55;
+    }
+
+    @@media (max-width: 991.98px) {
+        .sp-contact-strip {
+            grid-template-columns: 1fr;
+            gap: 10px;
+        }
+
+        .sp-channel-card {
+            padding: 13px 15px;
+        }
+
+        .sp-main-grid {
+            grid-template-columns: 1fr;
+            gap: 14px;
+        }
+
+        .sp-panel {
+            padding: 16px;
+        }
+    }
+</style>
+
+<main class="cd-content">
+    <div class="sp-wrap">
+        <!-- Mobile Top Bar: โลโก้อยู่ทางซ้าย ชื่อหน้าอยู่ตรงกลาง -->
+        <div class="pg-m-topbar d-flex d-lg-none">
+            <a asp-controller="Customer" asp-action="Index" asp-route-email="@ViewBag.Email" class="pg-m-topbar-logo-left">
+                <img src="~/images/logo.png" alt="PrivateGym" />
+            </a>
+            <span class="pg-m-topbar-center">ติดต่อสอบถาม</span>
+            <div class="pg-m-topbar-right"></div>
+        </div>
+
+        <!-- Top Back Link to Profile + Desktop Page Header -->
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+            <div>
+                <h1 class="cd-page-title d-none d-lg-block" style="margin-bottom: 4px;">ศูนย์ช่วยเหลือและติดต่อผู้ดูแลสาขา</h1>
+                <p class="cd-page-subtext mb-0">
+                    รวมคำตอบการใช้งานระบบจริง และช่องทางประสานงานผู้จัดการสาขาประจำตัวของคุณ (@homeBranchName)
+                </p>
+            </div>
+            <a asp-controller="Customer" asp-action="EditProfile" asp-route-email="@ViewBag.Email" class="cd-btn-secondary" style="text-decoration: none; font-size: 12.5px;">
+                &larr; กลับหน้าข้อมูลส่วนตัว
+            </a>
+        </div>
+
+        <!-- ================= 1. DIRECT CONTACT STRIP ================= -->
+        <div class="sp-contact-strip">
+            <a href="tel:020198899" class="sp-channel-card">
+                <div class="sp-channel-icon red">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <div class="sp-channel-lbl">สายด่วนผู้ดูแลสาขา (Direct Line)</div>
+                    <div class="sp-channel-val">02-019-8899</div>
+                    <div class="sp-channel-sub">แตะเพื่อโทรออกได้ทันที &bull; 06:00 - 24:00 น.</div>
+                </div>
+            </a>
+
+            <div class="sp-channel-card">
+                <div class="sp-channel-icon green">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <div class="sp-channel-lbl">LINE Official สมาชิก</div>
+                    <div class="sp-channel-val" style="color: #4ade80;">@@privategym_concierge</div>
+                    <div class="sp-channel-sub">แจ้งเลื่อนคิวโค้ชหรือสอบถามข้อมูลด่วน</div>
+                </div>
+            </div>
+
+            <div class="sp-channel-card">
+                <div class="sp-channel-icon zinc">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                </div>
+                <div>
+                    <div class="sp-channel-lbl">เวลาทำการและระบบประตูอัตโนมัติ</div>
+                    <div class="sp-channel-val">เปิดบริการทุกวัน 06:00 – 24:00 น.</div>
+                    <div class="sp-channel-sub">อีเมล: concierge@privategymclub.com</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= 2. SMART FAQ ACCORDION + DIRECT CONCIERGE FORM ================= -->
+        <div class="sp-main-grid">
+            <!-- Left Column: Smart Help FAQ Accordion -->
+            <div class="sp-panel">
+                <div class="sp-panel-head">
+                    <h2 class="sp-panel-title">คำถามที่พบบ่อยจากการใช้งานจริง</h2>
+                    <span class="sp-panel-tag">5 หัวข้อหลัก</span>
+                </div>
+
+                <div class="sp-faq-list">
+                    <div class="sp-faq-item open">
+                        <button type="button" class="sp-faq-q" onclick="toggleFaqItem(this)">
+                            <span>1. ประตูห้องซ้อมเปิดให้สแกน QR ล่วงหน้ากี่นาที?</span>
+                            <svg class="sp-faq-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                        </button>
+                        <div class="sp-faq-a">
+                            ระบบประตูอัตโนมัติเปิดให้สแกน QR Code หรือกดปุ่ม <strong>"เช็กอินเข้าใช้งานห้องซ้อม"</strong> ในหน้าการจองของฉันได้ล่วงหน้า <strong>15 นาทีก่อนเวลาเริ่มเซสชัน</strong> และจะตัดรอบการเข้าใช้งานอัตโนมัติเมื่อสิ้นสุดเวลาซ้อม (75 นาทีต่อรอบ)
+                        </div>
+                    </div>
+
+                    <div class="sp-faq-item">
+                        <button type="button" class="sp-faq-q" onclick="toggleFaqItem(this)">
+                            <span>2. หากเปลี่ยนแพ็กเกจกลางเดือน ระบบคิดรอบบิลอย่างไร?</span>
+                            <svg class="sp-faq-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                        </button>
+                        <div class="sp-faq-a">
+                            เมื่อเลือกเปลี่ยนแพ็กเกจ คุณยังสามารถใช้สิทธิ์และโควต้าของแพ็กเกจปัจจุบันได้ครบจนถึงวันสิ้นสุดรอบบิลเดิม โดยแพ็กเกจใหม่จะถูกตั้งเวลาเริ่มในรอบบิลถัดไป หรือหากโควต้าหมดก่อนสามารถกดปุ่ม <strong>"อัปเกรดและเริ่มใช้งานทันที"</strong> ในหน้าแพ็กเกจเพื่อทบโควต้าเดิมได้ทันที
+                        </div>
+                    </div>
+
+                    <div class="sp-faq-item">
+                        <button type="button" class="sp-faq-q" onclick="toggleFaqItem(this)">
+                            <span>3. เลื่อนรอบซ้อมหรือยกเลิกการจอง คืนโควต้าอัตโนมัติไหม?</span>
+                            <svg class="sp-faq-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                        </button>
+                        <div class="sp-faq-a">
+                            สมาชิกสามารถกด <strong>"ขอเลื่อนรอบ"</strong> หรือ <strong>"ยกเลิกการจอง"</strong> ได้ที่หน้าการจองของฉันก่อนเวลาสิ้นสุดเซสชัน (เฉพาะรายการที่ยังไม่ได้กดเช็กอินเข้าห้องซ้อม) ระบบจะคืนโควต้าห้อง Pod และโควต้าเทรนเนอร์กลับเข้าบัญชีให้อัตโนมัติทันที
+                        </div>
+                    </div>
+
+                    <div class="sp-faq-item">
+                        <button type="button" class="sp-faq-q" onclick="toggleFaqItem(this)">
+                            <span>4. หากจองไว้แต่ไม่ได้มาใช้งานตามเวลา ระบบจัดการอย่างไร?</span>
+                            <svg class="sp-faq-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                        </button>
+                        <div class="sp-faq-a">
+                            หากเลยเวลาสิ้นสุดเซสชันแล้วยังไม่มีการกดเช็กอินเข้าห้องซ้อม ระบบจะย้ายรายการนั้นไปยังหน้า <strong>"ประวัติการใช้บริการ"</strong> พร้อมขีดฆ่าระบุสถานะว่า <strong>"ไม่ได้เข้าใช้งาน"</strong> เพื่อแยกออกจากสถิติเวลาฝึกซ้อมสำเร็จจริงของคุณ
+                        </div>
+                    </div>
+
+                    <div class="sp-faq-item">
+                        <button type="button" class="sp-faq-q" onclick="toggleFaqItem(this)">
+                            <span>5. การขอใบเสร็จรับเงินหรือใบกำกับภาษีทำอย่างไร?</span>
+                            <svg class="sp-faq-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                        </button>
+                        <div class="sp-faq-a">
+                            คุณสามารถกรอกเลขประจำตัวผู้เสียภาษี (Tax ID) และที่อยู่สำหรับออกใบกำกับภาษีได้ที่หน้า <strong>"ข้อมูลส่วนตัว"</strong> จากนั้นสามารถกดดูและสั่งพิมพ์ใบเสร็จรับเงินรูปแบบ PDF ได้ทุกเมื่อที่หน้า <strong>"แพ็กเกจของฉัน"</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Direct Concierge Message Form -->
+            <div class="sp-panel">
+                <div class="sp-panel-head">
+                    <h2 class="sp-panel-title">ส่งข้อความถึงผู้จัดการสาขา</h2>
+                    <span class="sp-panel-tag">ตอบกลับภายใน 15 นาที</span>
+                </div>
+
+                <!-- In-Page Confirmation Box -->
+                <div id="supSuccessBanner" class="sp-success-box">
+                    <div style="font-weight: 800; color: #4ade80; margin-bottom: 3px;">
+                        รับเรื่องประสานงานเรียบร้อยแล้ว (<span id="supTicketRef">#SUP-1042</span>)
+                    </div>
+                    <div id="supSuccessDetail" style="color: #e4e4e7;">
+                        ทีมผู้ดูแลสาขารับข้อความของคุณแล้ว และจะติดต่อกลับทางโทรศัพท์หรืออีเมลที่ลงทะเบียนไว้โดยเร็วที่สุดครับ
+                    </div>
+                </div>
+
+                <form id="conciergeForm" onsubmit="return submitSupportMessage(event);">
+                    <div class="mb-2">
+                        <label class="form-label" style="color: #d4d4d8; font-size: 12.5px; font-weight: 700;">เลือกหัวข้อที่ต้องการติดต่อด่วน</label>
+                        <div class="sp-topic-chips">
+                            <button type="button" class="sp-topic-chip active" onclick="selectSupportTopic(this, 'สอบถามการสแกน QR / เข้าห้องซ้อม Pod')">การเข้าห้องซ้อม Pod</button>
+                            <button type="button" class="sp-topic-chip" onclick="selectSupportTopic(this, 'แจ้งปัญหาอุปกรณ์หรือความสะอาดในห้องฝึก')">แจ้งปัญหาอุปกรณ์</button>
+                            <button type="button" class="sp-topic-chip" onclick="selectSupportTopic(this, 'สอบถามเรื่องแพ็กเกจ โควต้า หรือใบกำกับภาษี')">แพ็กเกจและใบเสร็จ</button>
+                            <button type="button" class="sp-topic-chip" onclick="selectSupportTopic(this, 'ขอประสานงานหรือเปลี่ยนโค้ชผู้ฝึกสอน')">โค้ชส่วนตัว PT</button>
+                            <button type="button" class="sp-topic-chip" onclick="selectSupportTopic(this, 'ข้อเสนอแนะและเรื่องอื่นๆ')">เรื่องอื่นๆ</button>
+                        </div>
+                        <input type="hidden" id="supTopicInput" value="สอบถามการสแกน QR / เข้าห้องซ้อม Pod" />
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-sm-6">
+                            <label class="form-label" style="color: #a1a1aa; font-size: 12px;">ชื่อสมาชิก</label>
+                            <input type="text" class="form-control sp-input" value="@(Model?.FullName ?? "คุณสมาชิก PrivateGym")" readonly />
+                        </div>
+                        <div class="col-sm-6">
+                            <label class="form-label" style="color: #a1a1aa; font-size: 12px;">สาขาที่ต้องการประสานงาน</label>
+                            <select id="supBranchSelect" class="form-select sp-input">
+                                @if (branches.Any())
+                                {
+                                    foreach (var b in branches)
+                                    {
+                                        if (Model?.HomeBranchId == b.BranchId)
+                                        {
+                                            <option value="@b.BranchName" selected>@b.BranchName</option>
+                                        }
+                                        else
+                                        {
+                                            <option value="@b.BranchName">@b.BranchName</option>
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    <option value="@homeBranchName" selected>@homeBranchName</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label" style="color: #d4d4d8; font-size: 12.5px; font-weight: 700;">รายละเอียดข้อความ (ระบุหมายเลขห้องหรือรอบเวลาหากมี)</label>
+                        <textarea id="supMessageInput" class="form-control sp-input" rows="4" placeholder="พิมพ์รายละเอียดที่ต้องการให้ผู้ดูแลสาขาช่วยเหลือ..." required></textarea>
+                    </div>
+
+                    <button type="submit" class="sp-submit-btn">
+                        ส่งข้อความถึงผู้ดูแลสาขา
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</main>
+
+<script>
+    function toggleFaqItem(btnEl) {
+        if (!btnEl) return;
+        var item = btnEl.closest('.sp-faq-item');
+        if (item) {
+            item.classList.toggle('open');
+        }
+    }
+
+    function selectSupportTopic(chipEl, topicText) {
+        document.querySelectorAll('.sp-topic-chip').forEach(function (c) {
+            c.classList.remove('active');
+        });
+        if (chipEl) chipEl.classList.add('active');
+        var input = document.getElementById('supTopicInput');
+        if (input) input.value = topicText;
+    }
+
+    function submitSupportMessage(e) {
+        if (e) e.preventDefault();
+        var topic = document.getElementById('supTopicInput')?.value || 'ติดต่อสอบถามทั่วไป';
+        var branch = document.getElementById('supBranchSelect')?.value || 'สาขาหลัก';
+        var msgInput = document.getElementById('supMessageInput');
+        var banner = document.getElementById('supSuccessBanner');
+        var refEl = document.getElementById('supTicketRef');
+        var detailEl = document.getElementById('supSuccessDetail');
+
+        var randRef = '#SUP-' + Math.floor(1000 + Math.random() * 9000);
+        if (refEl) refEl.innerText = randRef;
+        if (detailEl) {
+            detailEl.innerText = 'ส่งเรื่อง "' + topic + '" ไปยังผู้จัดการ' + branch + 'เรียบร้อยแล้ว เจ้าหน้าที่จะติดต่อกลับโดยเร็วที่สุดครับ';
+        }
+        if (banner) {
+            banner.style.display = 'block';
+            banner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+        if (msgInput) msgInput.value = '';
+        return false;
+    }
+</script>
