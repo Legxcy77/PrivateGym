@@ -8,6 +8,9 @@ namespace PrivateGym.Controllers;
 // 1) หน้างาน & เช็กอิน: Index, CheckInMember, CheckOutMember, AddHandoverNote
 // 2) จัดการห้องซ้อม & ตาราง: Pods, TogglePodStatus, LockPodSlot, UnlockPodSlot, Schedule
 // 3) สมาชิก & ประวัติเข้า-ออก: Members, History
+using PrivateGym.Filters;
+
+[SessionAuthorize("Staff", "Admin")]
 public class StaffController : Controller
 {
     private readonly Csi402dbContext _db; // ตัวเชื่อมต่อฐานข้อมูล MySQL ผ่าน EF Core

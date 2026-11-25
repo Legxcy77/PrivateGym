@@ -11,6 +11,9 @@ using PrivateGym.ViewModels;
 
 namespace PrivateGym.Controllers;
 
+using PrivateGym.Filters;
+
+[SessionAuthorize("Admin")]
 public class AdminController : Controller
 {
     private readonly Csi402dbContext _db; // ตัวเชื่อมต่อฐานข้อมูล MySQL ผ่าน EF Core

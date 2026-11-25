@@ -10,6 +10,9 @@ namespace PrivateGym.Controllers;
 // 1) หน้างานสอน & บันทึกฝึก: Index, SaveWorkoutLog, CompleteSession
 // 2) ตารางสอน & เวลาว่าง: Schedule, Availability, SaveWeeklyAvailability, AddDateOverride, DeleteDateOverride
 // 3) ลูกค้า, ประวัติ & โปรไฟล์: Clients, History, ExportHistoryCsv, Profile, UpdateProfile
+using PrivateGym.Filters;
+
+[SessionAuthorize("Trainer", "Admin")]
 public class TrainerController : Controller
 {
     private readonly Csi402dbContext _db; // ตัวเชื่อมต่อฐานข้อมูล MySQL ผ่าน EF Core

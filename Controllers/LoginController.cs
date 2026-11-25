@@ -76,6 +76,7 @@ public class LoginController : Controller
 
         HttpContext.Session.SetInt32("UserId", user.UserId);
         HttpContext.Session.SetInt32("RoleId", user.RoleId);
+        HttpContext.Session.SetString("RoleName", user.Role?.RoleName ?? "");
         HttpContext.Session.SetString("UserEmail", user.Email);
 
         if (user.Status == "Inactive" || user.Status == "Suspended" || user.Status == "โดนลบแล้ว")

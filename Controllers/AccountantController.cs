@@ -7,6 +7,9 @@ namespace PrivateGym.Controllers;
 // [AccountantController] โซนหลัก:
 // 1) ภาพรวมรายรับ & ตรวจรับเงิน: Index, Payments, ApprovePayment, RejectPayment
 // 2) ใบกำกับภาษี & รอบบิลสมาชิก: TaxInvoices, Subscriptions
+using PrivateGym.Filters;
+
+[SessionAuthorize("Accountant", "Admin")]
 public class AccountantController : Controller
 {
     private readonly Csi402dbContext _db; // ตัวเชื่อมต่อฐานข้อมูล MySQL ผ่าน EF Core

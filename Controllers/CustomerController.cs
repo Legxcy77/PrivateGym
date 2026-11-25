@@ -10,6 +10,9 @@ namespace PrivateGym.Controllers;
 // 2) จองห้อง Pod / เทรนเนอร์: BookSession, CheckSlots (API เช็กสล็อตว่าง)
 // 3) จัดการคิวจองของฉัน: MyBookings, CheckInSession, CheckOutSession, RescheduleBooking, CancelBooking
 // 4) แพ็กเกจ & ประวัติ: MyPackages, TopUpQuota, PayScheduledPlanNow, CancelScheduledPlan, ServiceHistory
+using PrivateGym.Filters;
+
+[SessionAuthorize("Member", "Admin")]
 public class CustomerController : Controller
 {
     private readonly Csi402dbContext _db; // ตัวเชื่อมต่อฐานข้อมูล MySQL ผ่าน EF Core
