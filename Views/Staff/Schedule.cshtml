@@ -418,7 +418,7 @@
                                         }
                                         else
                                         {
-                                            bool isSlotMaint = b.User != null && b.User.RoleId != 4;
+                                            bool isSlotMaint = b.User != null && (b.User.Role != null ? b.User.Role.RoleName != "Member" : b.User.RoleId != 2);
                                             bool hasCi = b.CheckIns != null && b.CheckIns.Any();
                                             bool isInRoom = !isSlotMaint && b.Status != "Completed" && b.CheckIns != null && b.CheckIns.Any(c => c.CheckOutTime == null);
                                             bool isPast = !isSlotMaint && (b.Status == "Completed" || (selectedDate < today) || (selectedDate == today && b.EndTime <= nowTime));
