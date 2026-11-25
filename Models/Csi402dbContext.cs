@@ -257,10 +257,18 @@ public partial class Csi402dbContext : DbContext
 
     partial void OnModelCreatingPartial(ModelBuilder modelBuilder);
 
+    private static bool _seeded = false;
+    private static readonly object _seedLock = new object();
+
     public static void EnsureAllBranchesPodsAndTrainersSeeded(Csi402dbContext db)
     {
-        var branches = db.Branches.OrderBy(b => b.BranchId).ToList();
-        if (!branches.Any()) return;
+        if (_seeded) return;
+        lock (_seedLock)
+        {
+            if (_seeded) return;
+            var branches = db.Branches.OrderBy(b => b.BranchId).ToList();
+            if (!branches.Any()) return;
+            _seeded = true;
 
         int firstBranchId = branches.First().BranchId;
         int thonglorId = branches.FirstOrDefault(b => b.BranchName.Contains("ทองหล่อ"))?.BranchId ?? firstBranchId;
@@ -382,6 +390,7 @@ public partial class Csi402dbContext : DbContext
                 });
                 db.SaveChanges();
             }
+        }
         }
     }
 }
