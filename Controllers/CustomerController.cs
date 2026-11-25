@@ -689,6 +689,7 @@ public class CustomerController : Controller
         // ดึงรายการจองที่มีอยู่แล้วของ Pod นั้นในวันนั้น (รวมถึงรอบที่ Staff ล็อกปิดปรับปรุงเฉพาะรอบ และรอบที่เสร็จสิ้นแล้ว)
         var podBookingsForDate = _db.Bookings
             .Include(b => b.User)
+                .ThenInclude(u => u!.Role)
             .Where(b => b.PodId == resolvedPodId && b.BookingDate == bookingDate && b.Status != "Cancelled")
             .ToList();
         var bookedStarts = podBookingsForDate.Select(b => b.StartTime.ToString("HH:mm")).ToList();
