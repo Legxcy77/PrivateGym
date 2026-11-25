@@ -955,7 +955,7 @@ public class AdminController : Controller
             Email = trimmedEmail,
             Phone = string.IsNullOrWhiteSpace(phone) ? "0800000000" : phone.Trim(),
             PasswordHash = string.IsNullOrWhiteSpace(password) ? "123456" : password,
-            RoleId = 2,
+            RoleId = _db.Roles.FirstOrDefault(r => r.RoleName == "Staff")?.RoleId ?? 3,
             HomeBranchId = branchId > 0 ? branchId : (_db.Branches.FirstOrDefault()?.BranchId ?? 1),
             Status = "Active",
             CreatedAt = DateTime.Now
@@ -1012,7 +1012,7 @@ public class AdminController : Controller
             Email = trimmedEmail,
             Phone = string.IsNullOrWhiteSpace(phone) ? "0800000000" : phone.Trim(),
             PasswordHash = string.IsNullOrWhiteSpace(password) ? "123456" : password,
-            RoleId = 3,
+            RoleId = _db.Roles.FirstOrDefault(r => r.RoleName == "Trainer")?.RoleId ?? 4,
             HomeBranchId = branchId > 0 ? branchId : (_db.Branches.FirstOrDefault()?.BranchId ?? 1),
             Status = "Active",
             CreatedAt = DateTime.Now
