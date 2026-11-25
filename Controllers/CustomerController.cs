@@ -201,7 +201,7 @@ public class CustomerController : Controller
             user = _db.Users
                       .Include(u => u.HomeBranch)
                       .OrderByDescending(u => u.UserId)
-                      .FirstOrDefault(u => u.RoleId == 4) 
+                      .FirstOrDefault(u => (u.Role != null && u.Role.RoleName == "Member")) 
                    ?? _db.Users.Include(u => u.HomeBranch).OrderByDescending(u => u.UserId).FirstOrDefault();
         }
 
@@ -693,7 +693,7 @@ public class CustomerController : Controller
             .ToList();
         var bookedStarts = podBookingsForDate.Select(b => b.StartTime.ToString("HH:mm")).ToList();
         var maintSlotStarts = podBookingsForDate
-            .Where(b => b.User != null && b.User.RoleId != 4)
+            .Where(b => b.User != null && (b.User.Role == null || b.User.Role.RoleName != "Member"))
             .Select(b => b.StartTime.ToString("HH:mm"))
             .ToHashSet();
 
@@ -1680,7 +1680,7 @@ public class CustomerController : Controller
             .Include(u => u.HomeBranch)
             .Include(u => u.MemberSubscriptions)
                 .ThenInclude(ms => ms.Package)
-            .Where(u => u.RoleId == 4)
+            .Where(u => (u.Role != null && u.Role.RoleName == "Member"))
             .OrderByDescending(u => u.UserId)
             .FirstOrDefault()
             ?? _db.Users

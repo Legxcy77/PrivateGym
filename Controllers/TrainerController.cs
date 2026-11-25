@@ -760,7 +760,7 @@ public class TrainerController : Controller
 
             var trainerUser = _db.Users
                 .Include(u => u.HomeBranch)
-                .FirstOrDefault(u => (u.Email == clean || u.Phone == clean) && u.RoleId == 3);
+                .FirstOrDefault(u => (u.Email == clean || u.Phone == clean) && (u.Role != null && u.Role.RoleName == "Trainer"));
             if (trainerUser != null)
             {
                 var newTrainer = new Trainer

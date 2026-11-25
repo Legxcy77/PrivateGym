@@ -85,7 +85,7 @@ public class AdminController : Controller
             .Include(u => u.MemberSubscriptions)
                 .ThenInclude(ms => ms.Package)
             .Include(u => u.Payments)
-            .Where(u => u.RoleId == 4)
+            .Where(u => (u.Role != null && u.Role.RoleName == "Member"))
             .OrderByDescending(u => u.UserId)
             .ToList();
 
@@ -243,7 +243,7 @@ public class AdminController : Controller
         decimal realSuccessRevenue = successPayments.Sum(p => p.Amount);
         int realPendingCount = _db.Payments.Count(p => p.Status == "Pending");
         decimal realPendingAmount = _db.Payments.Where(p => p.Status == "Pending").Sum(p => (decimal?)p.Amount) ?? 0m;
-        int realTodayBookings = _db.Bookings.Count(b => b.BookingDate == todayDate && b.Status != "Cancelled" && b.User != null && b.User.RoleId == 4);
+        int realTodayBookings = _db.Bookings.Count(b => b.BookingDate == todayDate && b.Status != "Cancelled" && b.User != null && (b.User.Role != null && b.User.Role.RoleName == "Member"));
         int realTodayCheckIns = _db.CheckIns.Count(c => c.CheckInTime.HasValue && c.CheckInTime.Value.Date == DateTime.Today);
 
         int totalPodsCount = _db.Pods.Count();
@@ -595,7 +595,7 @@ public class AdminController : Controller
             .Include(u => u.HomeBranch)
             .Include(u => u.MemberSubscriptions).ThenInclude(s => s.Package)
             .Include(u => u.Payments)
-            .Where(u => u.RoleId == 4)
+            .Where(u => (u.Role != null && u.Role.RoleName == "Member"))
             .OrderBy(u => u.UserId)
             .ToList();
 
@@ -790,7 +790,7 @@ public class AdminController : Controller
 
         _db.SaveChanges();
 
-        if (user.RoleId == 3 && !_db.Trainers.Any(t => t.UserId == user.UserId))
+        if ((user.Role != null && user.Role.RoleName == "Trainer") && !_db.Trainers.Any(t => t.UserId == user.UserId))
         {
             _db.Trainers.Add(new Trainer
             {
@@ -904,7 +904,7 @@ public class AdminController : Controller
         var staffUsers = _db.Users
             .Include(u => u.HomeBranch)
             .Include(u => u.Role)
-            .Where(u => u.RoleId == 2)
+            .Where(u => (u.Role != null && u.Role.RoleName == "Staff"))
             .OrderBy(u => u.UserId)
             .ToList();
 
@@ -1139,7 +1139,7 @@ public class AdminController : Controller
             .Include(b => b.Pod).ThenInclude(p => p!.Branch)
             .Include(b => b.Trainer).ThenInclude(t => t!.User)
             .Include(b => b.CheckIns)
-            .Where(b => b.User != null && b.User.RoleId == 4)
+            .Where(b => b.User != null && (b.User.Role != null && b.User.Role.RoleName == "Member"))
             .OrderByDescending(b => b.BookingDate)
             .ThenByDescending(b => b.StartTime)
             .ToList();
@@ -1355,7 +1355,7 @@ public class AdminController : Controller
         ViewBag.PendingBookings = _db.Bookings
             .Include(b => b.User)
             .Include(b => b.Pod).ThenInclude(p => p!.Branch)
-            .Where(b => b.Status == "Confirmed" && !b.CheckIns.Any() && b.User != null && b.User.RoleId == 4)
+            .Where(b => b.Status == "Confirmed" && !b.CheckIns.Any() && b.User != null && (b.User.Role != null && b.User.Role.RoleName == "Member"))
             .OrderBy(b => b.BookingDate)
             .ThenBy(b => b.StartTime)
             .Take(25)
@@ -1545,10 +1545,10 @@ public class AdminController : Controller
         Csi402dbContext.EnsureAllBranchesPodsAndTrainersSeeded(_db);
         ViewData["Username"] = "Admin";
 
-        ViewBag.TotalMembers = _db.Users.Count(u => u.RoleId == 4);
+        ViewBag.TotalMembers = _db.Users.Count(u => (u.Role != null && u.Role.RoleName == "Member"));
         ViewBag.TotalTrainers = _db.Trainers.Count();
-        ViewBag.TotalBookings = _db.Bookings.Count(b => b.User != null && b.User.RoleId == 4);
-        ViewBag.CompletedBookings = _db.Bookings.Count(b => b.Status == "Completed" && b.User != null && b.User.RoleId == 4);
+        ViewBag.TotalBookings = _db.Bookings.Count(b => b.User != null && (b.User.Role != null && b.User.Role.RoleName == "Member"));
+        ViewBag.CompletedBookings = _db.Bookings.Count(b => b.Status == "Completed" && b.User != null && (b.User.Role != null && b.User.Role.RoleName == "Member"));
         ViewBag.TotalRevenue = _db.Payments.Where(p => p.Status == "Success").Sum(p => (decimal?)p.Amount) ?? 0m;
 
         ViewBag.Branches = _db.Branches
@@ -1570,7 +1570,7 @@ public class AdminController : Controller
             .ToList();
 
         var activeBookings = _db.Bookings
-            .Where(b => b.Status != "Cancelled" && b.User != null && b.User.RoleId == 4)
+            .Where(b => b.Status != "Cancelled" && b.User != null && (b.User.Role != null && b.User.Role.RoleName == "Member"))
             .ToList();
         var buckets = new (string Label, int MinHour, int MaxHour)[]
         {
@@ -1637,7 +1637,7 @@ public class AdminController : Controller
             user.RoleId = role.RoleId;
             _db.SaveChanges();
 
-            if (role.RoleId == 3 && !_db.Trainers.Any(t => t.UserId == user.UserId))
+            if (string.Equals(role.RoleName, "Trainer", StringComparison.OrdinalIgnoreCase) && !_db.Trainers.Any(t => t.UserId == user.UserId))
             {
                 _db.Trainers.Add(new Trainer
                 {

@@ -62,7 +62,7 @@ public class StaffController : Controller
                 .ThenInclude(t => t!.User)
             .Include(b => b.CheckIns)
             .Where(b => b.Status == "Confirmed" &&
-                        b.User != null && b.User.RoleId == 4 &&
+                        b.User != null && (b.User.Role != null && b.User.Role.RoleName == "Member") &&
                         (b.BookingDate > today || (b.BookingDate == today && b.EndTime > nowTime)));
 
         if (selectedBranchId > 0)
@@ -86,7 +86,7 @@ public class StaffController : Controller
             .Include(b => b.CheckIns)
             .Where(b => b.BookingDate == today &&
                         b.Status != "Cancelled" &&
-                        b.User != null && b.User.RoleId == 4);
+                        b.User != null && (b.User.Role != null && b.User.Role.RoleName == "Member"));
 
         if (selectedBranchId > 0)
         {
@@ -101,7 +101,7 @@ public class StaffController : Controller
             .Where(b => b.BookingDate == today &&
                         b.Status == "Confirmed" &&
                         b.EndTime > nowTime &&
-                        (b.User == null || b.User.RoleId != 4));
+                        (b.User == null || (b.User.Role == null || b.User.Role.RoleName != "Member")));
 
         if (selectedBranchId > 0)
         {
@@ -268,7 +268,7 @@ public class StaffController : Controller
 
         var slotLocks = _db.Bookings
             .Include(b => b.User)
-            .Where(b => b.BookingDate >= today && b.Status == "Confirmed" && b.User != null && b.User.RoleId != 4)
+            .Where(b => b.BookingDate >= today && b.Status == "Confirmed" && b.User != null && (b.User.Role == null || b.User.Role.RoleName != "Member"))
             .OrderBy(b => b.BookingDate)
             .ThenBy(b => b.StartTime)
             .ToList();
@@ -391,7 +391,7 @@ public class StaffController : Controller
             .Include(u => u.HomeBranch)
             .Include(u => u.MemberSubscriptions)
                 .ThenInclude(ms => ms.Package)
-            .Where(u => u.RoleId == 4)
+            .Where(u => (u.Role != null && u.Role.RoleName == "Member"))
             .OrderByDescending(u => u.UserId)
             .ToList();
 
@@ -432,7 +432,7 @@ public class StaffController : Controller
             .ThenByDescending(b => b.StartTime)
             .ToList()
             .Where(b =>
-                b.User != null && b.User.RoleId == 4 &&
+                b.User != null && (b.User.Role != null && b.User.Role.RoleName == "Member") &&
                 (b.Status == "Completed" ||
                  b.Status == "Cancelled" ||
                  (b.CheckIns != null && b.CheckIns.Any()) ||
