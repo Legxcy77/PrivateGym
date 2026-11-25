@@ -41,7 +41,7 @@ public partial class Csi402dbContext : DbContext
 
         modelBuilder.Entity<Booking>(entity =>
         {
-            entity.HasKey(e => e.BookingId).HasName("PRIMARY");
+            entity.HasKey(e => e.BookingId);
 
             entity.HasIndex(e => e.PodId, "PodId");
 
@@ -75,7 +75,7 @@ public partial class Csi402dbContext : DbContext
 
         modelBuilder.Entity<Branch>(entity =>
         {
-            entity.HasKey(e => e.BranchId).HasName("PRIMARY");
+            entity.HasKey(e => e.BranchId);
 
             entity.Property(e => e.BranchName).HasMaxLength(100);
             entity.Property(e => e.CreatedAt)
@@ -87,7 +87,7 @@ public partial class Csi402dbContext : DbContext
 
         modelBuilder.Entity<CheckIn>(entity =>
         {
-            entity.HasKey(e => e.CheckInId).HasName("PRIMARY");
+            entity.HasKey(e => e.CheckInId);
 
             entity.HasIndex(e => e.BookingId, "BookingId");
 
@@ -114,7 +114,7 @@ public partial class Csi402dbContext : DbContext
 
         modelBuilder.Entity<MemberSubscription>(entity =>
         {
-            entity.HasKey(e => e.SubscriptionId).HasName("PRIMARY");
+            entity.HasKey(e => e.SubscriptionId);
 
             entity.HasIndex(e => e.PackageId, "PackageId");
 
@@ -138,7 +138,7 @@ public partial class Csi402dbContext : DbContext
 
         modelBuilder.Entity<Package>(entity =>
         {
-            entity.HasKey(e => e.PackageId).HasName("PRIMARY");
+            entity.HasKey(e => e.PackageId);
 
             entity.Property(e => e.Description).HasColumnType("text");
             entity.Property(e => e.IsVip).HasDefaultValueSql("'0'");
@@ -148,7 +148,7 @@ public partial class Csi402dbContext : DbContext
 
         modelBuilder.Entity<Payment>(entity =>
         {
-            entity.HasKey(e => e.PaymentId).HasName("PRIMARY");
+            entity.HasKey(e => e.PaymentId);
 
             entity.HasIndex(e => e.PackageId, "PackageId");
 
@@ -177,7 +177,7 @@ public partial class Csi402dbContext : DbContext
 
         modelBuilder.Entity<Pod>(entity =>
         {
-            entity.HasKey(e => e.PodId).HasName("PRIMARY");
+            entity.HasKey(e => e.PodId);
 
             entity.HasIndex(e => e.BranchId, "BranchId");
 
@@ -195,7 +195,7 @@ public partial class Csi402dbContext : DbContext
 
         modelBuilder.Entity<Role>(entity =>
         {
-            entity.HasKey(e => e.RoleId).HasName("PRIMARY");
+            entity.HasKey(e => e.RoleId);
 
             entity.HasIndex(e => e.RoleName, "RoleName").IsUnique();
 
@@ -205,7 +205,7 @@ public partial class Csi402dbContext : DbContext
 
         modelBuilder.Entity<Trainer>(entity =>
         {
-            entity.HasKey(e => e.TrainerId).HasName("PRIMARY");
+            entity.HasKey(e => e.TrainerId);
 
             entity.HasIndex(e => e.UserId, "UserId").IsUnique();
 
@@ -223,7 +223,7 @@ public partial class Csi402dbContext : DbContext
 
         modelBuilder.Entity<User>(entity =>
         {
-            entity.HasKey(e => e.UserId).HasName("PRIMARY");
+            entity.HasKey(e => e.UserId);
 
             entity.HasIndex(e => e.Email, "Email").IsUnique();
 
