@@ -1138,9 +1138,66 @@ body.home-page-body {
     }
 }
 
+.pg-nav-toggle {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    background: rgba(255, 255, 255, 0.05);
+    color: #ffffff;
+    cursor: pointer;
+    padding: 0;
+}
+
 @media (max-width: 768px) {
+    .pg-nav-toggle {
+        display: inline-flex;
+    }
+
     .pg-nav-menu {
-        display: none; /* Hide on mobile or integrate with toggle */
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        flex-direction: column;
+        gap: 4px;
+        background: rgba(12, 12, 16, 0.98);
+        backdrop-filter: blur(12px);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        padding: 12px 20px 18px;
+        z-index: 999;
+    }
+
+    .pg-nav-menu.is-open {
+        display: flex;
+    }
+
+    .pg-nav-menu li a {
+        display: block;
+        padding: 10px 12px;
+        border-radius: 8px;
+    }
+
+    .pg-nav-menu li a.active,
+    .pg-nav-menu li a:hover {
+        background: rgba(255, 255, 255, 0.06);
+    }
+
+    .pg-nav-actions {
+        gap: 10px;
+    }
+
+    .pg-nav-register-btn {
+        padding: 8px 12px;
+        font-size: 13px;
+    }
+
+    .pg-nav-login-link {
+        font-size: 13px;
     }
 
     .pg-hero-title {

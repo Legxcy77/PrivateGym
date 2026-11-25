@@ -42,6 +42,13 @@
                             <polyline points="7 7 17 7 17 17"></polyline>
                         </svg>
                     </a>
+                    <button type="button" class="pg-nav-toggle" id="pgNavToggle" aria-label="เปิดเมนูนำทาง" aria-expanded="false">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                            <line x1="3" y1="6" x2="21" y2="6"></line>
+                            <line x1="3" y1="12" x2="21" y2="12"></line>
+                            <line x1="3" y1="18" x2="21" y2="18"></line>
+                        </svg>
+                    </button>
                 </div>
             </div>
         </nav>
@@ -144,6 +151,15 @@
 
                 lastScrollY = currentScrollY;
             }, { passive: true });
+
+            var navToggle = document.getElementById('pgNavToggle');
+            var navMenu = document.querySelector('.pg-nav-menu');
+            if (navToggle && navMenu) {
+                navToggle.addEventListener('click', function () {
+                    var isOpen = navMenu.classList.toggle('is-open');
+                    navToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+                });
+            }
         })();
     </script>
     @await RenderSectionAsync("Scripts", required: false)
